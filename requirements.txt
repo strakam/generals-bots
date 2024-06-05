@@ -1,4 +1,5 @@
 pettingzoo
+gymnasium
 torch
 numpy
 pygame
