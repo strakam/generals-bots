@@ -1,0 +1,4 @@
+pettingzoo
+torch
+numpy
+pygame
