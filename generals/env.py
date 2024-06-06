@@ -29,7 +29,7 @@ class Generals(pettingzoo.ParallelEnv):
         self.game_config = game_config
         self.render_mode = render_mode
         self.game = game.Game(game_config)
-        self.visualizer = utils.Visualizer(game_config.grid_size)
+        self.visualizer = utils.Visualizer(game_config, self.game.grid)
         self.possible_agents = ["a", "b"]
 
     @functools.lru_cache(maxsize=None)
