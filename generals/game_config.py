@@ -2,7 +2,8 @@ from typing import List, Tuple
 
 from pydantic import BaseModel, validator, ValidationError
 
-class GridConfig(BaseModel):
+class GameConfig(BaseModel):
+    n_players: int = 2
     grid_size: int = 32
     town_density: float = 0.1
     terrain_density: float = 0.1

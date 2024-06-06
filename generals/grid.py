@@ -1,15 +1,14 @@
 
 
 import numpy as np
-from grid_config import GridConfig
+from . import game_config
 
 
 class Grid():
-    def __init__(self, config: GridConfig):
+    def __init__(self, config: game_config.GameConfig):
         self.config = config
         self.n_channels = 5
         self.grid = self.generate()
-        print(self.grid[..., 0])
 
 
     def generate(self):
@@ -18,11 +17,4 @@ class Grid():
         map[self.config.starting_positions[1][0], self.config.starting_positions[1][1], 0] = 1
         return map
 
-
-config = GridConfig(
-    grid_size=10,
-    starting_positions=[[1, 1], [5, 5]]
-)
-
-g = Grid(config)
 
