@@ -14,8 +14,8 @@ class Grid():
 
     CHANNEL_NAMES = [
         'terrain',
-        'town',
-        'plain',
+        'castle',
+        'road',
         'general',
         'army',
         'ownership'
@@ -46,7 +46,7 @@ class Grid():
 
     def get_channel(self, channel_name) -> List[Tuple[int, int]]:
         """
-        Returns a list of indices of cells from specified channel among [terrain, town, plain]
+        Returns a list of indices of cells from specified channel among [terrain, castle, road]
         """
         return np.argwhere(getattr(self, channel_name) == 1)
 
