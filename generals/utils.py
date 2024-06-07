@@ -35,9 +35,9 @@ def load_image(filename):
 
     raise ValueError("Unsupported image format")
 
-TERRAIN_IMG = load_image("terrain")
-CASTLE_IMG = load_image("castle")
-GENERAL_IMG = load_image("general")
+TERRAIN_IMG = load_image("mountainie")
+CASTLE_IMG = load_image("citie")
+GENERAL_IMG = load_image("crownie")
 
 def render(game: game.Game, agent_ids: list[int]):
     """
@@ -100,4 +100,4 @@ def draw_channel(screen, channel: list[Tuple[int, int]], color: Tuple[int, int, 
 def draw_images(screen, channel: list[Tuple[int, int]], image):
     """draw channel images"""
     for i, j in channel:
-        screen.blit(image, (i * SQUARE_SIZE, j * SQUARE_SIZE))
+        screen.blit(image, (i * SQUARE_SIZE + 3, j * SQUARE_SIZE + 2))
