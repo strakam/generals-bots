@@ -17,6 +17,7 @@ COLORS = {
     "visible": (200, 200, 200),
     "player_1": (255, 0, 0),
     "player_2": (0, 0, 255),
+    "black": (0, 0, 0),
 }
 
 def load_image(filename):
@@ -34,6 +35,9 @@ def load_image(filename):
 
     raise ValueError("Unsupported image format")
 
+TERRAIN_IMG = load_image("terrain")
+CASTLE_IMG = load_image("castle")
+GENERAL_IMG = load_image("general")
 
 def render(game: game.Game, agent_ids: list[int]):
     """
@@ -55,16 +59,20 @@ def render(game: game.Game, agent_ids: list[int]):
 
     # draw lines
     for i in range(1, GRID_SIZE):
-        pygame.draw.line(game.screen, "black", (SQUARE_SIZE*i, 0), (SQUARE_SIZE*i, WINDOW_SIZE), 2)
-        pygame.draw.line(game.screen, "black", (0, SQUARE_SIZE*i), (WINDOW_SIZE, SQUARE_SIZE*i), 2)
+        pygame.draw.line(game.screen, COLORS["black"], (SQUARE_SIZE*i, 0), (SQUARE_SIZE*i, WINDOW_SIZE), 2)
+        pygame.draw.line(game.screen, COLORS["black"], (0, SQUARE_SIZE*i), (WINDOW_SIZE, SQUARE_SIZE*i), 2)
 
     # # draw background as squares
-    # for i in range(GRID_SIZE):
-    #     for j in range(GRID_SIZE):
-    #         position = (i * SQUARE_SIZE, j * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE)
-    #         pygame.draw.rect(game.screen, COLORS["fog_of_war"], position)
-    reminder = np.logical_not(reminder)
-    draw_channel(game.screen, game.channel_as_list(reminder), COLORS["fog_of_war"])
+    draw_channel(game.screen, game.channel_as_list(np.logical_not(reminder)), COLORS["fog_of_war"])
+
+    # draw terrain
+    draw_images(game.screen, game.channel_as_list(game.channels['terrain']), TERRAIN_IMG)
+
+    # draw general
+    draw_images(game.screen, game.channel_as_list(game.channels['general']), GENERAL_IMG)
+
+    # draw castles
+    draw_images(game.screen, game.channel_as_list(np.logical_and(game.channels['castle'], reminder)), CASTLE_IMG)
     
     pygame.display.flip()
     
@@ -85,6 +93,11 @@ def draw_static_parts(screen, channels: Dict[str, list[Tuple[int, int]]]):
         
 
 def draw_channel(screen, channel: list[Tuple[int, int]], color: Tuple[int, int, int]):
-    """draw channel"""
+    """draw channel colors"""
     for i, j in channel:
         pygame.draw.rect(screen, color, (i * SQUARE_SIZE, j * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
+
+def draw_images(screen, channel: list[Tuple[int, int]], image):
+    """draw channel images"""
+    for i, j in channel:
+        screen.blit(image, (i * SQUARE_SIZE, j * SQUARE_SIZE))
