@@ -14,8 +14,8 @@ VISUAL_OFFSET = 5
 
 COLORS = {
     "fog_of_war": (80, 83, 86),
-    "player_1": "red",
-    "player_2": "blue",
+    "player_1": (255, 0, 0),
+    "player_2": (0, 0, 255),
 }
 
 def load_image(filename):
@@ -34,7 +34,6 @@ def load_image(filename):
     raise ValueError("Unsupported image format")
 
 def draw_static_parts(screen, channels: Dict[str, list[Tuple[int, int]]]):
-    screen.fill(COLORS["fog_of_war"])
 
     def position_offset(x, y):
         return (
@@ -53,8 +52,9 @@ def draw_static_parts(screen, channels: Dict[str, list[Tuple[int, int]]]):
         pygame.draw.line(screen, "black", (0, SQUARE_SIZE*i), (WINDOW_SIZE, SQUARE_SIZE*i), 2)
         
 
-def draw_pov(self, pov: list[int]):
+def draw_pov(screen, channel: list[Tuple[int, int]], color: Tuple[int, int, int]):
     """
-    pov is a list of agent ids from which we will get perspective
+    pov is an agent ids from which we will get perspective
     """
-    pass
+    for i, j in channel:
+        pygame.draw.rect(screen, color, (i * SQUARE_SIZE, j * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))

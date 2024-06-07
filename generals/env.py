@@ -29,7 +29,7 @@ class Generals(pettingzoo.ParallelEnv):
         self.game_config = game_config
         self.render_mode = render_mode
         self.game = game.Game(game_config)
-        self.possible_agents = ["a", "b"]
+        self.possible_agents = [1, 2]
 
     @functools.lru_cache(maxsize=None)
     def observation_space(self, agent):
@@ -45,7 +45,7 @@ class Generals(pettingzoo.ParallelEnv):
 
     def render(self):
         if self.render_mode == "human":
-            self.game.render()
+            self.game.render([1])
 
     def reset(self, seed=None, options=None):
         self.game = game.Game(self.game_config)

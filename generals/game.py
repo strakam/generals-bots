@@ -3,7 +3,7 @@ import pygame
 from . import grid
 from . import game_config
 from generals import utils
-from typing import List, Tuple, Dict
+from typing import Tuple, Dict
 
 ROAD = 0
 TERRAIN = 1
@@ -12,6 +12,12 @@ GENERAL = 3
 ARMY = 4
 OWNERSHIP = 5
 
+COLORS = {
+    "fog_of_war": (80, 83, 86),
+    "player_1": (255, 0, 0),
+    "player_2": (0, 0, 255),
+}
+
 class Game():
     def __init__(self, config: game_config.GameConfig):
         pygame.init()
@@ -19,6 +25,7 @@ class Game():
         self.grid_size = config.grid_size
         self.screen = pygame.display.set_mode((utils.WINDOW_SIZE, utils.WINDOW_SIZE))
         self.clock = pygame.time.Clock()
+        self.pov = [i+1 for i in range(self.config.n_players)] # FIXME
 
         # Create map layout
 
@@ -49,14 +56,32 @@ class Game():
         # Place generals to 'general' channel
         for general in self.config.starting_positions:
             self.channels['general'][general[0], general[1]] = 1
+            self.channels['army'][general[0], general[1]] = 1
 
-    def render(self):
-        utils.draw_static_parts(self.screen, self.list_representation())
+        for i in range(self.config.n_players):
+            x, y = self.config.starting_positions[i]
+            self.channels[f'ownership_{i}'][x, y] = 1
+
+    def render(self, agent_ids: list[int]):
+        self.screen.fill(COLORS["fog_of_war"])
+        for id in agent_ids:
+            channel_to_display = self.list_representation('ownership_' + str(id))
+            print(COLORS[f'player_{id}'])
+            utils.draw_pov(self.screen, channel_to_display, COLORS[f'player_{id}'])
+        utils.draw_static_parts(self.screen, self.list_representation_all())
         pygame.display.flip()
 
-    def list_representation(self) -> Dict[str, list[Tuple[int, int]]]:
+    def list_representation(self, channel_name: str) -> list[Tuple[int, int]]:
+        """
+        Returns a list of indices of cells from specified channel
+        """
+        return np.argwhere(self.channels[channel_name] == 1)
+
+    def list_representation_all(self) -> Dict[str, list[Tuple[int, int]]]:
         """
         Returns a list of indices of cells for each channel
         """
-        return {channel_name: np.argwhere(channel == 1) for channel_name, channel in self.channels.items()}
+        return {channel_name: self.list_representation(channel_name) for channel_name in self.channels.keys()}
+
+    
 
