@@ -45,7 +45,7 @@ class Generals(pettingzoo.ParallelEnv):
 
     def render(self):
         if self.render_mode == "human":
-            self.game.render([2])
+            utils.render(self.game, [1, 2])
 
     def reset(self, seed=None, options=None):
         self.game = game.Game(self.game_config)
