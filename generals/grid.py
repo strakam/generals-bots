@@ -3,33 +3,27 @@ from typing import List, Tuple
 import numpy as np
 from . import game_config
 
+ROAD = 0
+TERRAIN = 1
+TOWN = 2
+GENERAL = 3
+ARMY = 4
+OWNERSHIP = 5
 
 class Grid():
-    TERRAIN = 0
-    TOWN = 1
-    PLAIN = 2
-    GENERAL = 3
-    ARMY = 4
-    OWNERSHIP = 5
-
-    CHANNEL_NAMES = [
-        'terrain',
-        'castle',
-        'road',
-        'general',
-        'army',
-        'ownership'
-    ]
-
     def __init__(self, config: game_config.GameConfig):
         self.config = config
 
         # generate layout of the grid
         p_plain = 1 - self.config.terrain_density - self.config.town_density
-        probs = [self.config.terrain_density, self.config.town_density, p_plain]
-        map = np.random.choice([0, 1, 2], size=(self.config.grid_size, self.config.grid_size), p=probs)
+        probs = [p_plain, self.config.terrain_density, self.config.town_density]
+        map = np.random.choice([ROAD, TERRAIN, TOWN], size=(self.config.grid_size, self.config.grid_size), p=probs)
 
-        for i, channel_name in enumerate(self.CHANNEL_NAMES[:3]):
+        # place generals
+        for general in self.config.starting_positions:
+            map[general[0], general[1]] = 0 # general square is considered passable, so we give it 0
+
+        for i, channel_name in enumerate(['road', 'terrain', 'castle']):
             setattr(self, channel_name, np.zeros((self.config.grid_size, self.config.grid_size), dtype=np.float32))
             getattr(self, channel_name)[map == i] = 1
 
@@ -38,7 +32,8 @@ class Grid():
         for general in self.config.starting_positions:
             self.general[general[0], general[1]] = 1
 
-        # if ownership_channel[i, j] == k, then cell (i, j) is owned by player k
+        # if ownership_channel[i, j] == 1, then player owns cell (i, j)
+        # only for 1v1 now
         self.ownership = np.zeros((self.config.grid_size, self.config.grid_size), dtype=np.float32)
         
         # values of army size in each cell
@@ -46,7 +41,8 @@ class Grid():
 
     def get_channel(self, channel_name) -> List[Tuple[int, int]]:
         """
-        Returns a list of indices of cells from specified channel among [terrain, castle, road]
+        Returns a list of indices of cells from specified channel among [terrain, castle, road, general, ownership]
+        Ownership is supported only for 1v1 now
         """
         return np.argwhere(getattr(self, channel_name) == 1)
 

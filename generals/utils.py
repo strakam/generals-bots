@@ -49,6 +49,10 @@ class Visualizer():
         for i, j in towns_indices:
             self.screen.blit(load_image("castle.png"), position_offset(i, j))
 
+        generals_indices = grid.get_channel("general")
+        for i, j in generals_indices:
+            self.screen.blit(load_image("crownie.svg"), position_offset(i, j))
+
         for i in range(1, self.grid_size):
             pygame.draw.line(self.screen, "black", (self.square_size*i, 0), (self.square_size*i, self.window_size), 2)
             pygame.draw.line(self.screen, "black", (0, self.square_size*i), (self.window_size, self.square_size*i), 2)
