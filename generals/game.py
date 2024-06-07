@@ -25,7 +25,6 @@ class Game():
         self.grid_size = config.grid_size
         self.screen = pygame.display.set_mode((utils.WINDOW_SIZE, utils.WINDOW_SIZE))
         self.clock = pygame.time.Clock()
-        self.pov = [i+1 for i in range(self.config.n_players)] # FIXME
 
         # Create map layout
 
@@ -45,7 +44,7 @@ class Game():
         self.channels = {
             'army': np.zeros(spatial_dim, dtype=np.float32),
             'general': np.zeros(spatial_dim, dtype=np.float32),
-            **{f'ownership_{i}': np.zeros(spatial_dim, dtype=np.float32) for i in range(self.config.n_players)}
+            **{f'ownership_{i+1}': np.zeros(spatial_dim, dtype=np.float32) for i in range(self.config.n_players)}
         }
 
         # Place terrain, castle, road to corresponding channels
@@ -60,7 +59,7 @@ class Game():
 
         for i in range(self.config.n_players):
             x, y = self.config.starting_positions[i]
-            self.channels[f'ownership_{i}'][x, y] = 1
+            self.channels[f'ownership_{i+1}'][x, y] = 1
 
     def render(self, agent_ids: list[int]):
         self.screen.fill(COLORS["fog_of_war"])
