@@ -13,7 +13,7 @@ OWNERSHIP = 5
 class Grid():
     def __init__(self, config: game_config.GameConfig):
         self.config = config
-
+        print(config)
         # generate layout of the grid
         p_plain = 1 - self.config.terrain_density - self.config.town_density
         probs = [p_plain, self.config.terrain_density, self.config.town_density]

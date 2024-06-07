@@ -1,8 +1,11 @@
+import numpy as np
 import pygame
 import cairosvg
 import io
 import importlib.resources
 from . import grid
+
+from typing import Dict, Tuple
 
 GRID_SIZE = 10
 SQUARE_SIZE = 40
@@ -30,8 +33,7 @@ def load_image(filename):
 
     raise ValueError("Unsupported image format")
 
-def draw_static_parts(screen, grid: grid.Grid):
-
+def draw_static_parts(screen, channels: Dict[str, list[Tuple[int, int]]]):
     screen.fill(COLORS["fog_of_war"])
 
     def position_offset(x, y):
@@ -41,7 +43,7 @@ def draw_static_parts(screen, grid: grid.Grid):
         )
 
     for square_type in ["general", "terrain", "castle"]:
-        indices = grid.get_channel(square_type)
+        indices = channels[square_type]
         image = load_image(f"{square_type}")
         for i, j in indices:
             screen.blit(image, position_offset(i, j))
