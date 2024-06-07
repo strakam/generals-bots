@@ -2,64 +2,57 @@ import pygame
 import cairosvg
 import io
 import importlib.resources
-from . import game_config
 from . import grid
 
+GRID_SIZE = 10
+SQUARE_SIZE = 40
+WINDOW_SIZE = SQUARE_SIZE * GRID_SIZE
+VISUAL_OFFSET = 5
+
+COLORS = {
+    "fog_of_war": (80, 83, 86),
+    "player_1": "red",
+    "player_2": "blue",
+}
 
 def load_image(filename):
-    if filename.endswith(".svg"):
-        with importlib.resources.path("generals.images", filename) as path:
+    """
+    Check if there is filename.svg, otherwise try filename.png
+    """
+    # check if there is filename.svg
+    if importlib.resources.is_resource("generals.images", filename + '.svg'):
+        with importlib.resources.path("generals.images", filename + '.svg') as path:
             png_data = cairosvg.svg2png(url=str(path))
             return pygame.image.load(io.BytesIO(png_data), "png")
-    elif filename.endswith(".png"):
-        with importlib.resources.path("generals.images", filename) as path:
+    elif importlib.resources.is_resource("generals.images", filename + '.png'):
+        with importlib.resources.path("generals.images", filename + '.png') as path:
             return pygame.image.load(str(path), "png")
-    else:
-        raise ValueError("Unsupported image format")
+
+    raise ValueError("Unsupported image format")
+
+def draw_static_parts(screen, grid: grid.Grid):
+
+    screen.fill(COLORS["fog_of_war"])
+
+    def position_offset(x, y):
+        return (
+            x * SQUARE_SIZE + VISUAL_OFFSET,
+            y * SQUARE_SIZE + VISUAL_OFFSET
+        )
+
+    for square_type in ["general", "terrain", "castle"]:
+        indices = grid.get_channel(square_type)
+        image = load_image(f"{square_type}")
+        for i, j in indices:
+            screen.blit(image, position_offset(i, j))
+
+    for i in range(1, GRID_SIZE):
+        pygame.draw.line(screen, "black", (SQUARE_SIZE*i, 0), (SQUARE_SIZE*i, WINDOW_SIZE), 2)
+        pygame.draw.line(screen, "black", (0, SQUARE_SIZE*i), (WINDOW_SIZE, SQUARE_SIZE*i), 2)
         
 
-class Visualizer():
-    square_size = 40
-    visual_offset = 5
-    colors = {
-        "fog_of_war": (80, 83, 86),
-    }
-
-    def __init__(self, config: game_config.GameConfig, grid: grid.Grid):
-        pygame.init()
-        self.grid_size = config.grid_size
-        self.window_size = self.square_size * config.grid_size
-        self.screen = pygame.display.set_mode((self.window_size, self.window_size))
-        self.clock = pygame.time.Clock()
-        
-        self.screen.fill(color=self.colors["fog_of_war"])
-
-
-        def position_offset(x, y):
-            return (
-                x * self.square_size + self.visual_offset,
-                y * self.square_size + self.visual_offset
-            )
-
-        terrain_indices = grid.get_channel("terrain")
-        for i, j in terrain_indices:
-            self.screen.blit(load_image("terrain.svg"), position_offset(i, j))
-
-        towns_indices = grid.get_channel("castle")
-        for i, j in towns_indices:
-            self.screen.blit(load_image("castle.png"), position_offset(i, j))
-
-        generals_indices = grid.get_channel("general")
-        for i, j in generals_indices:
-            self.screen.blit(load_image("crownie.svg"), position_offset(i, j))
-
-        for i in range(1, self.grid_size):
-            pygame.draw.line(self.screen, "black", (self.square_size*i, 0), (self.square_size*i, self.window_size), 2)
-            pygame.draw.line(self.screen, "black", (0, self.square_size*i), (self.window_size, self.square_size*i), 2)
-
-        pygame.display.flip()
-
-
-    def draw_grid(self, grid):
-        pass
-
+def draw_pov(self, pov: list[int]):
+    """
+    pov is a list of agent ids from which we will get perspective
+    """
+    pass

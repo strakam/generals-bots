@@ -29,7 +29,6 @@ class Generals(pettingzoo.ParallelEnv):
         self.game_config = game_config
         self.render_mode = render_mode
         self.game = game.Game(game_config)
-        self.visualizer = utils.Visualizer(game_config, self.game.grid)
         self.possible_agents = ["a", "b"]
 
     @functools.lru_cache(maxsize=None)
@@ -46,8 +45,7 @@ class Generals(pettingzoo.ParallelEnv):
 
     def render(self):
         if self.render_mode == "human":
-            grid = self.game.grid
-            self.visualizer.draw_grid(grid)
+            self.game.render()
 
     def reset(self, seed=None, options=None):
         self.game = game.Game(self.game_config)
