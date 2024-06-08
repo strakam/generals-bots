@@ -1,6 +1,5 @@
 import numpy as np
 import pygame
-from . import grid
 from . import game_config
 from typing import Tuple, Dict
 
