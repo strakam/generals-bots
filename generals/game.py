@@ -17,6 +17,8 @@ SQUARE_SIZE = 40
 WINDOW_SIZE = SQUARE_SIZE * GRID_SIZE
 VISUAL_OFFSET = 5
 
+TICK_RATE = 10
+
 COLORS = {
     "fog_of_war": (80, 83, 86),
     "player_1": (255, 0, 0),
@@ -31,8 +33,9 @@ class Game():
         self.screen = pygame.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
         self.clock = pygame.time.Clock()
 
-        # Create map layout
+        self.time = 0
 
+        # Create map layout
         p_plain = 1 - self.config.terrain_density - self.config.town_density
         probs = [p_plain, self.config.terrain_density, self.config.town_density]
         map = np.random.choice([ROAD, TERRAIN, TOWN], size=(self.config.grid_size, self.config.grid_size), p=probs)
@@ -73,7 +76,7 @@ class Game():
         """
         Returns a list of indices of cells from specified channel
         """
-        return np.argwhere(channel == 1)
+        return np.argwhere(channel != 0)
 
     def list_representation_all(self) -> Dict[str, list[Tuple[int, int]]]:
         """
@@ -86,4 +89,17 @@ class Game():
         Returns a mask of visible cells for agent_id
         """
         return maximum_filter(self.channels['ownership_' + str(agent_id)], size=3)
+    
+    def step(self, actions: Dict[int, Tuple[int, int]]):
+        """
+        Perform one step of the game
+        """
+        self.time += 1
+
+        # every TICK_RATE steps, increase army size in each cell
+        if self.time % TICK_RATE == 0:
+            nonzero_army = np.nonzero(self.channels['army'])
+            self.channels['army'][nonzero_army] += 1
+
+        
 

@@ -39,18 +39,31 @@ TERRAIN_IMG = load_image("mountainie")
 CASTLE_IMG = load_image("citie")
 GENERAL_IMG = load_image("crownie")
 
+# if user presses 'q', quit the game
+def check_quit():
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            quit()
+        if event.type == pygame.KEYDOWN: # quit game if q is pressed
+            if event.key == pygame.K_q:
+                pygame.quit()
+                quit()
+
 def render(game: game.Game, agent_ids: list[int]):
     """
     Method that orchestrates rendering of the game
     """
 
+    check_quit()
+    
     # draw visibility squares
-    reminder = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float32)
+    visible_map = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float32)
     for id in agent_ids:
         visibility = game.visibility_mask(id)
         draw_channel(game.screen, game.channel_as_list(visibility), COLORS["visible"])
         # logical OR with reminder
-        reminder = np.logical_or(reminder, visibility)
+        visible_map = np.logical_or(visible_map, visibility)
 
     # draw ownership squares
     for id in agent_ids:
@@ -63,7 +76,7 @@ def render(game: game.Game, agent_ids: list[int]):
         pygame.draw.line(game.screen, COLORS["black"], (0, SQUARE_SIZE*i), (WINDOW_SIZE, SQUARE_SIZE*i), 2)
 
     # # draw background as squares
-    draw_channel(game.screen, game.channel_as_list(np.logical_not(reminder)), COLORS["fog_of_war"])
+    draw_channel(game.screen, game.channel_as_list(np.logical_not(visible_map)), COLORS["fog_of_war"])
 
     # draw terrain
     draw_images(game.screen, game.channel_as_list(game.channels['terrain']), TERRAIN_IMG)
@@ -72,25 +85,17 @@ def render(game: game.Game, agent_ids: list[int]):
     draw_images(game.screen, game.channel_as_list(game.channels['general']), GENERAL_IMG)
 
     # draw castles
-    draw_images(game.screen, game.channel_as_list(np.logical_and(game.channels['castle'], reminder)), CASTLE_IMG)
+    draw_images(game.screen, game.channel_as_list(np.logical_and(game.channels['castle'], visible_map)), CASTLE_IMG)
+
+    # draw army counts on visibility mask
+    army = game.channels['army'] * visible_map
+    font = pygame.font.Font(None, 20)
+    for i, j in game.channel_as_list(army):
+        # font color white
+        text = font.render(str(int(army[i, j])), True, (255, 255, 255))
+        game.screen.blit(text, (i * SQUARE_SIZE + 12, j * SQUARE_SIZE + 15))
     
     pygame.display.flip()
-    
-
-def draw_static_parts(screen, channels: Dict[str, list[Tuple[int, int]]]):
-
-    def position_offset(x, y):
-        return (
-            x * SQUARE_SIZE + VISUAL_OFFSET,
-            y * SQUARE_SIZE + VISUAL_OFFSET
-        )
-
-    for square_type in ["general", "terrain", "castle"]:
-        indices = channels[square_type]
-        image = load_image(f"{square_type}")
-        for i, j in indices:
-            screen.blit(image, position_offset(i, j))
-        
 
 def draw_channel(screen, channel: list[Tuple[int, int]], color: Tuple[int, int, int]):
     """draw channel colors"""
