@@ -10,6 +10,11 @@ from typing import Dict, Tuple
 GRID_SIZE = 10
 SQUARE_SIZE = 40
 WINDOW_SIZE = SQUARE_SIZE * GRID_SIZE
+
+GRID_OFFSET = 50
+WINDOW_HEIGHT = SQUARE_SIZE * GRID_SIZE + GRID_OFFSET
+WINDOW_WIDTH = SQUARE_SIZE * GRID_SIZE
+
 VISUAL_OFFSET = 5
 
 COLORS = {
@@ -40,13 +45,13 @@ MOUNTAIN_IMG = load_image("mountainie")
 CITY_IMG = load_image("citie")
 GENERAL_IMG = load_image("crownie")
 
-# if user presses 'q', quit the game
-def check_quit():
+def handle_events():
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
             quit()
-        if event.type == pygame.KEYDOWN: # quit game if q is pressed
+        if event.type == pygame.KEYDOWN:
+            # quit game if q is pressed
             if event.key == pygame.K_q:
                 pygame.quit()
                 quit()
@@ -56,8 +61,13 @@ def render(game: game.Game, agent_ids: list[int]):
     Method that orchestrates rendering of the game
     """
 
-    check_quit()
+    handle_events()
+    render_grid(game, agent_ids)
     
+    pygame.display.flip()
+
+
+def render_grid(game: game.Game, agent_ids: list[int]):
     # draw visibility squares
     visible_map = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float32)
     for id in agent_ids:
@@ -73,8 +83,8 @@ def render(game: game.Game, agent_ids: list[int]):
 
     # draw lines
     for i in range(1, GRID_SIZE):
-        pygame.draw.line(game.screen, COLORS["black"], (SQUARE_SIZE*i, 0), (SQUARE_SIZE*i, WINDOW_SIZE), 2)
-        pygame.draw.line(game.screen, COLORS["black"], (0, SQUARE_SIZE*i), (WINDOW_SIZE, SQUARE_SIZE*i), 2)
+        pygame.draw.line(game.screen, COLORS["black"], (0, i * SQUARE_SIZE + GRID_OFFSET), (WINDOW_WIDTH, i * SQUARE_SIZE + GRID_OFFSET), 2)
+        pygame.draw.line(game.screen, COLORS["black"], (i * SQUARE_SIZE, GRID_OFFSET), (i * SQUARE_SIZE, WINDOW_HEIGHT), 2)
 
     # # draw background as squares
     draw_channel(game.screen, game.channel_as_list(np.logical_not(visible_map)), COLORS["fog_of_war"])
@@ -94,16 +104,15 @@ def render(game: game.Game, agent_ids: list[int]):
     for i, j in game.channel_as_list(army):
         # font color white
         text = font.render(str(int(army[i, j])), True, COLORS["white"])
-        game.screen.blit(text, (j * SQUARE_SIZE + 12, i * SQUARE_SIZE + 15))
-    
-    pygame.display.flip()
+        game.screen.blit(text, (j * SQUARE_SIZE + 12, i * SQUARE_SIZE + 15 + GRID_OFFSET))
+
 
 def draw_channel(screen, channel: list[Tuple[int, int]], color: Tuple[int, int, int]):
     """draw channel colors"""
     for i, j in channel:
-        pygame.draw.rect(screen, color, (j * SQUARE_SIZE, i * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
+        pygame.draw.rect(screen, color, (j * SQUARE_SIZE, i * SQUARE_SIZE + GRID_OFFSET, SQUARE_SIZE, SQUARE_SIZE))
 
 def draw_images(screen, channel: list[Tuple[int, int]], image):
     """draw channel images"""
     for i, j in channel:
-        screen.blit(image, (j * SQUARE_SIZE + 3, i * SQUARE_SIZE + 2))
+        screen.blit(image, (j * SQUARE_SIZE + 3, i * SQUARE_SIZE + 2 + GRID_OFFSET))

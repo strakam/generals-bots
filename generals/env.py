@@ -65,7 +65,6 @@ class Generals(pettingzoo.ParallelEnv):
         # return some dummy values for now
         self.game.step(actions)
         self.render()
-        print(self.game.valid_actions(1))
         observations = {a : 'kek' for a in self.agents}
         rewards = {a : 0 for a in self.agents}
         termination = {a : False for a in self.agents}

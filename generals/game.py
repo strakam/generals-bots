@@ -14,7 +14,8 @@ OWNERSHIP = 5
 
 GRID_SIZE = 10
 SQUARE_SIZE = 40
-WINDOW_SIZE = SQUARE_SIZE * GRID_SIZE
+WINDOW_HEIGHT = SQUARE_SIZE * GRID_SIZE + 50
+WINDOW_WIDTH = SQUARE_SIZE * GRID_SIZE
 VISUAL_OFFSET = 5
 
 TICK_RATE = 10
@@ -35,7 +36,7 @@ class Game():
         pygame.init()
         self.config = config
         self.grid_size = config.grid_size
-        self.screen = pygame.display.set_mode((WINDOW_SIZE, WINDOW_SIZE))
+        self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.clock = pygame.time.Clock()
 
         self.time = 0
