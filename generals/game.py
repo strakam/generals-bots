@@ -5,9 +5,9 @@ from typing import Tuple, Dict
 
 from scipy.ndimage import maximum_filter
 
-ROAD = 0
-TERRAIN = 1
-TOWN = 2
+PASSABLE = 0
+MOUNTAIN = 1
+CITY = 2
 GENERAL = 3
 ARMY = 4
 OWNERSHIP = 5
@@ -18,6 +18,11 @@ WINDOW_SIZE = SQUARE_SIZE * GRID_SIZE
 VISUAL_OFFSET = 5
 
 TICK_RATE = 10
+
+UP = [-1, 0]
+DOWN = [1, 0]
+LEFT = [0, -1]
+RIGHT = [0, 1]
 
 COLORS = {
     "fog_of_war": (80, 83, 86),
@@ -36,49 +41,60 @@ class Game():
         self.time = 0
 
         # Create map layout
-        p_plain = 1 - self.config.terrain_density - self.config.town_density
-        probs = [p_plain, self.config.terrain_density, self.config.town_density]
-        map = np.random.choice([ROAD, TERRAIN, TOWN], size=(self.config.grid_size, self.config.grid_size), p=probs)
+        spatial_dim = (self.config.grid_size, self.config.grid_size)
+
+        p_plain = 1 - self.config.mountain_density - self.config.town_density
+        probs = [p_plain, self.config.mountain_density, self.config.town_density]
+        map = np.random.choice([PASSABLE, MOUNTAIN, CITY], size=spatial_dim, p=probs)
+        self.map = map
+
+        # Place generals
+        for i, general in enumerate(self.config.starting_positions):
+            map[general[0], general[1]] = i + GENERAL # TODO -> get real agent id 
 
         # Initialize channels
         # Army - army size in each cell
         # General - general mask (1 if general is in cell, 0 otherwise)
         # Ownership_i - ownership mask for player i (1 if player i owns cell, 0 otherwise)
-        spatial_dim = (self.config.grid_size, self.config.grid_size)
         self.channels = {
-            'army': np.where(map == GENERAL, 1, 0).astype(np.float32),
-            'road': np.where(map == ROAD, 1, 0).astype(np.float32),
-            'general': np.zeros(spatial_dim, dtype=np.float32),
-            **{f'ownership_{i+1}': np.zeros(spatial_dim, dtype=np.float32) for i in range(self.config.n_players)}
+            'army': np.where(map >= GENERAL, 1, 0).astype(np.float32),
+            'general': np.where(map >= GENERAL, 1, 0).astype(np.float32),
+            'mountain': np.where(map == MOUNTAIN, 1, 0).astype(np.float32),
+            'city': np.where(map == CITY, 1, 0).astype(np.float32),
+            'passable': (map == PASSABLE) | (map == CITY) | (map == GENERAL),
+            **{f'ownership_{i+1}': np.where(map == GENERAL+i, 1, 0).astype(np.float32) 
+                for i in range(self.config.n_players)}
         }
 
-        # make general squares passable and finish channel initialization
-        for general in self.config.starting_positions:
-            map[general[0], general[1]] = ROAD # general square is considered passable
-            self.channels['general'][general[0], general[1]] = 1
+    def valid_actions(self, agent_id: int) -> np.ndarray:
+        """
+        Returns a mask of valid actions for agent_id
+        Agent can move from any controlled cell to any adjacent cell that is not mountain
+        """
+        owned_cells = self.channels['ownership_' + str(agent_id)]
+        owned_cells_indices = self.channel_as_list(owned_cells)
+        possible_destinations = []
+        for direction in [UP, DOWN, LEFT, RIGHT]:
+            action_destinations = owned_cells_indices + direction
+            # check if destination is in grid bounds
+            action_destinations = action_destinations[
+                np.all(action_destinations >= 0, axis=1) & np.all(action_destinations < self.grid_size, axis=1)
+            ]
+            # check if destination is road
+            action_destinations = action_destinations[
+                self.channels['passable'][action_destinations[:, 0], action_destinations[:, 1]] == 1
+            ]
+            possible_destinations.append(action_destinations)
+        return np.concatenate(possible_destinations)
+            
 
-
-        # Place terrain, castle, road to corresponding channels
-        for i, channel_name in enumerate(['road', 'terrain', 'castle']):
-            self.channels[channel_name] = np.zeros((self.config.grid_size, self.config.grid_size), dtype=np.float32)
-            self.channels[channel_name][map == i] = 1
-
-        # Place generals to 'general' channel
-        for general in self.config.starting_positions:
-            self.channels['general'][general[0], general[1]] = 1
-            self.channels['army'][general[0], general[1]] = 1
-
-        for i in range(self.config.n_players):
-            x, y = self.config.starting_positions[i]
-            self.channels[f'ownership_{i+1}'][x, y] = 1
-
-    def channel_as_list(self, channel: np.ndarray) -> list[Tuple[int, int]]:
+    def channel_as_list(self, channel: np.ndarray): # TODO type for return
         """
         Returns a list of indices of cells from specified channel
         """
         return np.argwhere(channel != 0)
 
-    def list_representation_all(self) -> Dict[str, list[Tuple[int, int]]]:
+    def list_representation_all(self): # TODO type for return
         """
         Returns a list of indices of cells for each channel
         """
