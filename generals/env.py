@@ -7,16 +7,16 @@ from gymnasium.spaces import Discrete
 import pettingzoo
 from pettingzoo.utils import wrappers
 
-from . import game, game_config, utils
+from . import game, config, utils
 
 
 
 
-def generals_v0(game_config=game_config.GameConfig, render_mode="human"):
+def generals_v0(config=config.Config, render_mode="human"):
     """
     Here we apply wrappers to the environment.
     """
-    env = Generals(game_config)
+    env = Generals(config)
     # Apply parallel_to_aec to support AEC api
     env = pettingzoo.utils.parallel_to_aec(env)
     return env
@@ -25,10 +25,13 @@ def generals_v0(game_config=game_config.GameConfig, render_mode="human"):
 class Generals(pettingzoo.ParallelEnv):
     metadata = {'render.modes': ["human", "none"]}
 
-    def __init__(self, game_config: game_config.GameConfig, render_mode="human"):
+    def __init__(self, game_config: config.Config, render_mode="human"):
         self.game_config = game_config
         self.render_mode = render_mode
         self.possible_agents = [1, 2]
+
+        if render_mode == "human":
+            utils.init_gui(self.game_config)
 
     @functools.lru_cache(maxsize=None)
     def observation_space(self, agent):

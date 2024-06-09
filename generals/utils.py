@@ -1,56 +1,46 @@
 import numpy as np
 import pygame
-import cairosvg
-import io
 import importlib.resources
 from . import game
+from . import config as conf
 
-from typing import Dict, Tuple
+from typing import Tuple
 
-GRID_SIZE = 10
-SQUARE_SIZE = 40
-WINDOW_SIZE = SQUARE_SIZE * GRID_SIZE
 
-GRID_OFFSET = 50
-WINDOW_HEIGHT = SQUARE_SIZE * GRID_SIZE + GRID_OFFSET
-WINDOW_WIDTH = SQUARE_SIZE * GRID_SIZE
+def init_gui(game_config: conf.Config):
+    """
+    Initialize pygame window
 
-VISUAL_OFFSET = 5
+    Args:
+        config: game config object
+    """
+    pygame.init()
+    pygame.display.set_caption("Generals")
 
-pygame.init()
-screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-clock = pygame.time.Clock()
+    global screen, clock, config
+    config = game_config
+    screen = pygame.display.set_mode((config.WINDOW_WIDTH, config.WINDOW_HEIGHT))
+    clock = pygame.time.Clock()
 
-COLORS = {
-    "fog_of_war": (80, 83, 86),
-    "visible": (200, 200, 200),
-    "player_1": (255, 0, 0),
-    "player_2": (0, 0, 255),
-    "black": (0, 0, 0),
-    "white": (255, 255, 255),
-}
+    global MOUNTAIN_IMG, CITY_IMG, GENERAL_IMG
+    MOUNTAIN_IMG = load_image("mountainie.png")
+    CITY_IMG = load_image("citie.png")
+    GENERAL_IMG = load_image("crownie.png")
+
 
 def load_image(filename):
     """
-    Check if there is filename.svg, otherwise try filename.png
+    Load image from the resources (only png files are supported)
 
     Args:
-        filename: name of the file (without extension)
+        filename: name of the file
     """
-    # check if there is filename.svg
-    if importlib.resources.is_resource("generals.images", filename + '.svg'):
-        with importlib.resources.path("generals.images", filename + '.svg') as path:
-            png_data = cairosvg.svg2png(url=str(path))
-            return pygame.image.load(io.BytesIO(png_data), "png")
-    elif importlib.resources.is_resource("generals.images", filename + '.png'):
-        with importlib.resources.path("generals.images", filename + '.png') as path:
+    try:
+        with importlib.resources.path("generals.images", filename) as path:
             return pygame.image.load(str(path), "png")
+    except FileNotFoundError:
+        raise ValueError("Image not found")
 
-    raise ValueError("Unsupported image format")
-
-MOUNTAIN_IMG = load_image("mountainie")
-CITY_IMG = load_image("citie")
-GENERAL_IMG = load_image("crownie")
 
 def handle_events():
     """
@@ -90,41 +80,41 @@ def render_grid(game: game.Game, agent_ids: list[int]):
         agent_ids: list of agent ids
     """
     # draw visibility squares
-    visible_map = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float32)
+    visible_map = np.zeros((config.grid_size, config.grid_size), dtype=np.float32)
     for id in agent_ids:
         ownership = game.channels['ownership_' + str(id)]
         visibility = game.visibility_channel(ownership)
         visibility_indices = game.channel_to_indices(visibility)
-        draw_channel(visibility_indices, COLORS["visible"])
+        draw_channel(visibility_indices, config.VISIBLE)
         visible_map = np.logical_or(visible_map, visibility) # get all visible cells
 
     # draw ownership squares
     for id in agent_ids:
         ownership = game.channels['ownership_' + str(id)]
         ownership_indices = game.channel_to_indices(ownership)
-        draw_channel(ownership_indices, COLORS["player_" + str(id)])
+        draw_channel(ownership_indices, config.PLAYER_COLORS[id])
 
     # draw lines
-    for i in range(1, GRID_SIZE):
+    for i in range(1, config.grid_size):
         pygame.draw.line(
             screen,
-            COLORS["black"],
-            (0, i * SQUARE_SIZE + GRID_OFFSET),
-            (WINDOW_WIDTH, i * SQUARE_SIZE + GRID_OFFSET),
+            config.BLACK,
+            (0, i * config.SQUARE_SIZE + config.GRID_OFFSET),
+            (config.WINDOW_WIDTH, i * config.SQUARE_SIZE + config.GRID_OFFSET),
             2
         )
         pygame.draw.line(
             screen,
-            COLORS["black"],
-            (i * SQUARE_SIZE, GRID_OFFSET),
-            (i * SQUARE_SIZE, WINDOW_HEIGHT),
+            config.BLACK,
+            (i * config.SQUARE_SIZE, config.GRID_OFFSET),
+            (i * config.SQUARE_SIZE, config.WINDOW_HEIGHT),
             2
         )
 
     # # draw background as squares
     invisible_map = np.logical_not(visible_map)
     invisible_indices = game.channel_to_indices(invisible_map)
-    draw_channel(invisible_indices, COLORS["fog_of_war"])
+    draw_channel(invisible_indices, config.FOG_OF_WAR)
 
     # draw mountain
     mountain_indices = game.channel_to_indices(game.channels['mountain'])
@@ -146,8 +136,8 @@ def render_grid(game: game.Game, agent_ids: list[int]):
         ownership_channel = game.channels['ownership_' + str(agent_id)]
         ownership_indices = game.channel_to_indices(ownership_channel)
         for i, j in ownership_indices:
-            text = font.render(str(int(army[i, j])), True, COLORS["white"])
-            screen.blit(text, (j * SQUARE_SIZE + 12, i * SQUARE_SIZE + 15 + GRID_OFFSET))
+            text = font.render(str(int(army[i, j])), True, config.WHITE)
+            screen.blit(text, (j * config.SQUARE_SIZE + 12, i * config.SQUARE_SIZE + 15 + config.GRID_OFFSET))
 
 
 def draw_channel(channel: list[Tuple[int, int]], color: Tuple[int, int, int]):
@@ -158,11 +148,12 @@ def draw_channel(channel: list[Tuple[int, int]], color: Tuple[int, int, int]):
         channel: list of tuples with indices of the channel
         color: color of the squares
     """
+    size, offset = config.SQUARE_SIZE, config.GRID_OFFSET
     for i, j in channel:
         pygame.draw.rect(
             screen,
             color,
-            (j * SQUARE_SIZE, i * SQUARE_SIZE + GRID_OFFSET, SQUARE_SIZE, SQUARE_SIZE)
+            (j * size + 2, i * size + 2 + offset, size - 2, size - 2)
         )
 
 def draw_images(channel: list[Tuple[int, int]], image):
@@ -174,5 +165,6 @@ def draw_images(channel: list[Tuple[int, int]], image):
         channel: list of tuples with indices of the channel
         image: pygame image object
     """
+    size, offset = config.SQUARE_SIZE, config.GRID_OFFSET
     for i, j in channel:
-        screen.blit(image, (j * SQUARE_SIZE + 3, i * SQUARE_SIZE + 2 + GRID_OFFSET))
+        screen.blit(image, (j * size + 3, i * size + 2 + offset))

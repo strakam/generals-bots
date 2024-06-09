@@ -1,44 +1,13 @@
 import numpy as np
-import pygame # TODO: check if this is should be elsewhere
-from . import game_config
+from . import config as conf
 from typing import Tuple, Dict
 
 from scipy.ndimage import maximum_filter
 
-PASSABLE = 0
-MOUNTAIN = 1
-CITY = 2
-GENERAL = 3
-ARMY = 4
-OWNERSHIP = 5
-
-GRID_SIZE = 10
-SQUARE_SIZE = 40
-WINDOW_HEIGHT = SQUARE_SIZE * GRID_SIZE + 50
-WINDOW_WIDTH = SQUARE_SIZE * GRID_SIZE
-VISUAL_OFFSET = 5
-
-TICK_RATE = 10
-
-UP = [-1, 0]
-DOWN = [1, 0]
-LEFT = [0, -1]
-RIGHT = [0, 1]
-
-COLORS = {
-    "fog_of_war": (80, 83, 86),
-    "player_1": (255, 0, 0),
-    "player_2": (0, 0, 255),
-}
-
 class Game():
-    def __init__(self, config: game_config.GameConfig):
-        pygame.init()
+    def __init__(self, config: conf.Config):
         self.config = config
         self.grid_size = config.grid_size
-        self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-        self.clock = pygame.time.Clock()
-
         self.time = 0
 
         # Create map layout
@@ -46,12 +15,12 @@ class Game():
 
         p_plain = 1 - self.config.mountain_density - self.config.town_density
         probs = [p_plain, self.config.mountain_density, self.config.town_density]
-        map = np.random.choice([PASSABLE, MOUNTAIN, CITY], size=spatial_dim, p=probs)
+        map = np.random.choice([config.PASSABLE, config.MOUNTAIN, config.CITY], size=spatial_dim, p=probs)
         self.map = map
 
         # Place generals
         for i, general in enumerate(self.config.starting_positions):
-            map[general[0], general[1]] = i + GENERAL # TODO -> get real agent id 
+            map[general[0], general[1]] = i + config.GENERAL # TODO -> get real agent id 
 
         # Initialize channels
         # Army - army size in each cell
@@ -61,12 +30,12 @@ class Game():
         # Passable - passable mask (1 if cell is passable, 0 otherwise)
         # Ownership_i - ownership mask for player i (1 if player i owns cell, 0 otherwise)
         self.channels = {
-            'army': np.where(map >= GENERAL, 1, 0).astype(np.float32),
-            'general': np.where(map >= GENERAL, 1, 0).astype(np.float32),
-            'mountain': np.where(map == MOUNTAIN, 1, 0).astype(np.float32),
-            'city': np.where(map == CITY, 1, 0).astype(np.float32),
-            'passable': (map == PASSABLE) | (map == CITY) | (map == GENERAL),
-            **{f'ownership_{i+1}': np.where(map == GENERAL+i, 1, 0).astype(np.float32) 
+            'army': np.where(map >= config.GENERAL, 1, 0).astype(np.float32),
+            'general': np.where(map >= config.GENERAL, 1, 0).astype(np.float32),
+            'mountain': np.where(map == config.MOUNTAIN, 1, 0).astype(np.float32),
+            'city': np.where(map == config.CITY, 1, 0).astype(np.float32),
+            'passable': (map == config.PASSABLE) | (map == config.CITY) | (map == config.GENERAL),
+            **{f'ownership_{i+1}': np.where(map == config.GENERAL+i, 1, 0).astype(np.float32) 
                 for i in range(self.config.n_players)}
         }
 
@@ -83,7 +52,7 @@ class Game():
         """
         owned_cells_indices = self.channel_to_indices(ownership_channel)
         valid_action_mask = np.zeros((self.grid_size, self.grid_size, 4), dtype=np.float32)
-        for channel_index, direction in enumerate([UP, DOWN, LEFT, RIGHT]):
+        for channel_index, direction in enumerate([self.config.UP, self.config.DOWN, self.config.LEFT, self.config.RIGHT]):
             action_destinations = owned_cells_indices + direction
 
             # check if destination is in grid bounds
@@ -135,7 +104,7 @@ class Game():
         self.time += 1
 
         # every TICK_RATE steps, increase army size in each cell
-        if self.time % TICK_RATE == 0:
+        if self.time % self.config.tick_rate == 0:
             nonzero_army = np.nonzero(self.channels['army'])
             self.channels['army'][nonzero_army] += 1
 

@@ -1,11 +1,10 @@
-import pytest
 import numpy as np
 
-import generals.game_config as game_config
+import generals.config as conf
 import generals.game
 
 def get_game():
-    config = game_config.GameConfig(
+    config = conf.Config(
         grid_size=10,
         starting_positions=[[1, 1], [5, 5]]
     )

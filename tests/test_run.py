@@ -1,7 +1,7 @@
 from generals.env import generals_v0
-import generals.game_config as game_config
+import generals.config as game_config
 
-config = game_config.GameConfig(
+config = game_config.Config(
     grid_size=10,
     starting_positions=[[1, 1], [5, 5]]
 )
