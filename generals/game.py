@@ -94,6 +94,8 @@ class Game():
             # check if destination is road
             passable_cell_indices = self.channels['passable'][action_destinations[:, 0], action_destinations[:, 1]] == 1.
             action_destinations = action_destinations[passable_cell_indices]
+
+            # get valid action mask for a given direction
             valid_source_indices = action_destinations - direction
             valid_action_mask[valid_source_indices[:, 0], valid_source_indices[:, 1], channel_index] = 1.
 
