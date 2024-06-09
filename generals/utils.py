@@ -71,32 +71,51 @@ def render_grid(game: game.Game, agent_ids: list[int]):
     # draw visibility squares
     visible_map = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float32)
     for id in agent_ids:
-        visibility = game.visibility_mask(id)
-        draw_channel(game.screen, game.channel_as_list(visibility), COLORS["visible"])
-        # logical OR with reminder
-        visible_map = np.logical_or(visible_map, visibility)
+        visibility = game.visibility_channel(id)
+        visibility_indices = game.channel_as_list(visibility)
+        draw_channel(game.screen, visibility_indices, COLORS["visible"])
+        visible_map = np.logical_or(visible_map, visibility) # get all visible cells
 
     # draw ownership squares
     for id in agent_ids:
         ownership = game.channels['ownership_' + str(id)]
-        draw_channel(game.screen, game.channel_as_list(ownership), COLORS["player_" + str(id)])
+        ownership_indices = game.channel_as_list(ownership)
+        draw_channel(game.screen, ownership_indices, COLORS["player_" + str(id)])
 
     # draw lines
     for i in range(1, GRID_SIZE):
-        pygame.draw.line(game.screen, COLORS["black"], (0, i * SQUARE_SIZE + GRID_OFFSET), (WINDOW_WIDTH, i * SQUARE_SIZE + GRID_OFFSET), 2)
-        pygame.draw.line(game.screen, COLORS["black"], (i * SQUARE_SIZE, GRID_OFFSET), (i * SQUARE_SIZE, WINDOW_HEIGHT), 2)
+        pygame.draw.line(
+            game.screen,
+            COLORS["black"],
+            (0, i * SQUARE_SIZE + GRID_OFFSET),
+            (WINDOW_WIDTH, i * SQUARE_SIZE + GRID_OFFSET),
+            2
+        )
+        pygame.draw.line(
+            game.screen,
+            COLORS["black"],
+            (i * SQUARE_SIZE, GRID_OFFSET),
+            (i * SQUARE_SIZE, WINDOW_HEIGHT),
+            2
+        )
 
     # # draw background as squares
-    draw_channel(game.screen, game.channel_as_list(np.logical_not(visible_map)), COLORS["fog_of_war"])
+    invisible_map = np.logical_not(visible_map)
+    invisible_indices = game.channel_as_list(invisible_map)
+    draw_channel(game.screen, invisible_indices, COLORS["fog_of_war"])
 
     # draw mountain
-    draw_images(game.screen, game.channel_as_list(game.channels['mountain']), MOUNTAIN_IMG)
+    mountain_indices = game.channel_as_list(game.channels['mountain'])
+    draw_images(game.screen, mountain_indices, MOUNTAIN_IMG)
 
     # draw general
-    draw_images(game.screen, game.channel_as_list(game.channels['general']), GENERAL_IMG)
+    general_indices = game.channel_as_list(game.channels['general'])
+    draw_images(game.screen, general_indices, GENERAL_IMG)
 
     # draw cities
-    draw_images(game.screen, game.channel_as_list(np.logical_and(game.channels['city'], visible_map)), CITY_IMG)
+    visible_cities = np.logical_and(game.channels['city'], visible_map)
+    visible_cities_indices = game.channel_as_list(visible_cities)
+    draw_images(game.screen, visible_cities_indices, CITY_IMG)
 
     # draw army counts on visibility mask
     army = game.channels['army'] * visible_map
@@ -110,7 +129,11 @@ def render_grid(game: game.Game, agent_ids: list[int]):
 def draw_channel(screen, channel: list[Tuple[int, int]], color: Tuple[int, int, int]):
     """draw channel colors"""
     for i, j in channel:
-        pygame.draw.rect(screen, color, (j * SQUARE_SIZE, i * SQUARE_SIZE + GRID_OFFSET, SQUARE_SIZE, SQUARE_SIZE))
+        pygame.draw.rect(
+            screen,
+            color,
+            (j * SQUARE_SIZE, i * SQUARE_SIZE + GRID_OFFSET, SQUARE_SIZE, SQUARE_SIZE)
+        )
 
 def draw_images(screen, channel: list[Tuple[int, int]], image):
     """draw channel images"""

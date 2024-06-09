@@ -78,13 +78,13 @@ class Game():
         for direction in [UP, DOWN, LEFT, RIGHT]:
             action_destinations = owned_cells_indices + direction
             # check if destination is in grid bounds
-            action_destinations = action_destinations[
-                np.all(action_destinations >= 0, axis=1) & np.all(action_destinations < self.grid_size, axis=1)
-            ]
+            first_boundary = np.all(action_destinations >= 0, axis=1)
+            second_boundary = np.all(action_destinations < self.grid_size, axis=1)
+            action_destinations = action_destinations[first_boundary & second_boundary]
             # check if destination is road
-            action_destinations = action_destinations[
-                self.channels['passable'][action_destinations[:, 0], action_destinations[:, 1]] == 1
-            ]
+            passable_cell_indices = self.channels['passable'][action_destinations[:, 0], action_destinations[:, 1]] == 1
+            action_destinations = action_destinations[passable_cell_indices]
+
             possible_destinations.append(action_destinations)
         return np.concatenate(possible_destinations)
             
@@ -101,7 +101,7 @@ class Game():
         """
         return {k: self.channel_as_list(v) for k, v in self.channels.items()}
     
-    def visibility_mask(self, agent_id: int):
+    def visibility_channel(self, agent_id: int):
         """
         Returns a mask of visible cells for agent_id
         """
