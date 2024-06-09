@@ -70,9 +70,9 @@ class Game():
                 for i in range(self.config.n_players)}
         }
 
-    def valid_actions(self, agent_id: int) -> np.ndarray:
+    def valid_actions(self, ownership_channel: np.ndarray) -> np.ndarray:
         """
-        Function to compute valid actions for a given agent.
+        Function to compute valid actions from a given ownership mask.
 
         Args:
             agent_id: int
@@ -81,9 +81,8 @@ class Game():
             np.ndarray: an NxNx4 array, where for last channel is a boolean mask
             of valid actions (UP, DOWN, LEFT, RIGHT) for each cell in the grid.
         """
-        owned_cells = self.channels['ownership_' + str(agent_id)]
-        owned_cells_indices = self.channel_to_indices(owned_cells)
-        valid_action_mask = np.zeros((self.grid_size, self.grid_size, 4), dtype=np.bool) # bool? 
+        owned_cells_indices = self.channel_to_indices(ownership_channel)
+        valid_action_mask = np.zeros((self.grid_size, self.grid_size, 4), dtype=np.float32)
         for channel_index, direction in enumerate([UP, DOWN, LEFT, RIGHT]):
             action_destinations = owned_cells_indices + direction
 
@@ -93,11 +92,10 @@ class Game():
             action_destinations = action_destinations[first_boundary & second_boundary]
 
             # check if destination is road
-            passable_cell_indices = self.channels['passable'][action_destinations[:, 0], action_destinations[:, 1]] == 1
+            passable_cell_indices = self.channels['passable'][action_destinations[:, 0], action_destinations[:, 1]] == 1.
             action_destinations = action_destinations[passable_cell_indices]
-
             valid_source_indices = action_destinations - direction
-            valid_action_mask[valid_source_indices[:, 0], valid_source_indices[:, 1], channel_index] = True
+            valid_action_mask[valid_source_indices[:, 0], valid_source_indices[:, 1], channel_index] = 1.
 
         return valid_action_mask
             
@@ -106,7 +104,7 @@ class Game():
         """
         Returns a list of indices of cells from specified a channel.
 
-        Expected channels are ownerhsip, general, city, mountain.
+        Expected channels are ownership, general, city, mountain.
         
         Args:
             channel: one channel of the game grid
