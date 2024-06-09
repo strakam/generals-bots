@@ -88,15 +88,16 @@ def render_grid(game: game.Game, agent_ids: list[int]):
     # draw visibility squares
     visible_map = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float32)
     for id in agent_ids:
-        visibility = game.visibility_channel(id)
-        visibility_indices = game.channel_as_list(visibility)
+        ownership = game.channels['ownership_' + str(id)]
+        visibility = game.visibility_channel(ownership)
+        visibility_indices = game.channel_to_indices(visibility)
         draw_channel(game.screen, visibility_indices, COLORS["visible"])
         visible_map = np.logical_or(visible_map, visibility) # get all visible cells
 
     # draw ownership squares
     for id in agent_ids:
         ownership = game.channels['ownership_' + str(id)]
-        ownership_indices = game.channel_as_list(ownership)
+        ownership_indices = game.channel_to_indices(ownership)
         draw_channel(game.screen, ownership_indices, COLORS["player_" + str(id)])
 
     # draw lines
@@ -118,29 +119,31 @@ def render_grid(game: game.Game, agent_ids: list[int]):
 
     # # draw background as squares
     invisible_map = np.logical_not(visible_map)
-    invisible_indices = game.channel_as_list(invisible_map)
+    invisible_indices = game.channel_to_indices(invisible_map)
     draw_channel(game.screen, invisible_indices, COLORS["fog_of_war"])
 
     # draw mountain
-    mountain_indices = game.channel_as_list(game.channels['mountain'])
+    mountain_indices = game.channel_to_indices(game.channels['mountain'])
     draw_images(game.screen, mountain_indices, MOUNTAIN_IMG)
 
     # draw general
-    general_indices = game.channel_as_list(game.channels['general'])
+    general_indices = game.channel_to_indices(game.channels['general'])
     draw_images(game.screen, general_indices, GENERAL_IMG)
 
     # draw cities
     visible_cities = np.logical_and(game.channels['city'], visible_map)
-    visible_cities_indices = game.channel_as_list(visible_cities)
+    visible_cities_indices = game.channel_to_indices(visible_cities)
     draw_images(game.screen, visible_cities_indices, CITY_IMG)
 
     # draw army counts on visibility mask
     army = game.channels['army'] * visible_map
     font = pygame.font.Font(None, 20)
-    for i, j in game.channel_as_list(army):
-        # font color white
-        text = font.render(str(int(army[i, j])), True, COLORS["white"])
-        game.screen.blit(text, (j * SQUARE_SIZE + 12, i * SQUARE_SIZE + 15 + GRID_OFFSET))
+    for agent_id in agent_ids:
+        ownership_channel = game.channels['ownership_' + str(agent_id)]
+        ownership_indices = game.channel_to_indices(ownership_channel)
+        for i, j in ownership_indices:
+            text = font.render(str(int(army[i, j])), True, COLORS["white"])
+            game.screen.blit(text, (j * SQUARE_SIZE + 12, i * SQUARE_SIZE + 15 + GRID_OFFSET))
 
 
 def draw_channel(screen, channel: list[Tuple[int, int]], color: Tuple[int, int, int]):

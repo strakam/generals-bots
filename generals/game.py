@@ -1,5 +1,5 @@
 import numpy as np
-import pygame
+import pygame # TODO: check if this is should be elsewhere
 from . import game_config
 from typing import Tuple, Dict
 
@@ -78,28 +78,33 @@ class Game():
             agent_id: int
 
         Returns:
-            np.ndarray: list of valid actions # TODO type 
+            np.ndarray: an NxNx4 array, where for last channel is a boolean mask
+            of valid actions (UP, DOWN, LEFT, RIGHT) for each cell in the grid.
         """
         owned_cells = self.channels['ownership_' + str(agent_id)]
-        owned_cells_indices = self.channel_as_list(owned_cells)
-        possible_destinations = []
-        for direction in [UP, DOWN, LEFT, RIGHT]:
+        owned_cells_indices = self.channel_to_indices(owned_cells)
+        valid_action_mask = np.zeros((self.grid_size, self.grid_size, 4), dtype=np.bool) # bool? 
+        for channel_index, direction in enumerate([UP, DOWN, LEFT, RIGHT]):
             action_destinations = owned_cells_indices + direction
+
             # check if destination is in grid bounds
             first_boundary = np.all(action_destinations >= 0, axis=1)
             second_boundary = np.all(action_destinations < self.grid_size, axis=1)
             action_destinations = action_destinations[first_boundary & second_boundary]
+
             # check if destination is road
             passable_cell_indices = self.channels['passable'][action_destinations[:, 0], action_destinations[:, 1]] == 1
             action_destinations = action_destinations[passable_cell_indices]
 
-            possible_destinations.append(action_destinations)
-        return np.concatenate(possible_destinations)
+            valid_source_indices = action_destinations - direction
+            valid_action_mask[valid_source_indices[:, 0], valid_source_indices[:, 1], channel_index] = True
+
+        return valid_action_mask
             
 
-    def channel_as_list(self, channel: np.ndarray) -> np.ndarray:
+    def channel_to_indices(self, channel: np.ndarray) -> np.ndarray:
         """
-        Returns a list of indices of cells from specified channel.
+        Returns a list of indices of cells from specified a channel.
 
         Expected channels are ownerhsip, general, city, mountain.
         
@@ -111,20 +116,14 @@ class Game():
         """
         return np.argwhere(channel != 0)
 
-    def list_representation_all(self): # TODO type for return
+    def visibility_channel(self, ownership_channel: np.ndarray) -> np.ndarray:
         """
-        Returns a list of indices of cells for each channel
-        """
-        return {k: self.channel_as_list(v) for k, v in self.channels.items()}
-    
-    def visibility_channel(self, agent_id: int):
-        """
-        Returns a binary channel of visible cells for agent_id
+        Returns a binary channel of visible cells from the perspective of the given player.
 
         Args:
             agent_id: int
         """
-        return maximum_filter(self.channels['ownership_' + str(agent_id)], size=3)
+        return maximum_filter(ownership_channel, size=3)
     
     def step(self, actions: Dict[int, Tuple[int, int]]):
         """
