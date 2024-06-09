@@ -29,6 +29,9 @@ COLORS = {
 def load_image(filename):
     """
     Check if there is filename.svg, otherwise try filename.png
+
+    Args:
+        filename: name of the file (without extension)
     """
     # check if there is filename.svg
     if importlib.resources.is_resource("generals.images", filename + '.svg'):
@@ -46,6 +49,9 @@ CITY_IMG = load_image("citie")
 GENERAL_IMG = load_image("crownie")
 
 def handle_events():
+    """
+    Handle pygame events
+    """
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
@@ -59,6 +65,10 @@ def handle_events():
 def render(game: game.Game, agent_ids: list[int]):
     """
     Method that orchestrates rendering of the game
+    
+    Args:
+        game: Game object
+        agent_ids: list of agent ids
     """
 
     handle_events()
@@ -68,6 +78,13 @@ def render(game: game.Game, agent_ids: list[int]):
 
 
 def render_grid(game: game.Game, agent_ids: list[int]):
+    """
+    Render grid part of the game.
+
+    Args:
+        game: Game object
+        agent_ids: list of agent ids
+    """
     # draw visibility squares
     visible_map = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float32)
     for id in agent_ids:
@@ -127,7 +144,14 @@ def render_grid(game: game.Game, agent_ids: list[int]):
 
 
 def draw_channel(screen, channel: list[Tuple[int, int]], color: Tuple[int, int, int]):
-    """draw channel colors"""
+    """
+    Draw channel squares on the screen
+
+    Args:
+        screen: pygame screen object
+        channel: list of tuples with indices of the channel
+        color: color of the squares
+    """
     for i, j in channel:
         pygame.draw.rect(
             screen,
@@ -136,6 +160,13 @@ def draw_channel(screen, channel: list[Tuple[int, int]], color: Tuple[int, int, 
         )
 
 def draw_images(screen, channel: list[Tuple[int, int]], image):
-    """draw channel images"""
+    """
+    Draw images on the screen
+
+    Args:
+        screen: pygame screen object
+        channel: list of tuples with indices of the channel
+        image: pygame image object
+    """
     for i, j in channel:
         screen.blit(image, (j * SQUARE_SIZE + 3, i * SQUARE_SIZE + 2 + GRID_OFFSET))

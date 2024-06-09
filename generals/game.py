@@ -56,6 +56,9 @@ class Game():
         # Initialize channels
         # Army - army size in each cell
         # General - general mask (1 if general is in cell, 0 otherwise)
+        # Mountain - mountain mask (1 if cell is mountain, 0 otherwise)
+        # City - city mask (1 if cell is city, 0 otherwise)
+        # Passable - passable mask (1 if cell is passable, 0 otherwise)
         # Ownership_i - ownership mask for player i (1 if player i owns cell, 0 otherwise)
         self.channels = {
             'army': np.where(map >= GENERAL, 1, 0).astype(np.float32),
@@ -69,8 +72,13 @@ class Game():
 
     def valid_actions(self, agent_id: int) -> np.ndarray:
         """
-        Returns a mask of valid actions for agent_id
-        Agent can move from any controlled cell to any adjacent cell that is not mountain
+        Function to compute valid actions for a given agent.
+
+        Args:
+            agent_id: int
+
+        Returns:
+            np.ndarray: list of valid actions # TODO type 
         """
         owned_cells = self.channels['ownership_' + str(agent_id)]
         owned_cells_indices = self.channel_as_list(owned_cells)
@@ -89,9 +97,17 @@ class Game():
         return np.concatenate(possible_destinations)
             
 
-    def channel_as_list(self, channel: np.ndarray): # TODO type for return
+    def channel_as_list(self, channel: np.ndarray) -> np.ndarray:
         """
-        Returns a list of indices of cells from specified channel
+        Returns a list of indices of cells from specified channel.
+
+        Expected channels are ownerhsip, general, city, mountain.
+        
+        Args:
+            channel: one channel of the game grid
+
+        Returns:
+            np.ndarray: list of indices of cells with non-zero values.
         """
         return np.argwhere(channel != 0)
 
@@ -103,13 +119,19 @@ class Game():
     
     def visibility_channel(self, agent_id: int):
         """
-        Returns a mask of visible cells for agent_id
+        Returns a binary channel of visible cells for agent_id
+
+        Args:
+            agent_id: int
         """
         return maximum_filter(self.channels['ownership_' + str(agent_id)], size=3)
     
     def step(self, actions: Dict[int, Tuple[int, int]]):
         """
         Perform one step of the game
+
+        Args:
+            actions: dictionary of agent_id to action (this will be reworked)
         """
         self.time += 1
 
