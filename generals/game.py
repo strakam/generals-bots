@@ -50,9 +50,12 @@ class Game():
             np.ndarray: an NxNx4 array, where for last channel is a boolean mask
             of valid actions (UP, DOWN, LEFT, RIGHT) for each cell in the grid.
         """
+
+        UP, DOWN, LEFT, RIGHT = self.config.UP, self.config.DOWN, self.config.LEFT, self.config.RIGHT
         owned_cells_indices = self.channel_to_indices(ownership_channel)
         valid_action_mask = np.zeros((self.grid_size, self.grid_size, 4), dtype=np.float32)
-        for channel_index, direction in enumerate([self.config.UP, self.config.DOWN, self.config.LEFT, self.config.RIGHT]):
+
+        for channel_index, direction in enumerate([UP, DOWN, LEFT, RIGHT]):
             action_destinations = owned_cells_indices + direction
 
             # check if destination is in grid bounds
