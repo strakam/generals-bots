@@ -35,10 +35,10 @@ class Config(BaseModel):
 
     FOG_OF_WAR: Tuple[int, int, int] = (80, 83, 86)
     VISIBLE: Tuple[int, int, int] = (200, 200, 200)
-    PLAYER_1_COLOR: Tuple[int, int, int] = (255, 0, 0)
-    PLAYER_2_COLOR: Tuple[int, int, int] = (0, 0, 255)
     BLACK: Tuple[int, int, int] = (0, 0, 0)
     WHITE: Tuple[int, int, int] = (255, 255, 255)
+    PLAYER_1_COLOR: Tuple[int, int, int] = (255, 0, 0)
+    PLAYER_2_COLOR: Tuple[int, int, int] = (0, 0, 255)
     PLAYER_COLORS: Dict[int, Tuple[int, int, int]] = {1: PLAYER_1_COLOR, 2: PLAYER_2_COLOR}
 
 

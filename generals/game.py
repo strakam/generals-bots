@@ -56,6 +56,8 @@ class Game():
         Args:
             map_name: str
 
+        TODO: should be moved to utils.py or somewhere 
+
         Returns:
             np.ndarray: map layout
         """
@@ -92,9 +94,9 @@ class Game():
             action_destinations = owned_cells_indices + direction
 
             # check if destination is in grid bounds
-            first_boundary = np.all(action_destinations >= 0, axis=1)
-            second_boundary = np.all(action_destinations < self.grid_size, axis=1)
-            action_destinations = action_destinations[first_boundary & second_boundary]
+            in_first_boundary = np.all(action_destinations >= 0, axis=1)
+            in_second_boundary = np.all(action_destinations < self.grid_size, axis=1)
+            action_destinations = action_destinations[in_first_boundary & in_second_boundary]
 
             # check if destination is road
             passable_cell_indices = self.channels['passable'][action_destinations[:, 0], action_destinations[:, 1]] == 1.
