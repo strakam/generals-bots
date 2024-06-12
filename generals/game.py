@@ -1,26 +1,32 @@
 import numpy as np
 from . import config as conf
 from typing import Tuple, Dict, List, Union
+import importlib.resources
 
 from scipy.ndimage import maximum_filter
 
 class Game():
     def __init__(self, config: conf.Config):
         self.config = config
-        self.grid_size = config.grid_size
         self.time = 0
 
         # Create map layout
         spatial_dim = (self.config.grid_size, self.config.grid_size)
 
-        p_plain = 1 - self.config.mountain_density - self.config.town_density
-        probs = [p_plain, self.config.mountain_density, self.config.town_density]
-        map = np.random.choice([config.PASSABLE, config.MOUNTAIN, config.CITY], size=spatial_dim, p=probs)
-        self.map = map
+        if self.config.map_name:
+            map = self.load_map(self.config.map_name)
+            self.config.grid_size = map.shape[0]
+        else:
+            p_plain = 1 - self.config.mountain_density - self.config.town_density
+            probs = [p_plain, self.config.mountain_density, self.config.town_density]
+            map = np.random.choice([config.PASSABLE, config.MOUNTAIN, config.CITY], size=spatial_dim, p=probs)
 
-        # Place generals
-        for i, general in enumerate(self.config.starting_positions):
-            map[general[0], general[1]] = i + config.GENERAL # TODO -> get real agent id 
+            # Place generals
+            for i, general in enumerate(self.config.starting_positions):
+                map[general[0], general[1]] = i + config.GENERAL # TODO -> get real agent id 
+
+        self.map = map
+        self.grid_size = self.config.grid_size
 
         # Initialize channels
         # Army - army size in each cell
@@ -29,19 +35,37 @@ class Game():
         # City - city mask (1 if cell is city, 0 otherwise)
         # Passable - passable mask (1 if cell is passable, 0 otherwise)
         # Ownership_i - ownership mask for player i (1 if player i owns cell, 0 otherwise)
-        # Ownerhsip_0 - ownership mask for neutral cells (1 if cell is neutral, 0 otherwise)
+        # Ownerhsip_0 - ownership mask for neutral cells that are passable (1 if cell is neutral, 0 otherwise)
         self.channels = {
             'army': np.where(map >= config.GENERAL, 1, 0).astype(np.float32),
             'general': np.where(map >= config.GENERAL, 1, 0).astype(np.float32),
             'mountain': np.where(map == config.MOUNTAIN, 1, 0).astype(np.float32),
             'city': np.where(map == config.CITY, 1, 0).astype(np.float32),
-            'passable': ((map == config.PASSABLE) | (map == config.CITY) | (map >= config.GENERAL)).astype(np.float32),
+            'passable': (map != config.MOUNTAIN).astype(np.float32),
             'ownership_0': ((map == config.PASSABLE) | (map == config.CITY)).astype(np.float32),
             **{f'ownership_{i+1}': np.where(map == config.GENERAL+i, 1, 0).astype(np.float32) 
                 for i in range(self.config.n_players)}
         }
 
         self._action_buffer = []
+
+    def load_map(self, map_name: str) -> np.ndarray:
+        """
+        Load map from file.
+
+        Args:
+            map_name: str
+
+        Returns:
+            np.ndarray: map layout
+        """
+        try:
+            with importlib.resources.path('generals.maps', map_name) as path:
+                with open(path, 'r') as f:
+                    map = np.array([list(line.strip()) for line in f]).astype(np.float32)
+                return map
+        except ValueError:
+            raise ValueError('Invalid map format or shape')
 
     def valid_actions(self, agent_id: int, view: str='channel') -> Union[np.ndarray, List[Tuple[int, int]]]:
         """
@@ -150,3 +174,44 @@ class Game():
             nonzero_army = np.nonzero(self.channels['army'])
             self.channels['army'][nonzero_army] += 1
         self.time += 1
+
+    def agent_observation(self, agent_id: int, view: str='channel') -> Dict[str, Union[np.ndarray, List[Tuple[int, int]]]]:
+        """
+        Returns an observation for a given agent.
+        The order of channels is as follows:
+        - (visible) army
+        - (visible) general
+        - (visible) city
+        - (visible) agent ownership
+        - (visible) opponent ownership
+        - (visible) neutral ownership
+        - mountain
+
+        !!! Currently supports only 1v1 games !!!
+        
+        Args:
+            agent_id: int
+
+        Returns:
+            np.ndarray: observation for the given agent
+        """
+        if view not in ['channel', 'list']:
+            raise ValueError('view should be either channel or list')
+
+        visibility = self.visibility_channel(self.channels[f'ownership_{agent_id}'])
+        observation = {
+            'army': self.channels['army'] * visibility,
+            'general': self.channels['general'] * visibility,
+            'city': self.channels['city'] * visibility,
+            'ownership': self.channels[f'ownership_{agent_id}'] * visibility,
+            'opponent_ownership': self.channels[f'ownership_{1-agent_id}'] * visibility,
+            'neutral_ownership': self.channels['ownership_0'] * visibility,
+            'mountain': self.channels['mountain']
+        }
+        if view == 'list':
+            observation = {k: self.channel_to_indices(v) for k, v in observation.items()}
+        return observation
+        
+
+        
+

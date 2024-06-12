@@ -36,8 +36,8 @@ class Generals(pettingzoo.ParallelEnv):
             utils.init_gui(self.game_config)
 
     def observation_space(self, agent):
-        # gymnasium spaces are defined and documented here: https://gymnasium.farama.org/api/spaces/
-        return Discrete(4)
+        observation = self.game.agent_observation(agent)
+        return observation
 
     # Action space should be defined here.
     def action_space(self, agent):
