@@ -1,5 +1,6 @@
 import functools
 from copy import copy
+import time
 
 import gymnasium
 from gymnasium.spaces import Discrete
@@ -47,6 +48,7 @@ class Generals(pettingzoo.ParallelEnv):
     def render(self):
         if self.render_mode == "human":
             utils.render(self.game, [1, 2])
+            time.sleep(0.8) # this is digsuting, fix it later
 
     def reset(self, seed=None, options=None):
         self.game = game.Game(self.game_config)

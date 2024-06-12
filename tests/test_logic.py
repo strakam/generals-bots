@@ -2,6 +2,7 @@ import numpy as np
 
 import generals.config as conf
 import generals.game
+import itertools
 
 def get_game():
     config = conf.Config(
@@ -9,6 +10,35 @@ def get_game():
         starting_positions=[[1, 1], [5, 5]]
     )
     return generals.game.Game(config)
+
+def test_grid_creation():
+    """
+    For given configuration, we should get grid of given size.
+    """
+    for _ in range(10):
+        game = get_game()
+        assert game.grid_size == 10
+        assert game.map.shape == (10, 10)
+
+        # check number of army
+        assert game.channels['army'].sum() == 2
+
+        # mountain and city should be disjoint
+        assert np.logical_and(game.channels['mountain'], game.channels['city']).sum() == 0
+
+        # for every pair of agents, the ownership channels should be disjoint
+        pairs = itertools.combinations(range(3), 2)
+        for pair in pairs:
+            ownership_a = game.channels[f'ownership_{pair[0]}']
+            ownership_b = game.channels[f'ownership_{pair[1]}']
+            assert np.logical_and(ownership_a, ownership_b).sum() == 0
+
+        # but union of all ownerships should be equal to passable channel
+        ownerships = [game.channels[f'ownership_{i}'] for i in range(3)]
+        union = np.logical_or.reduce(ownerships)
+        assert (union == game.channels['passable']).all()
+
+    
 
 def test_channel_to_indices():
     """
@@ -120,12 +150,15 @@ def test_valid_actions():
         ],
     ], dtype=np.float32)
 
-    valid_actions = game.valid_actions(game.channels['ownership_1'])
+    valid_actions = game.valid_actions(1)
     assert (valid_actions[:, :, 0] == reference[0]).all()
     assert (valid_actions[:, :, 1] == reference[1]).all()
     assert (valid_actions[:, :, 2] == reference[2]).all()
     assert (valid_actions[:, :, 3] == reference[3]).all()
-        
 
 
-
+def test_step():
+    """
+    For given actions, we should get new state of the game.
+    """
+    pass

@@ -35,8 +35,8 @@ class Game():
             'general': np.where(map >= config.GENERAL, 1, 0).astype(np.float32),
             'mountain': np.where(map == config.MOUNTAIN, 1, 0).astype(np.float32),
             'city': np.where(map == config.CITY, 1, 0).astype(np.float32),
-            'passable': (map == config.PASSABLE) | (map == config.CITY) | (map == config.GENERAL),
-            'ownership_0': np.where(map == 0, 1, 0).astype(np.float32),
+            'passable': ((map == config.PASSABLE) | (map == config.CITY) | (map >= config.GENERAL)).astype(np.float32),
+            'ownership_0': ((map == config.PASSABLE) | (map == config.CITY)).astype(np.float32),
             **{f'ownership_{i+1}': np.where(map == config.GENERAL+i, 1, 0).astype(np.float32) 
                 for i in range(self.config.n_players)}
         }
@@ -120,8 +120,10 @@ class Game():
         # this is intended for 1v1 for now and might not be bug free
         directions = np.array([self.config.UP, self.config.DOWN, self.config.LEFT, self.config.RIGHT])
         for agent_id, (source, direction) in actions.items():
-            si, sj = source[0], source[1]
-            di, dj = source[0] + directions[direction][0], source[1] + directions[direction][1]
+            si, sj = source[0], source[1] # source indices
+            di, dj = source[0] + directions[direction][0], source[1] + directions[direction][1] # destination indices
+            assert self.channels['passable'][di, dj] == 1., 'Invalid action'
+            assert self.channels['passable'][si, sj] == 1., 'Invalid action'
             moved_army_size = self.channels['army'][si, sj]
             if moved_army_size <= 1: # we have to move at least 1 army at former square
                 continue
