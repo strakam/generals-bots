@@ -1,6 +1,6 @@
 import numpy as np
 from . import config as conf
-from typing import Tuple, Dict
+from typing import Tuple, Dict, List, Union
 
 from scipy.ndimage import maximum_filter
 
@@ -29,17 +29,21 @@ class Game():
         # City - city mask (1 if cell is city, 0 otherwise)
         # Passable - passable mask (1 if cell is passable, 0 otherwise)
         # Ownership_i - ownership mask for player i (1 if player i owns cell, 0 otherwise)
+        # Ownerhsip_0 - ownership mask for neutral cells (1 if cell is neutral, 0 otherwise)
         self.channels = {
             'army': np.where(map >= config.GENERAL, 1, 0).astype(np.float32),
             'general': np.where(map >= config.GENERAL, 1, 0).astype(np.float32),
             'mountain': np.where(map == config.MOUNTAIN, 1, 0).astype(np.float32),
             'city': np.where(map == config.CITY, 1, 0).astype(np.float32),
             'passable': (map == config.PASSABLE) | (map == config.CITY) | (map == config.GENERAL),
+            'ownership_0': np.where(map == 0, 1, 0).astype(np.float32),
             **{f'ownership_{i+1}': np.where(map == config.GENERAL+i, 1, 0).astype(np.float32) 
                 for i in range(self.config.n_players)}
         }
 
-    def valid_actions(self, ownership_channel: np.ndarray) -> np.ndarray:
+        self._action_buffer = []
+
+    def valid_actions(self, agent_id: int, view: str='channel') -> Union[np.ndarray, List[Tuple[int, int]]]:
         """
         Function to compute valid actions from a given ownership mask.
 
@@ -50,6 +54,11 @@ class Game():
             np.ndarray: an NxNx4 array, where for last channel is a boolean mask
             of valid actions (UP, DOWN, LEFT, RIGHT) for each cell in the grid.
         """
+
+        if view not in ['channel', 'list']:
+            raise ValueError('view should be either channel or list')
+
+        ownership_channel = self.channels[f'ownership_{agent_id}']
 
         UP, DOWN, LEFT, RIGHT = self.config.UP, self.config.DOWN, self.config.LEFT, self.config.RIGHT
         owned_cells_indices = self.channel_to_indices(ownership_channel)
@@ -71,7 +80,10 @@ class Game():
             valid_source_indices = action_destinations - direction
             valid_action_mask[valid_source_indices[:, 0], valid_source_indices[:, 1], channel_index] = 1.
 
-        return valid_action_mask
+        output = valid_action_mask
+        if view == 'list':
+            output = [((x,y),z) for x,y,z in np.argwhere(valid_action_mask)]
+        return output
             
 
     def channel_to_indices(self, channel: np.ndarray) -> np.ndarray:
@@ -97,19 +109,42 @@ class Game():
         """
         return maximum_filter(ownership_channel, size=3)
     
-    def step(self, actions: Dict[int, Tuple[int, int]]):
+    def step(self, actions: Dict[int, Tuple[Tuple[int, int], int]]) -> None:
         """
         Perform one step of the game
 
         Args:
             actions: dictionary of agent_id to action (this will be reworked)
         """
-        self.time += 1
-
+        # TODO -> update statistics
+        # this is intended for 1v1 for now and might not be bug free
+        directions = np.array([self.config.UP, self.config.DOWN, self.config.LEFT, self.config.RIGHT])
+        for agent_id, (source, direction) in actions.items():
+            si, sj = source[0], source[1]
+            di, dj = source[0] + directions[direction][0], source[1] + directions[direction][1]
+            moved_army_size = self.channels['army'][si, sj]
+            if moved_army_size <= 1: # we have to move at least 1 army at former square
+                continue
+            target_square_army = self.channels['army'][di, dj]
+            target_square_owner = np.argmax(
+                [self.channels[f'ownership_{i}'][di, dj] for i in range(self.config.n_players + 1)]
+            )
+            
+            if target_square_owner == agent_id:
+                self.channels['army'][di, dj] += moved_army_size
+                self.channels['army'][si, sj] = 1
+            else:
+                # calculate resulting army, winner and update channels
+                remaining_army = np.abs(target_square_army - moved_army_size)
+                winner = agent_id if target_square_army < moved_army_size else target_square_owner
+                loser = agent_id if target_square_army > moved_army_size else target_square_owner
+                self.channels['army'][di, dj] = remaining_army
+                self.channels['army'][si, sj] = 1
+                self.channels[f'ownership_{winner}'][di, dj] = 1.
+                self.channels[f'ownership_{loser}'][di, dj] = 0.
+                
         # every TICK_RATE steps, increase army size in each cell
         if self.time % self.config.tick_rate == 0:
             nonzero_army = np.nonzero(self.channels['army'])
             self.channels['army'][nonzero_army] += 1
-
-        
-
+        self.time += 1
