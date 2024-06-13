@@ -5,7 +5,7 @@ import generals.config as game_config
 config = game_config.Config(
     grid_size=10,
     starting_positions=[[1, 1], [5, 5]],
-    map_name='test_map'
+    #    map_name='test_map'
 )
 
 env = generals_v0(config)
