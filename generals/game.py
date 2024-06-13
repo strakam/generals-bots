@@ -9,6 +9,7 @@ class Game():
     def __init__(self, config: conf.Config):
         self.config = config
         self.time = 0
+        self.turn = 0
 
         # Create map layout
         spatial_dim = (self.config.grid_size, self.config.grid_size)
@@ -47,7 +48,10 @@ class Game():
                 for i in range(self.config.n_players)}
         }
 
-        self._action_buffer = []
+        # initialize city costs 
+        self.city_costs = np.random.choice(range(11), size=spatial_dim).astype(np.float32) + 40
+        self.channels['army'] += self.city_costs * self.channels['city']
+
 
     def load_map(self, map_name: str) -> np.ndarray:
         """
@@ -178,12 +182,25 @@ class Game():
                 self.channels[f'ownership_{winner}'][di, dj] = 1
                 if winner != target_square_owner:
                     self.channels[f'ownership_{target_square_owner}'][di, dj] = 0
-                
+
+        self.time += 1
+        self.global_game_update()
+
+    def global_game_update(self):
+        """
+        Update game state globally.
+        """
+
+        if self.time % 2 == 0:
+            # increment armies on general and city cells, but only if they are owned by player
+            update_mask = self.channels['general'] + self.channels['city']
+            for i in range(1, self.config.n_players + 1):
+                self.channels['army'] += update_mask * self.channels[f'ownership_{i}']
+        
         # every TICK_RATE steps, increase army size in each cell
-        if self.time % self.config.tick_rate == 0:
+        if self.time % self.config.increment_rate == 0:
             nonzero_army = np.nonzero(self.channels['army'])
             self.channels['army'][nonzero_army] += 1
-        self.time += 1
 
     def agent_observation(self, agent_id: int, view: str='channel') -> Dict[str, Union[np.ndarray, List[Tuple[int, int]]]]:
         """

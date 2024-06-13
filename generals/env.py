@@ -48,7 +48,7 @@ class Generals(pettingzoo.ParallelEnv):
     def render(self):
         if self.render_mode == "human":
             utils.render(self.game, [1, 2])
-            time.sleep(0.01) # this is digsuting, fix it later
+            time.sleep(0.5) # this is digsuting, fix it later
 
     def reset(self, seed=None, options=None):
         self.game = game.Game(self.game_config)

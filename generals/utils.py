@@ -77,7 +77,7 @@ def render_grid(game: game.Game, agent_ids: list[int]):
 
     Args:
         game: Game object
-        agent_ids: list of agent ids
+        agent_ids: list of agent ids from which perspective the game is rendered
     """
     # draw visibility squares
     visible_map = np.zeros((config.grid_size, config.grid_size), dtype=np.float32)
@@ -132,12 +132,13 @@ def render_grid(game: game.Game, agent_ids: list[int]):
     # draw army counts on visibility mask
     army = game.channels['army'] * visible_map
     font = pygame.font.Font(None, 20)
-    for agent_id in agent_ids:
-        ownership_channel = game.channels['ownership_' + str(agent_id)]
-        ownership_indices = game.channel_to_indices(ownership_channel)
-        for i, j in ownership_indices:
-            text = font.render(str(int(army[i, j])), True, config.WHITE)
-            screen.blit(text, (j * config.SQUARE_SIZE + 12, i * config.SQUARE_SIZE + 15 + config.GRID_OFFSET))
+    visible_army_indices = game.channel_to_indices(army)
+    # for agent_id in agent_ids:
+    #     ownership_channel = game.channels['ownership_' + str(agent_id)]
+    #     ownership_indices = game.channel_to_indices(ownership_channel)
+    for i, j in visible_army_indices:
+        text = font.render(str(int(army[i, j])), True, config.WHITE)
+        screen.blit(text, (j * config.SQUARE_SIZE + 12, i * config.SQUARE_SIZE + 15 + config.GRID_OFFSET))
 
 
 def draw_channel(channel: list[Tuple[int, int]], color: Tuple[int, int, int]):

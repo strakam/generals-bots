@@ -11,7 +11,7 @@ class Config(BaseModel):
     mountain_density: float = 0.1
     starting_positions: List[Tuple[int, int]] = [(0, 0), (10, 10)]
     map_name: str = None
-    tick_rate: int = 10
+    increment_rate: int = 25
 
     # Game Literals
     PASSABLE: Literal[0] = 0
