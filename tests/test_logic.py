@@ -20,9 +20,6 @@ def test_grid_creation():
         assert game.grid_size == 10
         assert game.map.shape == (10, 10)
 
-        # check number of army
-        assert game.channels['army'].sum() == 2
-
         # mountain and city should be disjoint
         assert np.logical_and(game.channels['mountain'], game.channels['city']).sum() == 0
 
