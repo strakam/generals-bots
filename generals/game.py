@@ -145,14 +145,22 @@ class Game():
         # TODO -> update statistics
         # this is intended for 1v1 for now and might not be bug free
         directions = np.array([self.config.UP, self.config.DOWN, self.config.LEFT, self.config.RIGHT])
-        for agent_id, (source, direction) in actions.items():
+        agent_ids = list(actions.keys())
+        np.random.shuffle(agent_ids) # random action order
+
+        for agent_id in agent_ids:
+
+            source = actions[agent_id][0]
+            direction = actions[agent_id][1]
+
             si, sj = source[0], source[1] # source indices
             di, dj = source[0] + directions[direction][0], source[1] + directions[direction][1] # destination indices
-            assert self.channels['passable'][di, dj] == 1., 'Invalid action'
-            assert self.channels['passable'][si, sj] == 1., 'Invalid action'
             moved_army_size = self.channels['army'][si, sj]
-            if moved_army_size <= 1: # we have to move at least 1 army at former square
+
+            # check if the current player owns the source cell and has atleast 2 army size
+            if moved_army_size <= 1 or self.channels[f'ownership_{agent_id}'][si, sj] == 0:
                 continue
+
             target_square_army = self.channels['army'][di, dj]
             target_square_owner = np.argmax(
                 [self.channels[f'ownership_{i}'][di, dj] for i in range(self.config.n_players + 1)]
@@ -167,9 +175,9 @@ class Game():
                 winner = agent_id if target_square_army < moved_army_size else target_square_owner
                 self.channels['army'][di, dj] = remaining_army
                 self.channels['army'][si, sj] = 1
-                self.channels[f'ownership_{winner}'][di, dj] = 1.
+                self.channels[f'ownership_{winner}'][di, dj] = 1
                 if winner != target_square_owner:
-                    self.channels[f'ownership_{target_square_owner}'][di, dj] = 0.
+                    self.channels[f'ownership_{target_square_owner}'][di, dj] = 0
                 
         # every TICK_RATE steps, increase army size in each cell
         if self.time % self.config.tick_rate == 0:
