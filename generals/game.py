@@ -165,11 +165,11 @@ class Game():
                 # calculate resulting army, winner and update channels
                 remaining_army = np.abs(target_square_army - moved_army_size)
                 winner = agent_id if target_square_army < moved_army_size else target_square_owner
-                loser = agent_id if target_square_army > moved_army_size else target_square_owner
                 self.channels['army'][di, dj] = remaining_army
                 self.channels['army'][si, sj] = 1
                 self.channels[f'ownership_{winner}'][di, dj] = 1.
-                self.channels[f'ownership_{loser}'][di, dj] = 0.
+                if winner != target_square_owner:
+                    self.channels[f'ownership_{target_square_owner}'][di, dj] = 0.
                 
         # every TICK_RATE steps, increase army size in each cell
         if self.time % self.config.tick_rate == 0:
