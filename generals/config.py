@@ -28,7 +28,7 @@ class Config(BaseModel):
     RIGHT: List[int] = [0, 1]
 
     # GUI constants
-    SQUARE_SIZE: int = 40
+    SQUARE_SIZE: int = 50
     GRID_OFFSET: int = 40
     WINDOW_HEIGHT: int = SQUARE_SIZE * grid_size + GRID_OFFSET
     WINDOW_WIDTH: int = SQUARE_SIZE * grid_size
@@ -38,7 +38,7 @@ class Config(BaseModel):
     BLACK: Tuple[int, int, int] = (0, 0, 0)
     WHITE: Tuple[int, int, int] = (255, 255, 255)
     PLAYER_1_COLOR: Tuple[int, int, int] = (255, 0, 0)
-    PLAYER_2_COLOR: Tuple[int, int, int] = (0, 0, 255)
+    PLAYER_2_COLOR: Tuple[int, int, int] = (67, 99, 216)
     PLAYER_COLORS: Dict[int, Tuple[int, int, int]] = {1: PLAYER_1_COLOR, 2: PLAYER_2_COLOR}
 
 

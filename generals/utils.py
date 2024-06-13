@@ -22,10 +22,22 @@ def init_gui(game_config: conf.Config):
     screen = pygame.display.set_mode((config.WINDOW_WIDTH, config.WINDOW_HEIGHT))
     clock = pygame.time.Clock()
 
-    global MOUNTAIN_IMG, CITY_IMG, GENERAL_IMG
+    global MOUNTAIN_IMG, CITY_IMG, GENERAL_IMG, font
     MOUNTAIN_IMG = load_image("mountainie.png")
     CITY_IMG = load_image("citie.png")
     GENERAL_IMG = load_image("crownie.png")
+
+    # c = -2
+    # MOUNTAIN_IMG = pygame.transform.scale(MOUNTAIN_IMG, (config.SQUARE_SIZE + c, config.SQUARE_SIZE + c))
+    # CITY_IMG = pygame.transform.scale(CITY_IMG, (config.SQUARE_SIZE + c, config.SQUARE_SIZE + c))
+    # GENERAL_IMG = pygame.transform.scale(GENERAL_IMG, (config.SQUARE_SIZE + c, config.SQUARE_SIZE + c))
+
+
+    try:
+        with importlib.resources.path("generals.fonts", "Quicksand-Regular.ttf") as path:
+            font = pygame.font.Font(str(path), 18)
+    except FileNotFoundError:
+        raise ValueError("Font not found")
 
 
 def load_image(filename):
@@ -131,7 +143,6 @@ def render_grid(game: game.Game, agent_ids: list[int]):
 
     # draw army counts on visibility mask
     army = game.channels['army'] * visible_map
-    font = pygame.font.Font(None, 20)
     visible_army_indices = game.channel_to_indices(army)
     # for agent_id in agent_ids:
     #     ownership_channel = game.channels['ownership_' + str(agent_id)]
@@ -168,4 +179,4 @@ def draw_images(channel: list[Tuple[int, int]], image):
     """
     size, offset = config.SQUARE_SIZE, config.GRID_OFFSET
     for i, j in channel:
-        screen.blit(image, (j * size + 3, i * size + 2 + offset))
+        screen.blit(image, (j * size + 3, i * size + 3 + offset))
