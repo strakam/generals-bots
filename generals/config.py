@@ -33,10 +33,12 @@ class Config(BaseModel):
     WINDOW_HEIGHT: int = SQUARE_SIZE * grid_size + GRID_OFFSET
     WINDOW_WIDTH: int = SQUARE_SIZE * grid_size
 
-    FOG_OF_WAR: Tuple[int, int, int] = (80, 83, 86)
-    VISIBLE: Tuple[int, int, int] = (200, 200, 200)
+    FOG_OF_WAR: Tuple[int, int, int] = (70, 73, 76)
+    NEUTRAL_CASTLE: Tuple[int, int, int] = (128, 128, 128) 
+    VISIBLE_PATH: Tuple[int, int, int] = (200, 200, 200)
+    VISIBLE_MOUNTAIN: Tuple[int, int, int] = (187, 187, 187)
     BLACK: Tuple[int, int, int] = (0, 0, 0)
-    WHITE: Tuple[int, int, int] = (255, 255, 255)
+    WHITE: Tuple[int, int, int] = (230, 230, 230)
     PLAYER_1_COLOR: Tuple[int, int, int] = (255, 0, 0)
     PLAYER_2_COLOR: Tuple[int, int, int] = (67, 99, 216)
     PLAYER_COLORS: Dict[int, Tuple[int, int, int]] = {1: PLAYER_1_COLOR, 2: PLAYER_2_COLOR}
