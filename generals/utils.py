@@ -138,10 +138,14 @@ def render_grid(game: game.Game, agent_ids: list[int]):
     general_indices = game.channel_to_indices(game.channels['general'])
     draw_images(general_indices, GENERAL_IMG)
 
-    # draw cities
+    # draw neutral visible city color
     visible_cities = np.logical_and(game.channels['city'], visible_map)
+    visible_cities_neutral = np.logical_and(visible_cities, game.channels['ownership_0'])
+    visible_cities_neutral_indices = game.channel_to_indices(visible_cities_neutral)
+    draw_channel(visible_cities_neutral_indices, config.NEUTRAL_CASTLE)
+
+    # draw visible city images
     visible_cities_indices = game.channel_to_indices(visible_cities)
-    draw_channel(visible_cities_indices, config.NEUTRAL_CASTLE)
     draw_images(visible_cities_indices, CITY_IMG)
 
     # draw army counts on visibility mask

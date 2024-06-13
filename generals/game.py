@@ -199,8 +199,8 @@ class Game():
         
         # every TICK_RATE steps, increase army size in each cell
         if self.time % self.config.increment_rate == 0:
-            nonzero_army = np.nonzero(self.channels['army'])
-            self.channels['army'][nonzero_army] += 1
+            for i in range(1, self.config.n_players + 1):
+                self.channels['army'] += self.channels[f'ownership_{i}']
 
     def agent_observation(self, agent_id: int, view: str='channel') -> Dict[str, Union[np.ndarray, List[Tuple[int, int]]]]:
         """
