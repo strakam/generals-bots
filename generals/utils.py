@@ -31,6 +31,7 @@ def init_gui(game_config: conf.Config):
     font_offsets = [20, 16, 12, 8, 4] # for 0 digits, 1 digit, 2 digits,..
 
     try:
+        # Options for font are Quicksand-Regular.ttf, Quicksand-SemiBold.ttf, Quicksand-Medium.ttf, Quicksand-Light.ttf
         with importlib.resources.path("generals.fonts", "Quicksand-Medium.ttf") as path:
             font = pygame.font.Font(str(path), 18)
     except FileNotFoundError:
