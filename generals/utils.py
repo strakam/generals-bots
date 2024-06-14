@@ -7,7 +7,7 @@ from . import config as conf
 from typing import Tuple
 
 
-def init_gui(game_config: conf.Config):
+def init_screen(game_config: conf.Config):
     """
     Initialize pygame window
 
@@ -66,20 +66,8 @@ def handle_events():
                 pygame.quit()
                 quit()
 
-def render(game: game.Game, agent_ids: list[int]):
-    """
-    Method that orchestrates rendering of the game
-    
-    Args:
-        game: Game object
-        agent_ids: list of agent ids
-    """
-
-    handle_events()
-    render_grid(game, agent_ids)
-    
-    pygame.display.flip()
-
+def render_gui():
+    pass
 
 def render_grid(game: game.Game, agent_ids: list[int]):
     """

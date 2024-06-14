@@ -8,6 +8,8 @@ from gymnasium.spaces import Discrete
 import pettingzoo
 from pettingzoo.utils import wrappers, agent_selector
 
+from typing import List
+
 from . import game, config, utils
 
 
@@ -29,11 +31,14 @@ class Generals(pettingzoo.ParallelEnv):
     def __init__(self, game_config: config.Config, render_mode="human"):
         self.game_config = game_config
         self.render_mode = render_mode
-        self.possible_agents = [1, 2]
 
+        agent_names = ['red', 'blue']
+        self.agent_to_id = {agent: i+1 for i, agent in enumerate(agent_names)}
+        self.id_to_agent = {i+1: agent for i, agent in enumerate(agent_names)}
+        self.possible_agents = [i+1 for i in range(len(agent_names))]
 
         if render_mode == "human":
-            utils.init_gui(self.game_config)
+            utils.init_screen(self.game_config)
 
     def observation_space(self, agent):
         observation = self.game.agent_observation(agent)
@@ -47,7 +52,10 @@ class Generals(pettingzoo.ParallelEnv):
 
     def render(self):
         if self.render_mode == "human":
-            utils.render(self.game, [1, 2])
+            utils.handle_events()
+            utils.render_grid(self.game, [1, 2])
+            utils.render_gui()
+            utils.pygame.display.flip()
             time.sleep(0.02) # this is digsuting, fix it later
 
     def reset(self, seed=None, options=None):
