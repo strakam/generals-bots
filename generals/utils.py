@@ -4,7 +4,7 @@ import importlib.resources
 from . import game
 from . import config as conf
 
-from typing import Tuple
+from typing import Tuple, List, Dict
 
 
 def init_screen(game_config: conf.Config):
@@ -22,18 +22,16 @@ def init_screen(game_config: conf.Config):
     screen = pygame.display.set_mode((config.WINDOW_WIDTH, config.WINDOW_HEIGHT))
     clock = pygame.time.Clock()
 
-    global MOUNTAIN_IMG, CITY_IMG, GENERAL_IMG, font
+    global MOUNTAIN_IMG, CITY_IMG, GENERAL_IMG, font, font_offsets
     MOUNTAIN_IMG = load_image("mountainie.png")
     CITY_IMG = load_image("citie.png")
     GENERAL_IMG = load_image("crownie.png")
-
-    global font_offsets
     font_offsets = [20, 16, 12, 8, 4] # for 0 digits, 1 digit, 2 digits,..
-
     try:
         # Options for font are Quicksand-Regular.ttf, Quicksand-SemiBold.ttf, Quicksand-Medium.ttf, Quicksand-Light.ttf
         with importlib.resources.path("generals.fonts", "Quicksand-Medium.ttf") as path:
             font = pygame.font.Font(str(path), 18)
+
     except FileNotFoundError:
         raise ValueError("Font not found")
 
@@ -66,8 +64,54 @@ def handle_events():
                 pygame.quit()
                 quit()
 
-def render_gui():
-    pass
+def render_gui(game: game.Game, agent_id_to_name: Dict[int, str]):
+    ids = agent_id_to_name.keys()
+    names = ["Player"] + [str(agent_id_to_name[id]) for id in ids]
+    army_counts = ["Army"] + [str(game.player_stats[id]['army']) for id in ids]
+    land_counts = ["Land"] + [str(game.player_stats[id]['land']) for id in ids]
+
+    # white background
+    pygame.draw.rect(screen, config.WHITE, (0, 0, config.WINDOW_WIDTH, config.GRID_OFFSET))
+
+    # draw rows with player colors
+    cell_width = 100
+    for i, agent_id in enumerate(ids):
+        pygame.draw.rect(
+            screen,
+            config.PLAYER_COLORS[agent_id],
+            (0, (i+1) * 50, config.WINDOW_WIDTH-2*cell_width, 50)
+        )
+
+    # draw lines between rows
+    for i in range(1, 3):
+        pygame.draw.line(
+            screen,
+            config.BLACK,
+            (0, i * 50),
+            (config.WINDOW_WIDTH, i * 50),
+            2
+        )
+
+    # draw vertical lines cell_width from the end and 2*cell_width from the end
+    # make them tall as config.GRID_OFFSET
+    for i in range(1, 3):
+        pygame.draw.line(
+            screen,
+            config.BLACK,
+            (config.WINDOW_WIDTH - i*cell_width, 0),
+            (config.WINDOW_WIDTH - i*cell_width, config.GRID_OFFSET),
+            2
+        )
+
+    # draw 
+    for i in range(len(ids)+1):
+        text = font.render(names[i], True, config.BLACK)
+        screen.blit(text, (10, i*50 + 15))
+        text = font.render(army_counts[i], True, config.BLACK)
+        screen.blit(text, (config.WINDOW_WIDTH - 2*cell_width + 25, i*50 + 15))
+        text = font.render(land_counts[i], True, config.BLACK)
+        screen.blit(text, (config.WINDOW_WIDTH - cell_width + 25, i*50 + 15))
+
 
 def render_grid(game: game.Game, agent_ids: list[int]):
     """

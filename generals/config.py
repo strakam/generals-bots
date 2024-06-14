@@ -29,7 +29,7 @@ class Config(BaseModel):
 
     # GUI constants
     SQUARE_SIZE: int = 50
-    GRID_OFFSET: int = 40
+    GRID_OFFSET: int = 50 * (n_players + 1)
     WINDOW_HEIGHT: int = SQUARE_SIZE * grid_size + GRID_OFFSET
     WINDOW_WIDTH: int = SQUARE_SIZE * grid_size
 

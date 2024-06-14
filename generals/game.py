@@ -48,6 +48,11 @@ class Game():
                 for i in range(self.config.n_players)}
         }
 
+        # Public statistics about players
+        self.player_stats = {
+            (i+1): {'army': 1, 'land': 1} for i in range(self.config.n_players)
+        }
+
         # initialize city costs 
         self.city_costs = np.random.choice(range(11), size=spatial_dim).astype(np.float32) + 40
         self.channels['army'] += self.city_costs * self.channels['city']
@@ -201,6 +206,11 @@ class Game():
         if self.time % self.config.increment_rate == 0:
             for i in range(1, self.config.n_players + 1):
                 self.channels['army'] += self.channels[f'ownership_{i}']
+
+        # update player statistics
+        for i in range(1, self.config.n_players + 1):
+            self.player_stats[i]['army'] = np.sum(self.channels['army'] * self.channels[f'ownership_{i}']).astype(np.int32)
+            self.player_stats[i]['land'] = np.sum(self.channels[f'ownership_{i}']).astype(np.int32)
 
     def agent_observation(self, agent_id: int, view: str='channel') -> Dict[str, Union[np.ndarray, List[Tuple[int, int]]]]:
         """
