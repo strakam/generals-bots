@@ -56,7 +56,7 @@ class Generals(pettingzoo.ParallelEnv):
             utils.render_grid(self.game, [1, 2])
             utils.render_gui(self.game, self.id_to_agent)
             utils.pygame.display.flip()
-            time.sleep(0.5) # this is digsuting, fix it later (?)
+            time.sleep(0.1) # this is digsuting, fix it later (?)
 
     def reset(self, seed=None, options=None):
         self.game = game.Game(self.game_config)

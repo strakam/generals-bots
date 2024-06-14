@@ -28,7 +28,7 @@ def init_screen(game_config: conf.Config):
     GENERAL_IMG = load_image("crownie.png")
     font_offsets = [20, 16, 12, 8, 4] # for 0 digits, 1 digit, 2 digits,..
     try:
-        # Options for font are Quicksand-Regular.ttf, Quicksand-SemiBold.ttf, Quicksand-Medium.ttf, Quicksand-Light.ttf
+        # Font options are Quicksand-Regular.ttf, Quicksand-SemiBold.ttf, Quicksand-Medium.ttf, Quicksand-Light.ttf
         with importlib.resources.path("generals.fonts", "Quicksand-Medium.ttf") as path:
             font = pygame.font.Font(str(path), 18)
 
@@ -66,7 +66,7 @@ def handle_events():
 
 def render_gui(game: game.Game, agent_id_to_name: Dict[int, str]):
     ids = agent_id_to_name.keys()
-    names = ["Player"] + [str(agent_id_to_name[id]) for id in ids]
+    names = ["Turn"] + [str(agent_id_to_name[id]) for id in ids]
     army_counts = ["Army"] + [str(game.player_stats[id]['army']) for id in ids]
     land_counts = ["Land"] + [str(game.player_stats[id]['land']) for id in ids]
 
@@ -105,7 +105,11 @@ def render_gui(game: game.Game, agent_id_to_name: Dict[int, str]):
 
     # draw 
     for i in range(len(ids)+1):
-        text = font.render(names[i], True, config.BLACK)
+        if i == 0:
+            turn = str(game.time//2) + ("." if game.time % 2 == 1 else "")
+            text = font.render(f'{names[i]}: {turn}', True, config.BLACK)
+        else:
+            text = font.render(f'{names[i]}', True, config.BLACK)
         screen.blit(text, (10, i*50 + 15))
         text = font.render(army_counts[i], True, config.BLACK)
         screen.blit(text, (config.WINDOW_WIDTH - 2*cell_width + 25, i*50 + 15))
