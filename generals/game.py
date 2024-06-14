@@ -164,7 +164,7 @@ class Game():
 
             si, sj = source[0], source[1] # source indices
             di, dj = source[0] + directions[direction][0], source[1] + directions[direction][1] # destination indices
-            moved_army_size = self.channels['army'][si, sj]
+            moved_army_size = self.channels['army'][si, sj] - 1
 
             # check if the current player owns the source cell and has atleast 2 army size
             if moved_army_size <= 1 or self.channels[f'ownership_{agent_id}'][si, sj] == 0:
@@ -196,16 +196,17 @@ class Game():
         Update game state globally.
         """
 
-        if self.time % 2 == 0:
+        # every TICK_RATE steps, increase army size in each cell
+        if self.time % self.config.increment_rate == 0:
+            for i in range(1, self.config.n_players + 1):
+                self.channels['army'] += self.channels[f'ownership_{i}']
+
+        if self.time % 2 == 0 and self.time > 0:
             # increment armies on general and city cells, but only if they are owned by player
             update_mask = self.channels['general'] + self.channels['city']
             for i in range(1, self.config.n_players + 1):
                 self.channels['army'] += update_mask * self.channels[f'ownership_{i}']
         
-        # every TICK_RATE steps, increase army size in each cell
-        if self.time % self.config.increment_rate == 0:
-            for i in range(1, self.config.n_players + 1):
-                self.channels['army'] += self.channels[f'ownership_{i}']
 
         # update player statistics
         for i in range(1, self.config.n_players + 1):
