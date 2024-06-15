@@ -100,16 +100,16 @@ class Game():
         valid_action_mask = np.zeros((self.grid_size, self.grid_size, 4), dtype=np.float32)
 
         for channel_index, direction in enumerate([UP, DOWN, LEFT, RIGHT]):
-            action_destinations = owned_cells_indices + direction
+            destinations = owned_cells_indices + direction
 
             # check if destination is in grid bounds
-            in_first_boundary = np.all(action_destinations >= 0, axis=1)
-            in_second_boundary = np.all(action_destinations < self.grid_size, axis=1)
-            action_destinations = action_destinations[in_first_boundary & in_second_boundary]
+            in_first_boundary = np.all(destinations >= 0, axis=1)
+            in_second_boundary = np.all(destinations < self.grid_size, axis=1)
+            destinations = destinations[in_first_boundary & in_second_boundary]
 
             # check if destination is road
-            passable_cell_indices = self.channels['passable'][action_destinations[:, 0], action_destinations[:, 1]] == 1.
-            action_destinations = action_destinations[passable_cell_indices]
+            passable_cell_indices = self.channels['passable'][destinations[:, 0], destinations[:, 1]] == 1.
+            action_destinations = destinations[passable_cell_indices]
 
             # get valid action mask for a given direction
             valid_source_indices = action_destinations - direction
@@ -210,10 +210,14 @@ class Game():
 
         # update player statistics
         for i in range(1, self.config.n_players + 1):
-            self.player_stats[i]['army'] = np.sum(self.channels['army'] * self.channels[f'ownership_{i}']).astype(np.int32)
-            self.player_stats[i]['land'] = np.sum(self.channels[f'ownership_{i}']).astype(np.int32)
+            army_size = np.sum(self.channels['army'] * self.channels[f'ownership_{i}']).astype(np.int32)
+            land_size = np.sum(self.channels[f'ownership_{i}']).astype(np.int32)
+            self.player_stats[i]['army'] = army_size
+            self.player_stats[i]['land'] = land_size
 
-    def agent_observation(self, agent_id: int, view: str='channel') -> Dict[str, Union[np.ndarray, List[Tuple[int, int]]]]:
+    def agent_observation(
+            self, agent_id: int, view: str='channel'
+        ) -> Dict[str, Union[np.ndarray, List[Tuple[int, int]]]]:
         """
         Returns an observation for a given agent.
         The order of channels is as follows:
