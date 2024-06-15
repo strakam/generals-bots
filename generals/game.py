@@ -159,7 +159,6 @@ class Game():
         Args:
             actions: dictionary of agent_id to action (this will be reworked)
         """
-        # TODO -> update statistics
         # this is intended for 1v1 for now and might not be bug free
         directions = np.array([self.config.UP, self.config.DOWN, self.config.LEFT, self.config.RIGHT])
         agents = list(actions.keys())
@@ -173,10 +172,6 @@ class Game():
             si, sj = source[0], source[1] # source indices
             di, dj = source[0] + directions[direction][0], source[1] + directions[direction][1] # destination indices
 
-            # Only for parallel api test
-            if not (0 <= di < self.grid_size and 0 <= dj < self.grid_size):
-                continue
-
             moved_army_size = self.channels['army'][si, sj] - 1
 
             # check if the current player owns the source cell and has atleast 2 army size
@@ -185,9 +180,9 @@ class Game():
 
             target_square_army = self.channels['army'][di, dj]
             target_square_owner_idx = np.argmax(
-                [self.channels[f'ownership_{agent}'][di, dj] for agent in self.agents]
+                [self.channels[f'ownership_{agent}'][di, dj] for agent in ['plain'] + self.agents]
             )
-            target_square_owner = self.agents[target_square_owner_idx]
+            target_square_owner = (['plain'] + self.agents)[target_square_owner_idx]
             
             if target_square_owner == agent:
                 self.channels['army'][di, dj] += moved_army_size

@@ -42,7 +42,3 @@ class Config(BaseModel):
     PLAYER_1_COLOR: Tuple[int, int, int] = (255, 0, 0)
     PLAYER_2_COLOR: Tuple[int, int, int] = (67, 99, 216)
     PLAYER_COLORS: Dict[int, Tuple[int, int, int]] = {0: PLAYER_1_COLOR, 1: PLAYER_2_COLOR}
-
-
-
-

@@ -9,16 +9,17 @@ config = game_config.Config(
 )
 
 env = generals_v0(config)
-env.reset(seed=42)
+o, i, = env.reset(seed=42)
 
 agent_names = ['red', 'blue']
 
 while env.agents:
     actions = {}
     for agent in env.agents:
-        valid_actions = env.action_space(agent)
-        action = valid_actions.sample()
-        actions[agent] = action
+        mask = o[agent]['action_mask']
+        valid_actions = np.argwhere(mask == 1)
+        action = np.random.choice(len(valid_actions))
+        actions[agent] = valid_actions[action]
     o, r, te, tr, i = env.step(actions)
     env.render()
 env.close()
