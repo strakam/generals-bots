@@ -7,8 +7,10 @@ import importlib.resources
 from scipy.ndimage import maximum_filter
 
 class Game():
-    def __init__(self, config: conf.Config):
+    def __init__(self, config: conf.Config, agents: List[str]):
         self.config = config
+        self.agents = agents
+        self.agent_id = {agent: i for i, agent in enumerate(agents)}
         self.time = 0
         self.turn = 0
 
@@ -25,8 +27,8 @@ class Game():
             map = np.random.choice([config.PASSABLE, config.MOUNTAIN, config.CITY], size=spatial_dim, p=probs)
 
             # Place generals
-            for i, general in enumerate(self.config.starting_positions):
-                map[general[0], general[1]] = i + config.GENERAL # TODO -> get real agent id 
+            for agent, general in zip(self.agents, self.config.starting_positions):
+                map[general[0], general[1]] = self.agent_id[agent] + config.GENERAL
 
         self.map = map
         self.grid_size = self.config.grid_size
@@ -45,15 +47,13 @@ class Game():
             'mountain': np.where(map == config.MOUNTAIN, 1, 0).astype(np.float32),
             'city': np.where(map == config.CITY, 1, 0).astype(np.float32),
             'passable': (map != config.MOUNTAIN).astype(np.float32),
-            'ownership_0': ((map == config.PASSABLE) | (map == config.CITY)).astype(np.float32),
-            **{f'ownership_{i+1}': np.where(map == config.GENERAL+i, 1, 0).astype(np.float32) 
-                for i in range(self.config.n_players)}
+            'ownership_plain': ((map == config.PASSABLE) | (map == config.CITY)).astype(np.float32),
+            **{f'ownership_{agent}': np.where(map == config.GENERAL+id, 1, 0).astype(np.float32) 
+                for id, agent in enumerate(self.agents)}
         }
 
         # Public statistics about players
-        self.player_stats = {
-            (i+1): {'army': 1, 'land': 1} for i in range(self.config.n_players)
-        }
+        self.player_stats = {agent: {'army': 1, 'land': 1} for agent in self.agents}
 
         # initialize city costs 
         self.city_costs = np.random.choice(range(11), size=spatial_dim).astype(np.float32) + 40
@@ -92,7 +92,7 @@ class Game():
         except ValueError:
             raise ValueError('Invalid map format or shape')
 
-    def valid_actions(self, agent_id: int, view: str='channel') -> Union[np.ndarray, List[Tuple[int, int]]]:
+    def valid_actions(self, agent: str) -> Union[np.ndarray, List[Tuple[int, int]]]:
         """
         Function to compute valid actions from a given ownership mask.
 
@@ -104,10 +104,7 @@ class Game():
             of valid actions (UP, DOWN, LEFT, RIGHT) for each cell in the grid.
         """
 
-        if view not in ['channel', 'list']:
-            raise ValueError('view should be either channel or list')
-
-        ownership_channel = self.channels[f'ownership_{agent_id}']
+        ownership_channel = self.channels[f'ownership_{agent}']
 
         UP, DOWN, LEFT, RIGHT = self.config.UP, self.config.DOWN, self.config.LEFT, self.config.RIGHT
         owned_cells_indices = self.channel_to_indices(ownership_channel)
@@ -129,10 +126,7 @@ class Game():
             valid_source_indices = action_destinations - direction
             valid_action_mask[valid_source_indices[:, 0], valid_source_indices[:, 1], channel_index] = 1.
 
-        output = valid_action_mask
-        if view == 'list':
-            output = [((x,y),z) for x,y,z in np.argwhere(valid_action_mask)]
-        return output
+        return valid_action_mask
             
 
     def channel_to_indices(self, channel: np.ndarray) -> np.ndarray:
@@ -158,7 +152,7 @@ class Game():
         """
         return maximum_filter(ownership_channel, size=3)
     
-    def step(self, actions: Dict[int, Tuple[Tuple[int, int], int]]) -> None:
+    def step(self, actions: Dict[str, Tuple[Tuple[int, int], int]]) -> None:
         """
         Perform one step of the game
 
@@ -168,34 +162,40 @@ class Game():
         # TODO -> update statistics
         # this is intended for 1v1 for now and might not be bug free
         directions = np.array([self.config.UP, self.config.DOWN, self.config.LEFT, self.config.RIGHT])
-        agent_ids = list(actions.keys())
-        np.random.shuffle(agent_ids) # random action order
+        agents = list(actions.keys())
+        np.random.shuffle(agents) # random action order
 
-        for agent_id in agent_ids:
+        for agent in agents:
 
-            source = actions[agent_id][:2] # x,y
-            direction = actions[agent_id][2] # 0,1,2,3
+            source = actions[agent][:2] # x,y
+            direction = actions[agent][2] # 0,1,2,3
 
             si, sj = source[0], source[1] # source indices
             di, dj = source[0] + directions[direction][0], source[1] + directions[direction][1] # destination indices
+
+            # Only for parallel api test
+            if not (0 <= di < self.grid_size and 0 <= dj < self.grid_size):
+                continue
+
             moved_army_size = self.channels['army'][si, sj] - 1
 
             # check if the current player owns the source cell and has atleast 2 army size
-            if moved_army_size <= 1 or self.channels[f'ownership_{agent_id}'][si, sj] == 0:
+            if moved_army_size <= 1 or self.channels[f'ownership_{agent}'][si, sj] == 0:
                 continue
 
             target_square_army = self.channels['army'][di, dj]
-            target_square_owner = np.argmax(
-                [self.channels[f'ownership_{i}'][di, dj] for i in range(self.config.n_players + 1)]
+            target_square_owner_idx = np.argmax(
+                [self.channels[f'ownership_{agent}'][di, dj] for agent in self.agents]
             )
+            target_square_owner = self.agents[target_square_owner_idx]
             
-            if target_square_owner == agent_id:
+            if target_square_owner == agent:
                 self.channels['army'][di, dj] += moved_army_size
                 self.channels['army'][si, sj] = 1
             else:
                 # calculate resulting army, winner and update channels
                 remaining_army = np.abs(target_square_army - moved_army_size)
-                winner = agent_id if target_square_army < moved_army_size else target_square_owner
+                winner = agent if target_square_army < moved_army_size else target_square_owner
                 self.channels['army'][di, dj] = remaining_army
                 self.channels['army'][si, sj] = 1
                 self.channels[f'ownership_{winner}'][di, dj] = 1
@@ -205,11 +205,11 @@ class Game():
         self.time += 1
         self.global_game_update()
 
-        observations = {i: self.agent_observation(i) for i in range(1, self.config.n_players + 1)}
-        rewards = {i: 0 for i in range(1, self.config.n_players + 1)}
-        terminated = {i: False for i in range(1, self.config.n_players + 1)}
-        truncated = {i: False for i in range(1, self.config.n_players + 1)}
-        infos = {i: {} for i in range(1, self.config.n_players + 1)}
+        observations = {agent: self.agent_observation(agent) for agent in self.agents}
+        rewards = {agent: 0 for agent in self.agents}
+        terminated = {agent: False for agent in self.agents}
+        truncated = {agent: False for agent in self.agents}
+        infos = {agent: {} for agent in self.agents}
 
         return observations, rewards, terminated, truncated, infos
 
@@ -218,26 +218,27 @@ class Game():
         Update game state globally.
         """
 
+        owners = ['plain'] + self.agents
         # every TICK_RATE steps, increase army size in each cell
         if self.time % self.config.increment_rate == 0:
-            for i in range(1, self.config.n_players + 1):
-                self.channels['army'] += self.channels[f'ownership_{i}']
+            for owner in owners:
+                self.channels['army'] += self.channels[f'ownership_{owner}']
 
         if self.time % 2 == 0 and self.time > 0:
             # increment armies on general and city cells, but only if they are owned by player
             update_mask = self.channels['general'] + self.channels['city']
-            for i in range(1, self.config.n_players + 1):
-                self.channels['army'] += update_mask * self.channels[f'ownership_{i}']
+            for owner in owners:
+                self.channels['army'] += update_mask * self.channels[f'ownership_{owner}']
         
 
         # update player statistics
-        for i in range(1, self.config.n_players + 1):
-            army_size = np.sum(self.channels['army'] * self.channels[f'ownership_{i}']).astype(np.int32)
-            land_size = np.sum(self.channels[f'ownership_{i}']).astype(np.int32)
-            self.player_stats[i]['army'] = army_size
-            self.player_stats[i]['land'] = land_size
+        for agent in self.agents:
+            army_size = np.sum(self.channels['army'] * self.channels[f'ownership_{agent}']).astype(np.int32)
+            land_size = np.sum(self.channels[f'ownership_{agent}']).astype(np.int32)
+            self.player_stats[agent]['army'] = army_size
+            self.player_stats[agent]['land'] = land_size
 
-    def agent_observation(self, agent_id: int) -> Dict[str, Union[np.ndarray, List[Tuple[int, int]]]]:
+    def agent_observation(self, agent: str) -> Dict[str, Union[np.ndarray, List[Tuple[int, int]]]]:
         """
         Returns an observation for a given agent.
         The order of channels is as follows:
@@ -257,17 +258,17 @@ class Game():
         Returns:
             np.ndarray: observation for the given agent
         """
-        opponent_id = 2 if agent_id == 1 else 1
-        visibility = self.visibility_channel(self.channels[f'ownership_{agent_id}'])
+        opponent = self.agents[0] if agent == self.agents[1] else self.agents[1]
+        visibility = self.visibility_channel(self.channels[f'ownership_{agent}'])
         observation = {
             'army': self.channels['army'] * visibility,
             'general': self.channels['general'] * visibility,
             'city': self.channels['city'] * visibility,
-            'ownership': self.channels[f'ownership_{agent_id}'] * visibility,
-            'opponent_ownership': self.channels[f'ownership_{opponent_id}'] * visibility,
-            'neutral_ownership': self.channels['ownership_0'] * visibility,
+            'ownership': self.channels[f'ownership_{agent}'] * visibility,
+            'opponent_ownership': self.channels[f'ownership_{opponent}'] * visibility,
+            'neutral_ownership': self.channels['ownership_plain'] * visibility,
             'mountain': self.channels['mountain']
         }
-        observation = {k: self.channel_to_indices(v) for k, v in observation.items()}
+        # observation = {k: self.channel_to_indices(v) for k, v in observation.items()}
         return observation
 

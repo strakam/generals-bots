@@ -9,7 +9,7 @@ def get_game():
         grid_size=10,
         starting_positions=[[1, 1], [5, 5]]
     )
-    return generals.game.Game(config)
+    return generals.game.Game(config, ['red', 'blue'])
 
 def test_grid_creation():
     """
@@ -23,15 +23,16 @@ def test_grid_creation():
         # mountain and city should be disjoint
         assert np.logical_and(game.channels['mountain'], game.channels['city']).sum() == 0
 
+        owners = ['plain'] + game.agents
         # for every pair of agents, the ownership channels should be disjoint
-        pairs = itertools.combinations(range(3), 2)
+        pairs = itertools.combinations(owners, 2)
         for pair in pairs:
             ownership_a = game.channels[f'ownership_{pair[0]}']
             ownership_b = game.channels[f'ownership_{pair[1]}']
             assert np.logical_and(ownership_a, ownership_b).sum() == 0
 
         # but union of all ownerships should be equal to passable channel
-        ownerships = [game.channels[f'ownership_{i}'] for i in range(3)]
+        ownerships = [game.channels[f'ownership_{owner}'] for owner in owners]
         union = np.logical_or.reduce(ownerships)
         assert (union == game.channels['passable']).all()
 

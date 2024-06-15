@@ -19,7 +19,7 @@ def generals_v0(config=config.Config, render_mode="human"):
     """
     Here we apply wrappers to the environment.
     """
-    env = Generals(config)
+    env = Generals(config, render_mode=render_mode)
     # Apply parallel_to_aec to support AEC api
     # env = pettingzoo.utils.parallel_to_aec(env)
     return env
@@ -62,18 +62,15 @@ class Generals(pettingzoo.ParallelEnv):
             time.sleep(0.1) # this is digsuting, fix it later (?)
 
     def reset(self, seed=None, options=None):
-        self.game = game.Game(self.game_config)
+        self.game = game.Game(self.game_config, self.agents)
         self.agents = copy(self.possible_agents)
 
-        observations = {
-            agent: self.game.agent_observation(self.name_to_id[agent]) for agent in self.agents
-        }
+        observations = {agent: self.game.agent_observation(agent) for agent in self.agents}
         infos = {agent: {} for agent in self.agents}
         return observations, infos
 
 
     def step(self, actions):
-        actions = {self.name_to_id[k]: v for k, v in actions.items()}
         observations, rewards, terminated, truncated, infos = self.game.step(actions)
         # maybe some postprocessing here
         return observations, rewards, terminated, truncated, infos

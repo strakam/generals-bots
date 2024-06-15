@@ -18,7 +18,6 @@ while env.agents:
     for agent in env.agents:
         valid_actions = env.action_space(agent)
         action = valid_actions.sample()
-        print(f'{agent} action: {action}')
         actions[agent] = action
     o, r, te, tr, i = env.step(actions)
     env.render()
