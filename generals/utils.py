@@ -65,10 +65,10 @@ def handle_events():
                 quit()
 
 def render_gui(game: game.Game, names: List[str]):
-    ids = [i+1 for i in range(len(names))]
+    ids = [game.agent_id[name] for name in names]
+    army_counts = ["Army"] + [str(game.player_stats[name]['army']) for name in names]
+    land_counts = ["Land"] + [str(game.player_stats[name]['land']) for name in names]
     names = ["Turn"] + [name for name in names]
-    army_counts = ["Army"] + [str(game.player_stats[id]['army']) for id in ids]
-    land_counts = ["Land"] + [str(game.player_stats[id]['land']) for id in ids]
 
     # white background
     pygame.draw.rect(screen, config.WHITE, (0, 0, config.WINDOW_WIDTH, config.GRID_OFFSET))
@@ -117,7 +117,7 @@ def render_gui(game: game.Game, names: List[str]):
         screen.blit(text, (config.WINDOW_WIDTH - cell_width + 25, i*50 + 15))
 
 
-def render_grid(game: game.Game, agent_ids: list[int]):
+def render_grid(game: game.Game, agents: List[str]):
     """
     Render grid part of the game.
 
@@ -127,18 +127,18 @@ def render_grid(game: game.Game, agent_ids: list[int]):
     """
     # draw visibility squares
     visible_map = np.zeros((config.grid_size, config.grid_size), dtype=np.float32)
-    for id in agent_ids:
-        ownership = game.channels['ownership_' + str(id)]
+    for agent in agents:
+        ownership = game.channels['ownership_' + agent]
         visibility = game.visibility_channel(ownership)
         visibility_indices = game.channel_to_indices(visibility)
         draw_channel(visibility_indices, config.WHITE)
         visible_map = np.logical_or(visible_map, visibility) # get all visible cells
 
     # draw ownership squares
-    for id in agent_ids:
-        ownership = game.channels['ownership_' + str(id)]
+    for agent in agents:
+        ownership = game.channels['ownership_' + agent]
         ownership_indices = game.channel_to_indices(ownership)
-        draw_channel(ownership_indices, config.PLAYER_COLORS[id])
+        draw_channel(ownership_indices, config.PLAYER_COLORS[game.agent_id[agent]])
 
     # draw lines
     for i in range(1, config.grid_size):
@@ -176,7 +176,7 @@ def render_grid(game: game.Game, agent_ids: list[int]):
 
     # draw neutral visible city color
     visible_cities = np.logical_and(game.channels['city'], visible_map)
-    visible_cities_neutral = np.logical_and(visible_cities, game.channels['ownership_0'])
+    visible_cities_neutral = np.logical_and(visible_cities, game.channels['ownership_plain'])
     visible_cities_neutral_indices = game.channel_to_indices(visible_cities_neutral)
     draw_channel(visible_cities_neutral_indices, config.NEUTRAL_CASTLE)
 

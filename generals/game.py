@@ -218,7 +218,7 @@ class Game():
         Update game state globally.
         """
 
-        owners = ['plain'] + self.agents
+        owners = self.agents
         # every TICK_RATE steps, increase army size in each cell
         if self.time % self.config.increment_rate == 0:
             for owner in owners:

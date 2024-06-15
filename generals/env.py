@@ -56,7 +56,7 @@ class Generals(pettingzoo.ParallelEnv):
     def render(self):
         if self.render_mode == "human":
             utils.handle_events()
-            utils.render_grid(self.game, [1, 2])
+            utils.render_grid(self.game, self.agents)
             utils.render_gui(self.game, self.agents)
             utils.pygame.display.flip()
             time.sleep(0.1) # this is digsuting, fix it later (?)
