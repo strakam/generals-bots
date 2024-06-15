@@ -3,7 +3,7 @@ from generals.env import generals_v0
 import generals.config as game_config
 
 config = game_config.Config(
-    grid_size=10,
+    grid_size=16,
     starting_positions=[[1, 1], [5, 5]],
     #    map_name='test_map'
 )

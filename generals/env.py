@@ -62,17 +62,19 @@ class Generals(pettingzoo.ParallelEnv):
             time.sleep(0.1) # this is digsuting, fix it later (?)
 
     def reset(self, seed=None, options=None):
-        self.game = game.Game(self.game_config, self.agents)
         self.agents = copy(self.possible_agents)
+        self.game = game.Game(self.game_config, self.agents)
 
-        observations = {agent: self.game.agent_observation(agent) for agent in self.agents}
+        observations = {agent: self.game._agent_observation(agent) for agent in self.agents}
         infos = {agent: {} for agent in self.agents}
         return observations, infos
 
 
     def step(self, actions):
         observations, rewards, terminated, truncated, infos = self.game.step(actions)
-        # maybe some postprocessing here
+        for agent in self.agents[:]:
+            if terminated[agent]:
+                self.agents.remove(agent)
         return observations, rewards, terminated, truncated, infos
 
     def close(self):

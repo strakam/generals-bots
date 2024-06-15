@@ -205,9 +205,9 @@ class Game():
         self.time += 1
         self.global_game_update()
 
-        observations = {agent: self.agent_observation(agent) for agent in self.agents}
+        observations = {agent: self._agent_observation(agent) for agent in self.agents}
         rewards = {agent: 0 for agent in self.agents}
-        terminated = {agent: False for agent in self.agents}
+        terminated = {agent: self._agent_terminated(agent) for agent in self.agents}
         truncated = {agent: False for agent in self.agents}
         infos = {agent: {} for agent in self.agents}
 
@@ -238,7 +238,7 @@ class Game():
             self.player_stats[agent]['army'] = army_size
             self.player_stats[agent]['land'] = land_size
 
-    def agent_observation(self, agent: str) -> Dict[str, Union[np.ndarray, List[Tuple[int, int]]]]:
+    def _agent_observation(self, agent: str) -> Dict[str, Union[np.ndarray, List[Tuple[int, int]]]]:
         """
         Returns an observation for a given agent.
         The order of channels is as follows:
@@ -271,4 +271,17 @@ class Game():
             'action_mask': self.action_mask(agent)
         }
         return observation
+
+    def _agent_terminated(self, agent: str) -> bool:
+        """
+        Returns True if the agent is terminated, False otherwise.
+        Works only for 1v1 games now.
+        """
+        general_positions = self.config.starting_positions
+        for agent in self.agents:
+            general = general_positions[self.agent_id[agent]]
+            # if player lost his general, then game is over for all agents
+            if self.channels[f'ownership_{agent}'][general[0], general[1]] == 0:
+                return True
+        return False
 

@@ -48,10 +48,9 @@ def parallel_api_test(par_env: ParallelEnv, num_cycles=1000):
     # checks that reset takes arguments seed and options
     par_env.reset(seed=0, options={"options": 1})
 
-    MAX_RESETS = 2
-    for _ in range(MAX_RESETS):
+    t = 0
+    while t < 100_000:
         obs, infos = par_env.reset()
-
         assert isinstance(obs, dict)
         assert isinstance(infos, dict)
         # Note: obs and info dicts must contain all AgentIDs, but can also have other additional keys (e.g., "common")
@@ -62,6 +61,7 @@ def parallel_api_test(par_env: ParallelEnv, num_cycles=1000):
         live_agents = set(par_env.agents[:])
         has_finished = set()
         for _ in range(num_cycles):
+            t += 1
             actions = {
                 agent: sample_action(par_env, obs, agent)
                 for agent in par_env.agents
@@ -133,18 +133,19 @@ def parallel_api_test(par_env: ParallelEnv, num_cycles=1000):
 
             if len(live_agents) == 0:
                 break
+    print(f"Total cycles: {t}")
     print("Passed Parallel API test")
 
 if __name__ == "__main__":
     config = game_config.Config(
-        grid_size=100,
+        grid_size=32,
         starting_positions=[[1, 1], [5, 5]],
     )
     env = generals_v0(config, render_mode="none")
     # test the environment with parallel_api_test
     import time
     start = time.time()
-    n_cycles = 100_000
+    n_cycles = 1000
     parallel_api_test(env, num_cycles=n_cycles)
     print(f"Time for {n_cycles} cycles: {time.time() - start}")
     env.close()
