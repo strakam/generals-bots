@@ -98,7 +98,7 @@ def test_visibility_channel():
     visibility = dummy_game.visibility_channel(ownership)
     assert (visibility == reference).all()
 
-def test_valid_actions():
+def test_action_mask():
     """
     For given ownership mask and passable mask, we should get NxNx4 mask of valid actions.
     """
@@ -111,7 +111,7 @@ def test_valid_actions():
         [1, 0, 0, 0],
     ], dtype=np.float32)
 
-    game.channels['ownership_1'] = np.array([
+    game.channels['ownership_red'] = np.array([
         [0, 0, 1, 0],
         [0, 0, 0, 0],
         [0, 0, 1, 0],
@@ -148,11 +148,11 @@ def test_valid_actions():
         ],
     ], dtype=np.float32)
 
-    valid_actions = game.valid_actions(1)
-    assert (valid_actions[:, :, 0] == reference[0]).all()
-    assert (valid_actions[:, :, 1] == reference[1]).all()
-    assert (valid_actions[:, :, 2] == reference[2]).all()
-    assert (valid_actions[:, :, 3] == reference[3]).all()
+    action_mask = game.action_mask('red')
+    assert (action_mask[:, :, 0] == reference[0]).all()
+    assert (action_mask[:, :, 1] == reference[1]).all()
+    assert (action_mask[:, :, 2] == reference[2]).all()
+    assert (action_mask[:, :, 3] == reference[3]).all()
 
 
 def test_step():

@@ -92,12 +92,12 @@ class Game():
         except ValueError:
             raise ValueError('Invalid map format or shape')
 
-    def valid_actions(self, agent: str) -> Union[np.ndarray, List[Tuple[int, int]]]:
+    def action_mask(self, agent: str) -> np.ndarray:
         """
         Function to compute valid actions from a given ownership mask.
 
         Args:
-            agent_id: int
+            agent_id: str
 
         Returns:
             np.ndarray: an NxNx4 array, where for last channel is a boolean mask
@@ -267,8 +267,8 @@ class Game():
             'ownership': self.channels[f'ownership_{agent}'] * visibility,
             'opponent_ownership': self.channels[f'ownership_{opponent}'] * visibility,
             'neutral_ownership': self.channels['ownership_plain'] * visibility,
-            'mountain': self.channels['mountain']
+            'mountain': self.channels['mountain'],
+            'action_mask': self.action_mask(agent)
         }
-        # observation = {k: self.channel_to_indices(v) for k, v in observation.items()}
         return observation
 
