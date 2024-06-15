@@ -11,26 +11,16 @@ config = game_config.Config(
 env = generals_v0(config)
 env.reset(seed=42)
 
+agent_names = ['red', 'blue']
 
-# for t in range(1000000):
-#     for agent in env.agent_iter():
-#         observation, reward, termination, truncation, info = env.last()
-#
-#         if termination or truncation:
-#             valid_actions = env.action_space(agent)
-#             action = valid_actions[0]
-#         else:
-#             # this is where you would insert your policy
-#             valid_actions = env.action_space(agent)
-#             action = valid_actions[0]
-#         print(f"player {agent} action: {action}")
-#         env.step(action)
 while env.agents:
     actions = {}
     for agent in env.agents:
         valid_actions = env.action_space(agent)
-        rand = np.random.randint(0, len(valid_actions))
-        actions[agent] = valid_actions[rand]
+        action = valid_actions.sample()
+        print(f'{agent} action: {action}')
+        actions[agent] = action
     o, r, te, tr, i = env.step(actions)
+    env.render()
 env.close()
 

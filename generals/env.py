@@ -28,80 +28,56 @@ def generals_v0(config=config.Config, render_mode="human"):
 class Generals(pettingzoo.ParallelEnv):
     metadata = {'render.modes': ["human", "none"]}
 
-    def __init__(self, game_config: config.Config, render_mode="human"):
+    def __init__(self, game_config: config.Config, agent_names: List[str] = ['red', 'blue'], render_mode="human"):
         self.game_config = game_config
         self.render_mode = render_mode
 
-        agent_names = ['red', 'blue']
-        self.agent_to_id = {agent: i+1 for i, agent in enumerate(agent_names)}
-        self.id_to_agent = {i+1: agent for i, agent in enumerate(agent_names)}
-        self.possible_agents = [i+1 for i in range(len(agent_names))]
+        self.agents = agent_names
+        self.possible_agents = self.agents[:]
+        # self.num_agents = len(self.agents)
+        # self.max_num_agents = len(self.agents)
+        self.agent_names = agent_names
+
+        self.name_to_id = dict(zip(self.agent_names, list(range(1, len(self.agent_names)+1))))
 
         if render_mode == "human":
             utils.init_screen(self.game_config)
 
-    def observation_space(self, agent):
-        observation = self.game.agent_observation(agent)
-        return observation
+    @functools.lru_cache(maxsize=None)
+    def observation_space(self, agent_name):
+        assert agent_name in self.agent_names, f"{agent_name} is not a valid agent"
+        return self.game.observation_space
 
-    # Action space should be defined here.
-    def action_space(self, agent):
-        valid_actions = self.game.valid_actions(agent, view='list')
-        return valid_actions
-
+    @functools.lru_cache(maxsize=None)
+    def action_space(self, agent_name):
+        assert agent_name in self.agent_names, f"{agent_name} is not a valid agent"
+        return self.game.action_space
 
     def render(self):
         if self.render_mode == "human":
             utils.handle_events()
             utils.render_grid(self.game, [1, 2])
-            utils.render_gui(self.game, self.id_to_agent)
+            utils.render_gui(self.game, self.agents)
             utils.pygame.display.flip()
             time.sleep(0.1) # this is digsuting, fix it later (?)
 
     def reset(self, seed=None, options=None):
         self.game = game.Game(self.game_config)
         self.agents = copy(self.possible_agents)
-        self.state = {agent: None for agent in self.agents}
-        self._agent_selector = agent_selector(self.agents)
-        self.agent_selection = self._agent_selector.next()
-        self.observations = {a : 'kek' for a in self.agents}
-        self.rewards = {a : 0 for a in self.agents}
-        self.termination = {a : False for a in self.agents}
-        self.truncation = {a : False for a in self.agents}
-        self.infos = {agent : self.game for agent in self.agents}
 
         observations = {
-            a : 'kek' for a in self.agents
+            agent: self.game.agent_observation(self.name_to_id[agent]) for agent in self.agents
         }
-
-        infos = {
-            a : 'infou' for a in self.agents
-        }
-
-        return self.observations, self.rewards, self.termination, self.truncation, self.infos
+        infos = {agent: {} for agent in self.agents}
+        return observations, infos
 
 
     def step(self, actions):
-        # return some dummy values for now
-        self.game.step(actions)
-        self.state = {agent: None for agent in self.agents}
-        self.render()
-        self.observations = {a : 'kek' for a in self.agents}
-        self.rewards = {a : 0 for a in self.agents}
-        self.termination = {a : False for a in self.agents}
-        self.truncation = {a : False for a in self.agents}
-        self.infos = {agent : self.game for agent in self.agents}
-        self.agent_selection = self._agent_selector.next()
-
-        return self.observations, self.rewards, self.termination, self.truncation, self.infos
-
-    def observe(self, agent):
-        pass
+        actions = {self.name_to_id[k]: v for k, v in actions.items()}
+        observations, rewards, terminated, truncated, infos = self.game.step(actions)
+        # maybe some postprocessing here
+        return observations, rewards, terminated, truncated, infos
 
     def close(self):
-        pass
-
-    def seed(self, seed=None):
-        pass
-
+        utils.pygame.quit()
 

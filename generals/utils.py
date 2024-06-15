@@ -64,9 +64,9 @@ def handle_events():
                 pygame.quit()
                 quit()
 
-def render_gui(game: game.Game, agent_id_to_name: Dict[int, str]):
-    ids = agent_id_to_name.keys()
-    names = ["Turn"] + [str(agent_id_to_name[id]) for id in ids]
+def render_gui(game: game.Game, names: List[str]):
+    ids = [i+1 for i in range(len(names))]
+    names = ["Turn"] + [name for name in names]
     army_counts = ["Army"] + [str(game.player_stats[id]['army']) for id in ids]
     land_counts = ["Land"] + [str(game.player_stats[id]['land']) for id in ids]
 

@@ -1,4 +1,5 @@
 import numpy as np
+import gymnasium as gym
 from . import config as conf
 from typing import Tuple, Dict, List, Union
 import importlib.resources
@@ -10,6 +11,7 @@ class Game():
         self.config = config
         self.time = 0
         self.turn = 0
+
 
         # Create map layout
         spatial_dim = (self.config.grid_size, self.config.grid_size)
@@ -56,6 +58,18 @@ class Game():
         # initialize city costs 
         self.city_costs = np.random.choice(range(11), size=spatial_dim).astype(np.float32) + 40
         self.channels['army'] += self.city_costs * self.channels['city']
+
+        self.observation_space = gym.spaces.Dict({
+            'army': gym.spaces.Box(low=0, high=np.inf, shape=spatial_dim, dtype=np.int32),
+            'general': gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.int32),
+            'city': gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.int32),
+            'ownership': gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.int32),
+            'opponent_ownership': gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.int32),
+            'neutral_ownership': gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.int32),
+            'mountain': gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.int32)
+        })
+
+        self.action_space = gym.spaces.MultiDiscrete([self.grid_size, self.grid_size, 4])
 
 
     def load_map(self, map_name: str) -> np.ndarray:
@@ -159,8 +173,8 @@ class Game():
 
         for agent_id in agent_ids:
 
-            source = actions[agent_id][0]
-            direction = actions[agent_id][1]
+            source = actions[agent_id][:2] # x,y
+            direction = actions[agent_id][2] # 0,1,2,3
 
             si, sj = source[0], source[1] # source indices
             di, dj = source[0] + directions[direction][0], source[1] + directions[direction][1] # destination indices
@@ -191,6 +205,14 @@ class Game():
         self.time += 1
         self.global_game_update()
 
+        observations = {i: self.agent_observation(i) for i in range(1, self.config.n_players + 1)}
+        rewards = {i: 0 for i in range(1, self.config.n_players + 1)}
+        terminated = {i: False for i in range(1, self.config.n_players + 1)}
+        truncated = {i: False for i in range(1, self.config.n_players + 1)}
+        infos = {i: {} for i in range(1, self.config.n_players + 1)}
+
+        return observations, rewards, terminated, truncated, infos
+
     def global_game_update(self):
         """
         Update game state globally.
@@ -215,9 +237,7 @@ class Game():
             self.player_stats[i]['army'] = army_size
             self.player_stats[i]['land'] = land_size
 
-    def agent_observation(
-            self, agent_id: int, view: str='channel'
-        ) -> Dict[str, Union[np.ndarray, List[Tuple[int, int]]]]:
+    def agent_observation(self, agent_id: int) -> Dict[str, Union[np.ndarray, List[Tuple[int, int]]]]:
         """
         Returns an observation for a given agent.
         The order of channels is as follows:
@@ -232,28 +252,22 @@ class Game():
         !!! Currently supports only 1v1 games !!!
         
         Args:
-            agent_id: int
+            agent_id: int, currently only 1 or 2
 
         Returns:
             np.ndarray: observation for the given agent
         """
-        if view not in ['channel', 'list']:
-            raise ValueError('view should be either channel or list')
-
+        opponent_id = 2 if agent_id == 1 else 1
         visibility = self.visibility_channel(self.channels[f'ownership_{agent_id}'])
         observation = {
             'army': self.channels['army'] * visibility,
             'general': self.channels['general'] * visibility,
             'city': self.channels['city'] * visibility,
             'ownership': self.channels[f'ownership_{agent_id}'] * visibility,
-            'opponent_ownership': self.channels[f'ownership_{1-agent_id}'] * visibility,
+            'opponent_ownership': self.channels[f'ownership_{opponent_id}'] * visibility,
             'neutral_ownership': self.channels['ownership_0'] * visibility,
             'mountain': self.channels['mountain']
         }
-        if view == 'list':
-            observation = {k: self.channel_to_indices(v) for k, v in observation.items()}
+        observation = {k: self.channel_to_indices(v) for k, v in observation.items()}
         return observation
-        
-
-        
 
