@@ -25,7 +25,11 @@ def sample_action(
     if isinstance(agent_obs, dict) and "action_mask" in agent_obs:
         mask = agent_obs["action_mask"]
         if not np.any(mask):
-            return 0
+            print(mask)
+            print(mask.shape)
+            print(agent_obs["ownership"])
+            print(agent_obs["mountain"])
+            raise ValueError(f"Agent {agent} has no valid actions")
         # pick random index of the mask with a 1, it should be 3 numbers
         valid_actions = np.argwhere(mask == 1)
         action_index = np.random.choice(len(valid_actions))
@@ -138,7 +142,7 @@ def parallel_api_test(par_env: ParallelEnv, num_cycles=1000):
 
 if __name__ == "__main__":
     config = game_config.Config(
-        grid_size=32,
+        grid_size=8,
         starting_positions=[[1, 1], [5, 5]],
     )
     env = generals_v0(config, render_mode="none")

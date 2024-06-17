@@ -4,11 +4,13 @@ import generals.config as conf
 import generals.game
 import itertools
 
-def get_game():
+def get_game(map_name=None):
     config = conf.Config(
         grid_size=10,
-        starting_positions=[[1, 1], [5, 5]]
+        starting_positions=[[1, 1], [3, 3]]
     )
+    if map_name:
+        config.map_name = map_name
     return generals.game.Game(config, ['red', 'blue'])
 
 def test_grid_creation():
@@ -23,7 +25,7 @@ def test_grid_creation():
         # mountain and city should be disjoint
         assert np.logical_and(game.channels['mountain'], game.channels['city']).sum() == 0
 
-        owners = ['plain'] + game.agents
+        owners = ['neutral'] + game.agents
         # for every pair of agents, the ownership channels should be disjoint
         pairs = itertools.combinations(owners, 2)
         for pair in pairs:
@@ -155,8 +157,123 @@ def test_action_mask():
     assert (action_mask[:, :, 3] == reference[3]).all()
 
 
-def test_step():
+def test_observations():
     """
     For given actions, we should get new state of the game.
     """
-    pass
+    game = get_game(map_name='test_map')
+    game.channels['ownership_red'] = np.array([
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [1, 1, 1, 0],
+        [0, 0, 1, 1],
+    ], dtype=np.float32)
+    game.channels['ownership_blue'] = np.array([
+        [1, 0, 0, 0],
+        [0, 1, 1, 1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+    ], dtype=np.float32)
+    game.channels['army'] = np.array([
+        [3, 0, 0, 0],
+        [0, 3, 6, 2],
+        [1, 9, 5, 0],
+        [0, 0, 5, 8],
+    ], dtype=np.float32)
+    game.channels['ownership_neutral'] = np.array([
+        [0, 1, 1, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [1, 0, 0, 0],
+    ], dtype=np.float32)
+
+    ############
+    # TEST RED #
+    ############
+    red_observation = game._agent_observation('red')
+    opponent_ownership = np.array([
+        [0, 0, 0, 0],
+        [0, 1, 1, 1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+    ], dtype=np.float32)
+    assert (red_observation['ownership_opponent'] == opponent_ownership).all()
+
+    neutral_ownership = np.array([
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [1, 0, 0, 0],
+    ], dtype=np.float32)
+    assert (red_observation['ownership_neutral'] == neutral_ownership).all()
+
+    ownership = np.array([
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [1, 1, 1, 0],
+        [0, 0, 1, 1],
+    ], dtype=np.float32)
+    assert (red_observation['ownership'] == ownership).all()
+
+    # union of all ownerships should be zero
+    assert (
+        np.logical_and.reduce([
+            red_observation['ownership_opponent'],
+            red_observation['ownership_neutral'],
+            red_observation['ownership']
+        ])
+    ).sum() == 0
+
+
+    army = np.array([
+        [0, 0, 0, 0],
+        [0, 3, 6, 2],
+        [1, 9, 5, 0],
+        [0, 0, 5, 8],
+    ], dtype=np.float32)
+    assert (red_observation['army'] == army).all()
+
+    #############
+    # TEST BLUE #
+    #############
+    blue_observation = game._agent_observation('blue')
+    opponent_ownership = np.array([
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [1, 1, 1, 0],
+        [0, 0, 0, 0],
+    ], dtype=np.float32)
+    assert (blue_observation['ownership_opponent'] == opponent_ownership).all()
+
+    neutral_ownership = np.array([
+        [0, 1, 1, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+    ], dtype=np.float32)
+    assert (blue_observation['ownership_neutral'] == neutral_ownership).all()
+
+    ownership = np.array([
+        [1, 0, 0, 0],
+        [0, 1, 1, 1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+    ], dtype=np.float32)
+    assert (blue_observation['ownership'] == ownership).all()
+
+    army = np.array([
+        [3, 0, 0, 0],
+        [0, 3, 6, 2],
+        [1, 9, 5, 0],
+        [0, 0, 0, 0],
+    ], dtype=np.float32)
+    assert (blue_observation['army'] == army).all()
+
+    # union of all ownerships should be zero
+    assert (
+        np.logical_and.reduce([
+            blue_observation['ownership_opponent'],
+            blue_observation['ownership_neutral'],
+            blue_observation['ownership']
+        ])
+    ).sum() == 0

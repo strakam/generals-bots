@@ -36,21 +36,20 @@ class Generals(pettingzoo.ParallelEnv):
         self.possible_agents = self.agents[:]
         # self.num_agents = len(self.agents)
         # self.max_num_agents = len(self.agents)
-        self.agent_names = agent_names
 
-        self.name_to_id = dict(zip(self.agent_names, list(range(1, len(self.agent_names)+1))))
+        self.name_to_id = dict(zip(agent_names, list(range(1, len(agent_names)+1))))
 
         if render_mode == "human":
             utils.init_screen(self.game_config)
 
     @functools.lru_cache(maxsize=None)
     def observation_space(self, agent_name):
-        assert agent_name in self.agent_names, f"{agent_name} is not a valid agent"
+        assert agent_name in self.agents, f"{agent_name} is not a valid agent"
         return self.game.observation_space
 
     @functools.lru_cache(maxsize=None)
     def action_space(self, agent_name):
-        assert agent_name in self.agent_names, f"{agent_name} is not a valid agent"
+        assert agent_name in self.agents, f"{agent_name} is not a valid agent"
         return self.game.action_space
 
     def render(self):

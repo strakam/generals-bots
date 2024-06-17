@@ -21,9 +21,10 @@ class Game():
         if self.config.map_name:
             map = self.load_map(self.config.map_name)
             self.config.grid_size = map.shape[0]
+            spatial_dim = (self.config.grid_size, self.config.grid_size)
         else:
-            p_plain = 1 - self.config.mountain_density - self.config.town_density
-            probs = [p_plain, self.config.mountain_density, self.config.town_density]
+            p_neutral = 1 - self.config.mountain_density - self.config.town_density
+            probs = [p_neutral, self.config.mountain_density, self.config.town_density]
             map = np.random.choice([config.PASSABLE, config.MOUNTAIN, config.CITY], size=spatial_dim, p=probs)
 
             # Place generals
@@ -47,7 +48,7 @@ class Game():
             'mountain': np.where(map == config.MOUNTAIN, 1, 0).astype(np.float32),
             'city': np.where(map == config.CITY, 1, 0).astype(np.float32),
             'passable': (map != config.MOUNTAIN).astype(np.float32),
-            'ownership_plain': ((map == config.PASSABLE) | (map == config.CITY)).astype(np.float32),
+            'ownership_neutral': ((map == config.PASSABLE) | (map == config.CITY)).astype(np.float32),
             **{f'ownership_{agent}': np.where(map == config.GENERAL+id, 1, 0).astype(np.float32) 
                 for id, agent in enumerate(self.agents)}
         }
@@ -55,8 +56,9 @@ class Game():
         # Public statistics about players
         self.player_stats = {agent: {'army': 1, 'land': 1} for agent in self.agents}
 
-        # initialize city costs 
-        self.city_costs = np.random.choice(range(11), size=spatial_dim).astype(np.float32) + 40
+        # initialize city costs
+        minimum_cost = 40
+        self.city_costs = np.random.choice(range(11), size=spatial_dim).astype(np.float32) + minimum_cost
         self.channels['army'] += self.city_costs * self.channels['city']
 
         self.observation_space = gym.spaces.Dict({
@@ -64,8 +66,8 @@ class Game():
             'general': gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.int32),
             'city': gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.int32),
             'ownership': gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.int32),
-            'opponent_ownership': gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.int32),
-            'neutral_ownership': gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.int32),
+            'ownership_opponent': gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.int32),
+            'ownership_neutral': gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.int32),
             'mountain': gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.int32)
         })
 
@@ -105,6 +107,8 @@ class Game():
         """
 
         ownership_channel = self.channels[f'ownership_{agent}']
+        if np.sum(ownership_channel) == 0:
+            raise ValueError(f'Player {agent} has no cells')
 
         UP, DOWN, LEFT, RIGHT = self.config.UP, self.config.DOWN, self.config.LEFT, self.config.RIGHT
         owned_cells_indices = self.channel_to_indices(ownership_channel)
@@ -175,14 +179,14 @@ class Game():
             moved_army_size = self.channels['army'][si, sj] - 1
 
             # check if the current player owns the source cell and has atleast 2 army size
-            if moved_army_size <= 1 or self.channels[f'ownership_{agent}'][si, sj] == 0:
+            if moved_army_size < 1 or self.channels[f'ownership_{agent}'][si, sj] == 0:
                 continue
 
             target_square_army = self.channels['army'][di, dj]
             target_square_owner_idx = np.argmax(
-                [self.channels[f'ownership_{agent}'][di, dj] for agent in ['plain'] + self.agents]
+                [self.channels[f'ownership_{agent}'][di, dj] for agent in ['neutral'] + self.agents]
             )
-            target_square_owner = (['plain'] + self.agents)[target_square_owner_idx]
+            target_square_owner = (['neutral'] + self.agents)[target_square_owner_idx]
             
             if target_square_owner == agent:
                 self.channels['army'][di, dj] += moved_army_size
@@ -233,7 +237,7 @@ class Game():
             self.player_stats[agent]['army'] = army_size
             self.player_stats[agent]['land'] = land_size
 
-    def _agent_observation(self, agent: str) -> Dict[str, Union[np.ndarray, List[Tuple[int, int]]]]:
+    def _agent_observation(self, agent: str) -> Dict[str, np.ndarray]:
         """
         Returns an observation for a given agent.
         The order of channels is as follows:
@@ -260,8 +264,8 @@ class Game():
             'general': self.channels['general'] * visibility,
             'city': self.channels['city'] * visibility,
             'ownership': self.channels[f'ownership_{agent}'] * visibility,
-            'opponent_ownership': self.channels[f'ownership_{opponent}'] * visibility,
-            'neutral_ownership': self.channels['ownership_plain'] * visibility,
+            'ownership_opponent': self.channels[f'ownership_{opponent}'] * visibility,
+            'ownership_neutral': self.channels['ownership_neutral'] * visibility,
             'mountain': self.channels['mountain'],
             'action_mask': self.action_mask(agent)
         }
