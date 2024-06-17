@@ -28,7 +28,7 @@ class Game():
             map = np.random.choice([config.PASSABLE, config.MOUNTAIN, config.CITY], size=spatial_dim, p=probs)
 
             # Place generals
-            for agent, general in zip(self.agents, self.config.starting_positions):
+            for agent, general in zip(self.agents, self.config.general_positions):
                 map[general[0], general[1]] = self.agent_id[agent] + config.GENERAL
 
         self.map = map
@@ -202,7 +202,7 @@ class Game():
                     self.channels[f'ownership_{target_square_owner}'][di, dj] = 0
 
         self.time += 1
-        self.global_game_update()
+        self._global_game_update()
 
         observations = {agent: self._agent_observation(agent) for agent in self.agents}
         rewards = {agent: 0 for agent in self.agents}
@@ -212,7 +212,7 @@ class Game():
 
         return observations, rewards, terminated, truncated, infos
 
-    def global_game_update(self):
+    def _global_game_update(self):
         """
         Update game state globally.
         """
@@ -274,13 +274,7 @@ class Game():
     def _agent_terminated(self, agent: str) -> bool:
         """
         Returns True if the agent is terminated, False otherwise.
-        Works only for 1v1 games now.
         """
-        general_positions = self.config.starting_positions
-        for agent in self.agents:
-            general = general_positions[self.agent_id[agent]]
-            # if player lost his general, then game is over for all agents
-            if self.channels[f'ownership_{agent}'][general[0], general[1]] == 0:
-                return True
-        return False
-
+        general = self.config.general_positions[self.agent_id[agent]]
+        print(f'agent {agent} general: {general}')
+        return self.channels[f'ownership_{agent}'][general[0], general[1]] == 0

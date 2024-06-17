@@ -7,7 +7,7 @@ import itertools
 def get_game(map_name=None):
     config = conf.Config(
         grid_size=10,
-        starting_positions=[[1, 1], [3, 3]]
+        general_positions=[[3, 3], [1, 3]]
     )
     if map_name:
         config.map_name = map_name
@@ -419,7 +419,7 @@ def test_game_step():
     # Test global army increment #
     ##############################
     game.time = 50
-    game.global_game_update()
+    game._global_game_update()
     reference_army = np.array([
         [2, 3, 0, 0],
         [0, 6, 2, 5],
@@ -439,3 +439,60 @@ def test_game_step():
 
     reference_total_army_land = 4
     assert game.player_stats['blue']['land'] == reference_total_army_land
+
+
+def test_agent_terminated():
+    game = get_game(map_name='test_map')
+    game.channels['ownership_red'] = np.array([
+        [0, 0, 0, 0],
+        [0, 0, 1, 0],
+        [1, 1, 1, 0],
+        [0, 0, 1, 1],
+    ], dtype=np.float32)
+
+    game.channels['ownership_blue'] = np.array([
+        [1, 1, 1, 0],
+        [0, 1, 0, 1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+    ], dtype=np.float32)
+
+    game.channels['army'] = np.array([
+        [3, 2, 2, 0],
+        [0, 3, 6, 2],
+        [1, 9, 5, 0],
+        [0, 0, 5, 8],
+    ], dtype=np.float32)
+
+    game.channels['ownership_neutral'] = np.array([
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [1, 0, 0, 0],
+    ], dtype=np.float32)
+
+    moves = {
+        'red': np.array([2, 1, 0]), # random move
+        'blue': np.array([0, 1, 1]) # random move
+    }
+    game.step(moves)
+
+    # red should be alive
+    assert not game._agent_terminated('red')
+
+    # blue should be alive
+    assert not game._agent_terminated('blue')
+
+
+    moves = {
+        'red': np.array([1, 2, 3]), # random move
+        'blue': np.array([0, 0, 3]) # move to blues general
+    }
+    game.step(moves)
+
+    # red should be alive
+    assert not game._agent_terminated('red')
+
+    # blue should be dead
+    assert game._agent_terminated('blue')
+
