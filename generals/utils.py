@@ -176,7 +176,7 @@ def render_grid(game: game.Game, agents: List[str]):
 
     # draw neutral visible city color
     visible_cities = np.logical_and(game.channels['city'], visible_map)
-    visible_cities_neutral = np.logical_and(visible_cities, game.channels['ownership_plain'])
+    visible_cities_neutral = np.logical_and(visible_cities, game.channels['ownership_neutral'])
     visible_cities_neutral_indices = game.channel_to_indices(visible_cities_neutral)
     draw_channel(visible_cities_neutral_indices, config.NEUTRAL_CASTLE)
 

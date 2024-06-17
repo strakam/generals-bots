@@ -156,7 +156,7 @@ class Game():
         """
         return maximum_filter(ownership_channel, size=3)
     
-    def step(self, actions: Dict[str, Tuple[Tuple[int, int], int]]) -> None:
+    def step(self, actions: Dict[str, np.ndarray]):
         """
         Perform one step of the game
 

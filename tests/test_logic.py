@@ -191,29 +191,29 @@ def test_observations():
     # TEST RED #
     ############
     red_observation = game._agent_observation('red')
-    opponent_ownership = np.array([
+    reference_opponent_ownership = np.array([
         [0, 0, 0, 0],
         [0, 1, 1, 1],
         [0, 0, 0, 0],
         [0, 0, 0, 0],
     ], dtype=np.float32)
-    assert (red_observation['ownership_opponent'] == opponent_ownership).all()
+    assert (red_observation['ownership_opponent'] == reference_opponent_ownership).all()
 
-    neutral_ownership = np.array([
+    reference_neutral_ownership = np.array([
         [0, 0, 0, 0],
         [0, 0, 0, 0],
         [0, 0, 0, 0],
         [1, 0, 0, 0],
     ], dtype=np.float32)
-    assert (red_observation['ownership_neutral'] == neutral_ownership).all()
+    assert (red_observation['ownership_neutral'] == reference_neutral_ownership).all()
 
-    ownership = np.array([
+    reference_ownership = np.array([
         [0, 0, 0, 0],
         [0, 0, 0, 0],
         [1, 1, 1, 0],
         [0, 0, 1, 1],
     ], dtype=np.float32)
-    assert (red_observation['ownership'] == ownership).all()
+    assert (red_observation['ownership'] == reference_ownership).all()
 
     # union of all ownerships should be zero
     assert (
@@ -225,49 +225,49 @@ def test_observations():
     ).sum() == 0
 
 
-    army = np.array([
+    reference_army = np.array([
         [0, 0, 0, 0],
         [0, 3, 6, 2],
         [1, 9, 5, 0],
         [0, 0, 5, 8],
     ], dtype=np.float32)
-    assert (red_observation['army'] == army).all()
+    assert (red_observation['army'] == reference_army).all()
 
     #############
     # TEST BLUE #
     #############
     blue_observation = game._agent_observation('blue')
-    opponent_ownership = np.array([
+    reference_opponent_ownership = np.array([
         [0, 0, 0, 0],
         [0, 0, 0, 0],
         [1, 1, 1, 0],
         [0, 0, 0, 0],
     ], dtype=np.float32)
-    assert (blue_observation['ownership_opponent'] == opponent_ownership).all()
+    assert (blue_observation['ownership_opponent'] == reference_opponent_ownership).all()
 
-    neutral_ownership = np.array([
+    reference_neutral_ownership = np.array([
         [0, 1, 1, 0],
         [0, 0, 0, 0],
         [0, 0, 0, 0],
         [0, 0, 0, 0],
     ], dtype=np.float32)
-    assert (blue_observation['ownership_neutral'] == neutral_ownership).all()
+    assert (blue_observation['ownership_neutral'] == reference_neutral_ownership).all()
 
-    ownership = np.array([
+    reference_ownership = np.array([
         [1, 0, 0, 0],
         [0, 1, 1, 1],
         [0, 0, 0, 0],
         [0, 0, 0, 0],
     ], dtype=np.float32)
-    assert (blue_observation['ownership'] == ownership).all()
+    assert (blue_observation['ownership'] == reference_ownership).all()
 
-    army = np.array([
+    reference_army = np.array([
         [3, 0, 0, 0],
         [0, 3, 6, 2],
         [1, 9, 5, 0],
         [0, 0, 0, 0],
     ], dtype=np.float32)
-    assert (blue_observation['army'] == army).all()
+    assert (blue_observation['army'] == reference_army).all()
 
     # union of all ownerships should be zero
     assert (
@@ -277,3 +277,165 @@ def test_observations():
             blue_observation['ownership']
         ])
     ).sum() == 0
+
+
+def test_game_step():
+    """
+    Test two moves from this situation
+    """
+    game = get_game(map_name='test_map')
+    game.channels['ownership_red'] = np.array([
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [1, 1, 1, 0],
+        [0, 0, 1, 1],
+    ], dtype=np.float32)
+    game.channels['ownership_blue'] = np.array([
+        [1, 0, 0, 0],
+        [0, 1, 1, 1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+    ], dtype=np.float32)
+    game.channels['army'] = np.array([
+        [3, 0, 0, 0],
+        [0, 3, 6, 2],
+        [1, 9, 5, 0],
+        [0, 0, 5, 8],
+    ], dtype=np.float32)
+    game.channels['ownership_neutral'] = np.array([
+        [0, 1, 1, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [1, 0, 0, 0],
+    ], dtype=np.float32)
+
+    #############################################################################################################
+    # red moves from (2, 1) UP (captures blue square), blue moves from (1, 2) DOWN, (doesnt capture red square) #
+    #############################################################################################################
+    moves = {
+        'red': np.array([2, 1, 0]),
+        'blue': np.array([1, 2, 1])
+    }
+    game.step(moves)
+    reference_army = np.array([
+        [3, 0, 0, 0],
+        [0, 5, 1, 2],
+        [1, 1, 0, 0],
+        [0, 0, 5, 8],
+    ], dtype=np.float32)
+    assert (game.channels['army'] == reference_army).all()
+
+    reference_ownership_red = np.array([
+        [0, 0, 0, 0],
+        [0, 1, 0, 0],
+        [1, 1, 1, 0],
+        [0, 0, 1, 1],
+    ], dtype=np.float32)
+    assert (game.channels['ownership_red'] == reference_ownership_red).all()
+    
+    reference_ownership_blue = np.array([
+        [1, 0, 0, 0],
+        [0, 0, 1, 1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+    ], dtype=np.float32)
+    assert (game.channels['ownership_blue'] == reference_ownership_blue).all()
+
+    reference_ownership_neutral = np.array([
+        [0, 1, 1, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [1, 0, 0, 0],
+    ], dtype=np.float32)
+    assert (game.channels['ownership_neutral'] == reference_ownership_neutral).all()
+
+    reference_total_army_red = 20
+    assert game.player_stats['red']['army'] == reference_total_army_red
+
+    reference_total_army_blue = 6
+    assert game.player_stats['blue']['army'] == reference_total_army_blue
+
+    reference_total_army_land = 6
+    assert game.player_stats['red']['land'] == reference_total_army_land
+
+    reference_total_army_land = 3
+    assert game.player_stats['blue']['land'] == reference_total_army_land
+
+    #####################################################################################
+    # Now red moves from (2, 1) DOWN (should not move) and blue moves from (0, 0) RIGHT #
+    #####################################################################################
+    moves = {
+        'red': np.array([2, 1, 1]),
+        'blue': np.array([0, 0, 3])
+    }
+    game.step(moves)
+
+    # this is second move, so army increments in base
+    reference_army = np.array([
+        [1, 2, 0, 0],
+        [0, 5, 1, 3],
+        [1, 1, 0, 0],
+        [0, 0, 5, 9],
+    ], dtype=np.float32)
+    assert (game.channels['army'] == reference_army).all()
+
+    reference_ownership_red = np.array([
+        [0, 0, 0, 0],
+        [0, 1, 0, 0],
+        [1, 1, 1, 0],
+        [0, 0, 1, 1],
+    ], dtype=np.float32)
+    assert (game.channels['ownership_red'] == reference_ownership_red).all()
+
+    reference_ownership_blue = np.array([
+        [1, 1, 0, 0],
+        [0, 0, 1, 1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+    ], dtype=np.float32)
+    assert (game.channels['ownership_blue'] == reference_ownership_blue).all()
+
+    reference_ownership_neutral = np.array([
+        [0, 0, 1, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [1, 0, 0, 0],
+    ], dtype=np.float32)
+    assert (game.channels['ownership_neutral'] == reference_ownership_neutral).all()
+
+    reference_total_army_red = 21
+    assert game.player_stats['red']['army'] == reference_total_army_red
+
+    reference_total_army_blue = 7
+    assert game.player_stats['blue']['army'] == reference_total_army_blue
+
+    reference_total_army_land = 6
+    assert game.player_stats['red']['land'] == reference_total_army_land
+
+    reference_total_army_land = 4
+    assert game.player_stats['blue']['land'] == reference_total_army_land
+
+    ##############################
+    # Test global army increment #
+    ##############################
+    game.time = 50
+    game.global_game_update()
+    reference_army = np.array([
+        [2, 3, 0, 0],
+        [0, 6, 2, 5],
+        [2, 2, 1, 0],
+        [0, 0, 6, 11],
+    ], dtype=np.float32)
+    assert (game.channels['army'] == reference_army).all()
+
+    reference_total_army_red = 28
+    assert game.player_stats['red']['army'] == reference_total_army_red
+
+    reference_total_army_blue = 12
+    assert game.player_stats['blue']['army'] == reference_total_army_blue
+
+    reference_total_army_land = 6
+    assert game.player_stats['red']['land'] == reference_total_army_land
+
+    reference_total_army_land = 4
+    assert game.player_stats['blue']['land'] == reference_total_army_land
