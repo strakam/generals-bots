@@ -2,9 +2,10 @@ import numpy as np
 import gymnasium as gym
 from . import config as conf
 from typing import Tuple, Dict, List, Union
-import importlib.resources
+from .map import generate_map, load_map
 
 from scipy.ndimage import maximum_filter
+
 
 class Game():
     def __init__(self, config: conf.Config, agents: List[str]):
@@ -17,9 +18,14 @@ class Game():
 
         # Create map layout
         if self.config.map_name:
-            map = self.load_map(self.config.map_name)
+            map = load_map(self.config.map_name)
         else:
-            map = self.generate_map()
+            map = generate_map(
+                grid_size=self.config.grid_size,
+                mountain_density=self.config.mountain_density,
+                town_density=self.config.town_density,
+                n_generals=len(self.agents)
+            )
 
         spatial_dim = (map.shape[0], map.shape[1])
         self.map = map
@@ -49,13 +55,20 @@ class Game():
                 for id, agent in enumerate(self.agents)}
         }
 
-        # Public statistics about players
-        self.player_stats = {agent: {'army': 1, 'land': 1} for agent in self.agents}
-
         # initialize city costs
         minimum_cost = 40
         self.city_costs = np.random.choice(range(11), size=spatial_dim).astype(np.float32) + minimum_cost
         self.channels['army'] += self.city_costs * self.channels['city']
+
+        # Public statistics about players
+        self.player_stats = {
+            agent: {
+                'army': 1,
+                'land': 1,
+                'general_position': self.general_positions[agent]
+            } for agent in self.agents
+        }
+
 
         box = gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.float32)
         self.observation_space = gym.spaces.Dict({
@@ -71,46 +84,7 @@ class Game():
         self.action_space = gym.spaces.MultiDiscrete([self.grid_size, self.grid_size, 4])
 
 
-    def load_map(self, map_name: str) -> np.ndarray:
-        """
-        Load map from file.
 
-        Args:
-            map_name: str
-
-        TODO: should be moved to utils.py or somewhere 
-
-        Returns:
-            np.ndarray: map layout
-        """
-        try:
-            with importlib.resources.path('generals.maps', map_name) as path:
-                with open(path, 'r') as f:
-                    map = np.array([list(line.strip()) for line in f]).astype(np.float32)
-                return map
-        except ValueError:
-            raise ValueError('Invalid map format or shape')
-
-    def generate_map(self):
-        spatial_dim = (self.config.grid_size, self.config.grid_size)
-        p_neutral = 1 - self.config.mountain_density - self.config.town_density
-        probs = [p_neutral, self.config.mountain_density, self.config.town_density]
-        map = np.random.choice(
-            [self.config.PASSABLE, self.config.MOUNTAIN, self.config.CITY],
-            size=spatial_dim,
-            p=probs
-        )
-
-        # place generals
-        passable_indices = np.argwhere(map == self.config.PASSABLE)
-        # pick random indices for generals
-        general_indices = passable_indices[
-            np.random.choice(len(passable_indices), size=len(self.agents), replace=False)
-        ]
-        for agent, idx in zip(self.agents, general_indices):
-            map[idx[0], idx[1]] = self.config.GENERAL + self.agent_id[agent]
-
-        return map
 
 
     def action_mask(self, agent: str) -> np.ndarray:

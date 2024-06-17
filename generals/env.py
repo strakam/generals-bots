@@ -69,10 +69,13 @@ class Generals(pettingzoo.ParallelEnv):
 
     def step(self, actions):
         observations, rewards, terminated, truncated, infos = self.game.step(actions)
+
+        # if any agent dies, all agents are terminated
         terminate = any(terminated.values())
         if terminate:
             terminated = {agent: True for agent in self.agents}
             self.agents = []
+
         return observations, rewards, terminated, truncated, infos
 
     def close(self):
