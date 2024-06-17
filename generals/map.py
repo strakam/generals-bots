@@ -19,12 +19,9 @@ def generate_map(
         p=probs
     )
 
-    # place generals
-    passable_indices = np.argwhere(map == PASSABLE)
-    # pick random indices for generals
-    general_indices = passable_indices[
-        np.random.choice(len(passable_indices), size=n_generals, replace=False)
-    ]
+    # place generals on random squares
+    general_indices = np.random.choice(grid_size, size=(n_generals, 2), replace=False)
+
     for i, idx in enumerate(general_indices):
         map[idx[0], idx[1]] = GENERAL + i
 
@@ -63,10 +60,6 @@ def validate_map(map: np.ndarray) -> bool:
     Returns:
         bool: True if map is valid, False otherwise
     """
-    # DFS
-
-    generals = np.argwhere(np.isin(map, [3, 4]))
-    start, end = generals[0], generals[1]
 
     def dfs(map, visited, square):
         i, j = square
@@ -79,6 +72,8 @@ def validate_map(map: np.ndarray) -> bool:
             new_square = (i + di, j + dj)
             dfs(map, visited, new_square)
 
+    generals = np.argwhere(np.isin(map, [3, 4])) #hardcoded for now
+    start, end = generals[0], generals[1]
     visited = np.zeros_like(map, dtype=bool)
     dfs(map, visited, start)
     return visited[end[0], end[1]]
