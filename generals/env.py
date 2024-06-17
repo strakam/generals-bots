@@ -34,8 +34,6 @@ class Generals(pettingzoo.ParallelEnv):
 
         self.agents = agent_names
         self.possible_agents = self.agents[:]
-        # self.num_agents = len(self.agents)
-        # self.max_num_agents = len(self.agents)
 
         self.name_to_id = dict(zip(agent_names, list(range(1, len(agent_names)+1))))
 
@@ -71,9 +69,10 @@ class Generals(pettingzoo.ParallelEnv):
 
     def step(self, actions):
         observations, rewards, terminated, truncated, infos = self.game.step(actions)
-        for agent in self.agents[:]:
-            if terminated[agent]:
-                self.agents.remove(agent)
+        terminate = any(terminated.values())
+        if terminate:
+            terminated = {agent: True for agent in self.agents}
+            self.agents = []
         return observations, rewards, terminated, truncated, infos
 
     def close(self):

@@ -443,6 +443,10 @@ def test_game_step():
 
 def test_agent_terminated():
     game = get_game(map_name='test_map')
+    game.general_positions = {
+        'red': [3, 3],
+        'blue': [1, 3]
+    }
     game.channels['ownership_red'] = np.array([
         [0, 0, 0, 0],
         [0, 0, 1, 0],
@@ -470,7 +474,7 @@ def test_agent_terminated():
         [0, 0, 0, 0],
         [1, 0, 0, 0],
     ], dtype=np.float32)
-
+    print(game.general_positions)
     moves = {
         'red': np.array([2, 1, 0]), # random move
         'blue': np.array([0, 1, 1]) # random move

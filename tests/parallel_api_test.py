@@ -142,8 +142,7 @@ def parallel_api_test(par_env: ParallelEnv, num_cycles=1000):
 
 if __name__ == "__main__":
     config = game_config.Config(
-        grid_size=8,
-        starting_positions=[[1, 1], [5, 5]],
+        grid_size=10,
     )
     env = generals_v0(config, render_mode="none")
     # test the environment with parallel_api_test

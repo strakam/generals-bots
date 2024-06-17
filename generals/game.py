@@ -16,23 +16,19 @@ class Game():
 
 
         # Create map layout
-        spatial_dim = (self.config.grid_size, self.config.grid_size)
-
         if self.config.map_name:
             map = self.load_map(self.config.map_name)
-            self.config.grid_size = map.shape[0]
-            spatial_dim = (self.config.grid_size, self.config.grid_size)
         else:
-            p_neutral = 1 - self.config.mountain_density - self.config.town_density
-            probs = [p_neutral, self.config.mountain_density, self.config.town_density]
-            map = np.random.choice([config.PASSABLE, config.MOUNTAIN, config.CITY], size=spatial_dim, p=probs)
+            map = self.generate_map()
 
-            # Place generals
-            for agent, general in zip(self.agents, self.config.general_positions):
-                map[general[0], general[1]] = self.agent_id[agent] + config.GENERAL
-
+        spatial_dim = (map.shape[0], map.shape[1])
         self.map = map
-        self.grid_size = self.config.grid_size
+        self.grid_size = spatial_dim[0] # works only for square maps now
+
+        self.general_positions = {
+            agent: np.argwhere(map == config.GENERAL + self.agent_id[agent])[0]
+            for agent in self.agents
+        }
 
         # Initialize channels
         # Army - army size in each cell
@@ -61,14 +57,15 @@ class Game():
         self.city_costs = np.random.choice(range(11), size=spatial_dim).astype(np.float32) + minimum_cost
         self.channels['army'] += self.city_costs * self.channels['city']
 
+        box = gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.float32)
         self.observation_space = gym.spaces.Dict({
             'army': gym.spaces.Box(low=0, high=np.inf, shape=spatial_dim, dtype=np.int32),
-            'general': gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.int32),
-            'city': gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.int32),
-            'ownership': gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.int32),
-            'ownership_opponent': gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.int32),
-            'ownership_neutral': gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.int32),
-            'mountain': gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.int32)
+            'general': box,
+            'city': box,
+            'ownership': box,
+            'ownership_opponent': box,
+            'ownership_neutral': box,
+            'mountain': box
         })
 
         self.action_space = gym.spaces.MultiDiscrete([self.grid_size, self.grid_size, 4])
@@ -93,6 +90,28 @@ class Game():
                 return map
         except ValueError:
             raise ValueError('Invalid map format or shape')
+
+    def generate_map(self):
+        spatial_dim = (self.config.grid_size, self.config.grid_size)
+        p_neutral = 1 - self.config.mountain_density - self.config.town_density
+        probs = [p_neutral, self.config.mountain_density, self.config.town_density]
+        map = np.random.choice(
+            [self.config.PASSABLE, self.config.MOUNTAIN, self.config.CITY],
+            size=spatial_dim,
+            p=probs
+        )
+
+        # place generals
+        passable_indices = np.argwhere(map == self.config.PASSABLE)
+        # pick random indices for generals
+        general_indices = passable_indices[
+            np.random.choice(len(passable_indices), size=len(self.agents), replace=False)
+        ]
+        for agent, idx in zip(self.agents, general_indices):
+            map[idx[0], idx[1]] = self.config.GENERAL + self.agent_id[agent]
+
+        return map
+
 
     def action_mask(self, agent: str) -> np.ndarray:
         """
@@ -275,6 +294,5 @@ class Game():
         """
         Returns True if the agent is terminated, False otherwise.
         """
-        general = self.config.general_positions[self.agent_id[agent]]
-        print(f'agent {agent} general: {general}')
+        general = self.general_positions[agent]
         return self.channels[f'ownership_{agent}'][general[0], general[1]] == 0

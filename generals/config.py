@@ -9,7 +9,6 @@ class Config(BaseModel):
     grid_size: int = 16
     town_density: float = 0.1
     mountain_density: float = 0.1
-    general_positions: List[Tuple[int, int]] = [(0, 0), (10, 10)]
     map_name: str = None
     increment_rate: int = 50
 
