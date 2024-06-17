@@ -1,23 +1,18 @@
 import numpy as np
 import importlib.resources
+from .constants import PASSABLE, MOUNTAIN, CITY, GENERAL
 
-PASSABLE, MOUNTAIN, CITY, GENERAL = 0, 1, 2, 3
 
 def generate_map(
     grid_size: int = 10,
     mountain_density: float = 0.1,
     town_density: float = 0.1,
-    n_generals: int = 2
+    n_generals: int = 2,
 ) -> np.ndarray:
-
     spatial_dim = (grid_size, grid_size)
     p_neutral = 1 - mountain_density - town_density
     probs = [p_neutral, mountain_density, town_density]
-    map = np.random.choice(
-        [PASSABLE, MOUNTAIN, CITY],
-        size=spatial_dim,
-        p=probs
-    )
+    map = np.random.choice([PASSABLE, MOUNTAIN, CITY], size=spatial_dim, p=probs)
 
     # place generals on random squares
     general_indices = np.random.choice(grid_size, size=(n_generals, 2), replace=False)
@@ -26,7 +21,12 @@ def generate_map(
         map[idx[0], idx[1]] = GENERAL + i
 
     # generate until valid map
-    return map if validate_map(map) else generate_map(grid_size, mountain_density, town_density, n_generals)
+    return (
+        map
+        if validate_map(map)
+        else generate_map(grid_size, mountain_density, town_density, n_generals)
+    )
+
 
 def load_map(map_name: str) -> np.ndarray:
     """
@@ -39,15 +39,18 @@ def load_map(map_name: str) -> np.ndarray:
         np.ndarray: map layout
     """
     try:
-        with importlib.resources.path('generals.maps', map_name) as path:
-            with open(path, 'r') as f:
+        with importlib.resources.path("generals.maps", map_name) as path:
+            with open(path, "r") as f:
                 map = np.array([list(line.strip()) for line in f]).astype(np.float32)
                 validity = validate_map(map)
                 if not validity:
-                    raise ValueError('The map is invalid, because generals are separated by mountains')
+                    raise ValueError(
+                        "The map is invalid, because generals are separated by mountains"
+                    )
             return map
     except ValueError:
-        raise ValueError('Invalid map format or shape')
+        raise ValueError("Invalid map format or shape")
+
 
 def validate_map(map: np.ndarray) -> bool:
     """
@@ -72,10 +75,8 @@ def validate_map(map: np.ndarray) -> bool:
             new_square = (i + di, j + dj)
             dfs(map, visited, new_square)
 
-    generals = np.argwhere(np.isin(map, [3, 4])) #hardcoded for now
+    generals = np.argwhere(np.isin(map, [3, 4]))  # hardcoded for now
     start, end = generals[0], generals[1]
     visited = np.zeros_like(map, dtype=bool)
     dfs(map, visited, start)
     return visited[end[0], end[1]]
-
-

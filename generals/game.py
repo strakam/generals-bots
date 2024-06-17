@@ -1,8 +1,10 @@
 import numpy as np
 import gymnasium as gym
 from . import config as conf
-from typing import Tuple, Dict, List, Union
-from .map import generate_map, load_map
+from typing import Tuple, Dict, List, Union # type: ignore
+from .map import generate_map, load_map # type: ignore
+from .constants import PASSABLE, MOUNTAIN, CITY, GENERAL # type: ignore
+from .constants import UP, DOWN, LEFT, RIGHT # type: ignore
 
 from scipy.ndimage import maximum_filter
 
@@ -32,7 +34,7 @@ class Game():
         self.grid_size = spatial_dim[0] # works only for square maps now
 
         self.general_positions = {
-            agent: np.argwhere(map == config.GENERAL + self.agent_id[agent])[0]
+            agent: np.argwhere(map == GENERAL + self.agent_id[agent])[0]
             for agent in self.agents
         }
 
@@ -45,13 +47,13 @@ class Game():
         # Ownership_i - ownership mask for player i (1 if player i owns cell, 0 otherwise)
         # Ownerhsip_0 - ownership mask for neutral cells that are passable (1 if cell is neutral, 0 otherwise)
         self.channels = {
-            'army': np.where(map >= config.GENERAL, 1, 0).astype(np.float32),
-            'general': np.where(map >= config.GENERAL, 1, 0).astype(np.float32),
-            'mountain': np.where(map == config.MOUNTAIN, 1, 0).astype(np.float32),
-            'city': np.where(map == config.CITY, 1, 0).astype(np.float32),
-            'passable': (map != config.MOUNTAIN).astype(np.float32),
-            'ownership_neutral': ((map == config.PASSABLE) | (map == config.CITY)).astype(np.float32),
-            **{f'ownership_{agent}': np.where(map == config.GENERAL+id, 1, 0).astype(np.float32) 
+            'army': np.where(map >= GENERAL, 1, 0).astype(np.float32),
+            'general': np.where(map >= GENERAL, 1, 0).astype(np.float32),
+            'mountain': np.where(map == MOUNTAIN, 1, 0).astype(np.float32),
+            'city': np.where(map == CITY, 1, 0).astype(np.float32),
+            'passable': (map != MOUNTAIN).astype(np.float32),
+            'ownership_neutral': ((map == PASSABLE) | (map == CITY)).astype(np.float32),
+            **{f'ownership_{agent}': np.where(map == GENERAL+id, 1, 0).astype(np.float32) 
                 for id, agent in enumerate(self.agents)}
         }
 
@@ -103,7 +105,6 @@ class Game():
         if np.sum(ownership_channel) == 0:
             raise ValueError(f'Player {agent} has no cells')
 
-        UP, DOWN, LEFT, RIGHT = self.config.UP, self.config.DOWN, self.config.LEFT, self.config.RIGHT
         owned_cells_indices = self.channel_to_indices(ownership_channel)
         valid_action_mask = np.zeros((self.grid_size, self.grid_size, 4), dtype=np.float32)
 
@@ -157,7 +158,7 @@ class Game():
             actions: dictionary of agent_id to action (this will be reworked)
         """
         # this is intended for 1v1 for now and might not be bug free
-        directions = np.array([self.config.UP, self.config.DOWN, self.config.LEFT, self.config.RIGHT])
+        directions = np.array([UP, DOWN, LEFT, RIGHT])
         agents = list(actions.keys())
         np.random.shuffle(agents) # random action order
 

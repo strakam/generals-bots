@@ -1,10 +1,10 @@
 import numpy as np
 import pygame
-import importlib.resources
 from . import game
 from . import config as conf
+from . import constants as c
 
-from typing import Tuple, List, Dict
+from typing import Tuple, List
 
 
 def init_screen(game_config: conf.Config):
@@ -17,38 +17,24 @@ def init_screen(game_config: conf.Config):
     pygame.init()
     pygame.display.set_caption("Generals")
 
-    global screen, clock, config
+    global screen, clock, config, window_width, window_height, grid_offset
+
     config = game_config
-    screen = pygame.display.set_mode((config.WINDOW_WIDTH, config.WINDOW_HEIGHT))
+
+    grid_offset = c.UI_ROW_HEIGHT * (game_config.n_players+1)
+    window_width = c.SQUARE_SIZE * game_config.grid_size
+    window_height = c.SQUARE_SIZE * game_config.grid_size + grid_offset
+
+    screen = pygame.display.set_mode((window_width, window_height))
     clock = pygame.time.Clock()
 
-    global MOUNTAIN_IMG, CITY_IMG, GENERAL_IMG, font, font_offsets
-    MOUNTAIN_IMG = load_image("mountainie.png")
-    CITY_IMG = load_image("citie.png")
-    GENERAL_IMG = load_image("crownie.png")
-    font_offsets = [20, 16, 12, 8, 4] # for 0 digits, 1 digit, 2 digits,..
-    try:
-        # Font options are Quicksand-Regular.ttf, Quicksand-SemiBold.ttf, Quicksand-Medium.ttf, Quicksand-Light.ttf
-        with importlib.resources.path("generals.fonts", "Quicksand-Medium.ttf") as path:
-            font = pygame.font.Font(str(path), 18)
+    global MOUNTAIN_IMG, GENERAL_IMG, CITY_IMG
+    MOUNTAIN_IMG = pygame.image.load(str(c.MOUNTAIN_PATH), "png")
+    GENERAL_IMG = pygame.image.load(str(c.GENERAL_PATH), "png")
+    CITY_IMG = pygame.image.load(str(c.CITY_PATH), "png")
 
-    except FileNotFoundError:
-        raise ValueError("Font not found")
-
-
-def load_image(filename):
-    """
-    Load image from the resources (only png files are supported)
-
-    Args:
-        filename: name of the file
-    """
-    try:
-        with importlib.resources.path("generals.images", filename) as path:
-            return pygame.image.load(str(path), "png")
-    except FileNotFoundError:
-        raise ValueError("Image not found")
-
+    global FONT
+    FONT = pygame.font.Font(c.FONT_PATH, c.FONT_SIZE)
 
 def handle_events():
     """
@@ -70,51 +56,50 @@ def render_gui(game: game.Game, names: List[str]):
     land_counts = ["Land"] + [str(game.player_stats[name]['land']) for name in names]
     names = ["Turn"] + [name for name in names]
 
-    # white background
-    pygame.draw.rect(screen, config.WHITE, (0, 0, config.WINDOW_WIDTH, config.GRID_OFFSET))
+    # white background for GUI
+    pygame.draw.rect(screen, c.WHITE, (0, 0, window_width, grid_offset))
 
     # draw rows with player colors
-    cell_width = 100
     for i, agent_id in enumerate(ids):
         pygame.draw.rect(
             screen,
-            config.PLAYER_COLORS[agent_id],
-            (0, (i+1) * 50, config.WINDOW_WIDTH-2*cell_width, 50)
+            c.PLAYER_COLORS[agent_id],
+            (0, (i+1) * c.UI_ROW_HEIGHT, window_width-2*c.GUI_CELL_WIDTH, c.UI_ROW_HEIGHT)
         )
 
     # draw lines between rows
     for i in range(1, 3):
         pygame.draw.line(
             screen,
-            config.BLACK,
-            (0, i * 50),
-            (config.WINDOW_WIDTH, i * 50),
-            2
+            c.BLACK,
+            (0, i * c.UI_ROW_HEIGHT),
+            (window_width, i * c.UI_ROW_HEIGHT),
+            c.LINE_WIDTH
         )
 
     # draw vertical lines cell_width from the end and 2*cell_width from the end
-    # make them tall as config.GRID_OFFSET
     for i in range(1, 3):
         pygame.draw.line(
             screen,
-            config.BLACK,
-            (config.WINDOW_WIDTH - i*cell_width, 0),
-            (config.WINDOW_WIDTH - i*cell_width, config.GRID_OFFSET),
-            2
+            c.BLACK,
+            (window_width - i*c.GUI_CELL_WIDTH, 0),
+            (window_width - i*c.GUI_CELL_WIDTH, grid_offset),
+            c.LINE_WIDTH
         )
 
-    # draw 
+    # write live statistics
     for i in range(len(ids)+1):
         if i == 0:
             turn = str(game.time//2) + ("." if game.time % 2 == 1 else "")
-            text = font.render(f'{names[i]}: {turn}', True, config.BLACK)
+            text = FONT.render(f'{names[i]}: {turn}', True, c.BLACK)
         else:
-            text = font.render(f'{names[i]}', True, config.BLACK)
-        screen.blit(text, (10, i*50 + 15))
-        text = font.render(army_counts[i], True, config.BLACK)
-        screen.blit(text, (config.WINDOW_WIDTH - 2*cell_width + 25, i*50 + 15))
-        text = font.render(land_counts[i], True, config.BLACK)
-        screen.blit(text, (config.WINDOW_WIDTH - cell_width + 25, i*50 + 15))
+            text = FONT.render(f'{names[i]}', True, c.BLACK)
+        top_offset = i * c.UI_ROW_HEIGHT + 15
+        screen.blit(text, (10, top_offset))
+        text = FONT.render(army_counts[i], True, c.BLACK)
+        screen.blit(text, (window_width - 2*c.GUI_CELL_WIDTH + 25, top_offset))
+        text = FONT.render(land_counts[i], True, c.BLACK)
+        screen.blit(text, (window_width - c.GUI_CELL_WIDTH + 25, top_offset))
 
 
 def render_grid(game: game.Game, agents: List[str]):
@@ -131,42 +116,42 @@ def render_grid(game: game.Game, agents: List[str]):
         ownership = game.channels['ownership_' + agent]
         visibility = game.visibility_channel(ownership)
         visibility_indices = game.channel_to_indices(visibility)
-        draw_channel(visibility_indices, config.WHITE)
+        draw_channel(visibility_indices, c.WHITE)
         visible_map = np.logical_or(visible_map, visibility) # get all visible cells
 
     # draw ownership squares
     for agent in agents:
         ownership = game.channels['ownership_' + agent]
         ownership_indices = game.channel_to_indices(ownership)
-        draw_channel(ownership_indices, config.PLAYER_COLORS[game.agent_id[agent]])
+        draw_channel(ownership_indices, c.PLAYER_COLORS[game.agent_id[agent]])
 
     # draw lines
     for i in range(1, config.grid_size):
         pygame.draw.line(
             screen,
-            config.BLACK,
-            (0, i * config.SQUARE_SIZE + config.GRID_OFFSET),
-            (config.WINDOW_WIDTH, i * config.SQUARE_SIZE + config.GRID_OFFSET),
-            2
+            c.BLACK,
+            (0, i * c.SQUARE_SIZE + grid_offset),
+            (window_width, i * c.SQUARE_SIZE + grid_offset),
+            c.LINE_WIDTH
         )
         pygame.draw.line(
             screen,
             config.BLACK,
-            (i * config.SQUARE_SIZE, config.GRID_OFFSET),
-            (i * config.SQUARE_SIZE, config.WINDOW_HEIGHT),
-            2
+            (i * c.SQUARE_SIZE, grid_offset),
+            (i * c.SQUARE_SIZE, window_height),
+            c.LINE_WIDTH
         )
 
     # # draw background as squares
     invisible_map = np.logical_not(visible_map)
     invisible_indices = game.channel_to_indices(invisible_map)
-    draw_channel(invisible_indices, config.FOG_OF_WAR)
+    draw_channel(invisible_indices, c.FOG_OF_WAR)
 
     # draw mountain
     mountain_indices = game.channel_to_indices(game.channels['mountain'])
     visible_mountain = np.logical_and(game.channels['mountain'], visible_map)
     visible_mountain_indices = game.channel_to_indices(visible_mountain)
-    draw_channel(visible_mountain_indices, config.VISIBLE_MOUNTAIN)
+    draw_channel(visible_mountain_indices, c.VISIBLE_MOUNTAIN)
     draw_images(mountain_indices, MOUNTAIN_IMG)
 
 
@@ -189,8 +174,8 @@ def render_grid(game: game.Game, agents: List[str]):
     visible_army_indices = game.channel_to_indices(army)
     y_offset = 15
     for i, j in visible_army_indices:
-        text = font.render(str(int(army[i, j])), True, config.WHITE)
-        x_offset = font_offsets[min(len(font_offsets)-1, len(str(int(army[i, j])))-1)]
+        text = FONT.render(str(int(army[i, j])), True, config.WHITE)
+        x_offset = c.FONT_OFFSETS[min(len(c.FONT_OFFSETS)-1, len(str(int(army[i, j])))-1)]
         screen.blit(text, (j * config.SQUARE_SIZE + x_offset, i * config.SQUARE_SIZE + y_offset + config.GRID_OFFSET))
 
 
@@ -203,11 +188,12 @@ def draw_channel(channel: list[Tuple[int, int]], color: Tuple[int, int, int]):
         color: color of the squares
     """
     size, offset = config.SQUARE_SIZE, config.GRID_OFFSET
+    w = c.LINE_WIDTH
     for i, j in channel:
         pygame.draw.rect(
             screen,
             color,
-            (j * size + 2, i * size + 2 + offset, size - 2, size - 2)
+            (j * size + w, i * size + w + offset, size - w, size - w),
         )
 
 def draw_images(channel: list[Tuple[int, int]], image):
