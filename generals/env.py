@@ -60,6 +60,8 @@ class Generals(pettingzoo.ParallelEnv):
         self.agents = copy(self.possible_agents)
         if "map" in options:
             _map = options["map"]
+            print("Loaded map")
+            print(_map)
         else:
             _map = map.generate_map(
                 self.game_config.grid_size,
@@ -70,9 +72,11 @@ class Generals(pettingzoo.ParallelEnv):
 
         self.game = game.Game(_map, self.possible_agents)
 
-        if "replay" in options and options["replay"]:
-            self.replay = True
+        if "replay" in options:
+            self.replay = options["replay"]
             self.action_history = []
+        else:
+            self.replay = False
 
         observations = {
             agent: self.game._agent_observation(agent) for agent in self.agents
@@ -95,7 +99,7 @@ class Generals(pettingzoo.ParallelEnv):
             # if replay is on, store the game
             if self.replay:
                 map.store_replay(
-                    self.game.map, self.action_history, self.possible_agents
+                    self.game.map, self.action_history, self.replay
                 )
 
         return observations, rewards, terminated, truncated, infos

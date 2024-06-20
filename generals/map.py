@@ -3,8 +3,6 @@ import importlib.resources
 from .constants import PASSABLE, MOUNTAIN, CITY, GENERAL
 
 from typing import List, Dict, Tuple
-import time
-import uuid
 
 
 def generate_map(
@@ -12,7 +10,7 @@ def generate_map(
     mountain_density: float = 0.1,
     town_density: float = 0.1,
     n_generals: int = 2,
-    general_positions: List[Tuple[int, int]] = None
+    general_positions: List[Tuple[int, int]] = None,
 ) -> np.ndarray:
     spatial_dim = (grid_size, grid_size)
     p_neutral = 1 - mountain_density - town_density
@@ -21,7 +19,9 @@ def generate_map(
 
     # place generals on random squares
     if general_positions is None:
-        general_positions = np.random.choice(grid_size, size=(n_generals, 2), replace=False)
+        general_positions = np.random.choice(
+            grid_size, size=(n_generals, 2), replace=False
+        )
 
     for i, idx in enumerate(general_positions):
         map[idx[0], idx[1]] = GENERAL + i
@@ -91,20 +91,42 @@ def validate_map(map: np.ndarray) -> bool:
 def store_replay(
     map: np.ndarray,
     action_sequence: List[Dict[str, np.ndarray]],
-    agents: List[str],
-    path: str = None
+    name: str = None,
 ):
-    _time = time.strftime("%Y%m%d-%H%M%S")
-    _uuid = uuid.uuid4().hex[:4] # in case seconds are not enough (e.g. in eval mode)
-    names = "_".join(agents)
-    filename = f"{names}_{_time}_{_uuid}.txt" if path is None else path
+    print(f"Storing replay {name}")
+    with open(name, "w") as f:
+        map = "\n".join(["".join([str(int(cell)) for cell in row]) for row in map])
+        f.write(f"{map}\n\n")
+        for player_action in action_sequence:
+            # action shouldnt be printed with brackets
+            row = ",".join(
+                [
+                    f"{player}:{' '.join([str(cell) for cell in action])}"
+                    for player, action in player_action.items()
+                ]
+            )
+            f.write(f"{row}\n")
 
-    with open(filename, "w") as f:
-        f.write(f"Map:\n{map}\n\n")
-        for actions in action_sequence:
-            for agent, action in actions.items():
-                f.write(f"{agent}: {action}\n")
-            f.write("\n")
 
-def load_replay(path: str) -> (np.ndarray, List[Dict[str, np.ndarray]]):
-    return None, None
+def load_replay(path: str):
+    print(f"Loading replay {path}")
+    with open(path, "r") as f:
+        lines = f.readlines()
+        # take rows until first empty line
+        map = np.array(
+            [[int(cell) for cell in row.strip()] for row in lines[: lines.index("\n")]],
+            dtype=np.float32,
+        )
+        # after empty line, read actions
+        actions = []
+        for line in lines[lines.index("\n") + 1 :]:
+            actions.append(
+                {
+                    player.split(":")[0]: np.array(
+                        player.split(":")[1].split(" "), dtype=np.int32
+                    )
+                    for player in line.strip().split(",")
+                }
+            )
+
+    return map, actions

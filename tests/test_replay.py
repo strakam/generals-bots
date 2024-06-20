@@ -1,6 +1,7 @@
 import numpy as np
 from generals.env import generals_v0
 import generals.config as game_config
+import generals.map
 
 config = game_config.Config(
     grid_size=16,
@@ -8,27 +9,17 @@ config = game_config.Config(
     #    map_name='test_map'
 )
 
+map, action_sequence = generals.map.load_replay("test")
 env = generals_v0(config)
-o, i, = env.reset(seed=42, options={
-    "map": np.array([
-        [0., 0., 0., 1.,],
-        [1., 0., 0., 3.,],
-        [2., 0., 0., 1.,],
-        [0., 1., 0., 4.,],
-    ]),
-    "replay": "test",
-})
-
+o, i = env.reset(seed=42, options={"map": map, "replay": True})
 agent_names = ['red', 'blue']
 
+index = 0
 while env.agents:
     actions = {}
     for agent in env.agents:
-        mask = o[agent]['action_mask']
-        valid_actions = np.argwhere(mask == 1)
-        action = np.random.choice(len(valid_actions))
-        actions[agent] = valid_actions[action]
+        actions[agent] = action_sequence[index][agent]
     o, r, te, tr, i = env.step(actions)
+    index += 1
     env.render()
 env.close()
-

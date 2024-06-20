@@ -89,8 +89,8 @@ class Game():
         """
 
         ownership_channel = self.channels[f'ownership_{agent}']
-        if np.sum(ownership_channel) == 0:
-            raise ValueError(f'Player {agent} has no cells')
+        # if np.sum(ownership_channel) == 0:
+        #     raise ValueError(f'Player {agent} has no cells')
 
         owned_cells_indices = self.channel_to_indices(ownership_channel)
         valid_action_mask = np.zeros((self.grid_size, self.grid_size, 4), dtype=np.float32)

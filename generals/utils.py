@@ -118,7 +118,7 @@ def render_grid(game: game.Game, agents: List[str]):
         agent_ids: list of agent ids from which perspective the game is rendered
     """
     # draw visibility squares
-    visible_map = np.zeros((config.grid_size, config.grid_size), dtype=np.float32)
+    visible_map = np.zeros((game.grid_size, game.grid_size), dtype=np.float32)
     for agent in agents:
         ownership = game.channels["ownership_" + agent]
         visibility = game.visibility_channel(ownership)
