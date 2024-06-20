@@ -1,0 +1,25 @@
+0004
+0130
+0200
+1000
+
+red:1 2 3,blue:0 3 1
+red:1 2 3,blue:0 3 1
+red:1 2 3,blue:0 3 1
+red:1 2 1,blue:0 3 1
+red:1 2 0,blue:1 3 1
+red:0 2 1,blue:0 3 2
+red:0 2 2,blue:1 3 2
+red:0 2 2,blue:1 3 1
+red:1 2 0,blue:1 3 0
+red:0 2 2,blue:0 3 1
+red:0 2 2,blue:0 3 1
+red:0 1 2,blue:1 3 0
+red:1 2 3,blue:0 3 2
+red:0 1 2,blue:0 2 2
+red:1 3 1,blue:0 2 2
+red:1 3 1,blue:0 2 1
+red:1 2 1,blue:0 2 2
+red:2 2 1,blue:0 2 1
+red:1 2 1,blue:0 3 2
+red:1 2 0,blue:0 2 1

@@ -1,3 +1,4 @@
+import numpy as np
 import functools
 from copy import copy
 import time
@@ -7,14 +8,14 @@ import pettingzoo
 
 from typing import List
 
-from . import game, config, utils, map
+from . import game, rendering, utils
 
 
-def generals_v0(config=config.Config, render_mode="human"):
+def generals_v0(map: np.ndarray, render_mode="human"):
     """
     Here we apply wrappers to the environment.
     """
-    env = Generals(config, render_mode=render_mode)
+    env = Generals(map, render_mode=render_mode)
     return env
 
 
@@ -23,20 +24,23 @@ class Generals(pettingzoo.ParallelEnv):
 
     def __init__(
         self,
-        game_config: config.Config,
+        map: np.ndarray,
         agent_names: List[str] = ["red", "blue"],
         render_mode="human",
     ):
-        self.game_config = game_config
         self.render_mode = render_mode
 
+        self.map = map
         self.agents = agent_names
         self.possible_agents = self.agents[:]
 
         self.name_to_id = dict(zip(agent_names, list(range(1, len(agent_names) + 1))))
 
         if render_mode == "human":
-            utils.init_screen(self.game_config)
+            rendering.init_screen(
+                n_players=len(self.agents),
+                grid_size=self.map.shape[0],
+            )
 
     @functools.lru_cache(maxsize=None)
     def observation_space(self, agent_name):
@@ -50,27 +54,15 @@ class Generals(pettingzoo.ParallelEnv):
 
     def render(self):
         if self.render_mode == "human":
-            utils.handle_events()
-            utils.render_grid(self.game, self.agents)
-            utils.render_gui(self.game, self.agents)
-            utils.pygame.display.flip()
+            rendering.handle_events()
+            rendering.render_grid(self.game, self.agents)
+            rendering.render_gui(self.game, self.agents)
+            rendering.pygame.display.flip()
             time.sleep(0.1)  # move to constants
 
     def reset(self, seed=None, options={}):
         self.agents = copy(self.possible_agents)
-        if "map" in options:
-            _map = options["map"]
-            print("Loaded map")
-            print(_map)
-        else:
-            _map = map.generate_map(
-                self.game_config.grid_size,
-                self.game_config.town_density,
-                self.game_config.mountain_density,
-                len(self.agents),
-            )
-
-        self.game = game.Game(_map, self.possible_agents)
+        self.game = game.Game(self.map, self.possible_agents)
 
         if "replay" in options:
             self.replay = options["replay"]
@@ -98,11 +90,11 @@ class Generals(pettingzoo.ParallelEnv):
             self.agents = []
             # if replay is on, store the game
             if self.replay:
-                map.store_replay(
+                utils.store_replay(
                     self.game.map, self.action_history, self.replay
                 )
 
         return observations, rewards, terminated, truncated, infos
 
     def close(self):
-        utils.pygame.quit()
+        rendering.pygame.quit()

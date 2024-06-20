@@ -2,7 +2,7 @@ import numpy as np
 import gymnasium as gym
 from . import config as conf
 from typing import Tuple, Dict, List, Union # type: ignore
-from .map import generate_map, load_map # type: ignore
+from .utils import generate_map, load_map # type: ignore
 from .constants import PASSABLE, MOUNTAIN, CITY, GENERAL # type: ignore
 from .constants import UP, DOWN, LEFT, RIGHT # type: ignore
 from .constants import INCREMENT_RATE # type: ignore
