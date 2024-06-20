@@ -34,8 +34,6 @@ class Generals(pettingzoo.ParallelEnv):
         self.agents = agent_names
         self.possible_agents = self.agents[:]
 
-        self.name_to_id = dict(zip(agent_names, list(range(1, len(agent_names) + 1))))
-
         if render_mode == "human":
             rendering.init_screen(
                 n_players=len(self.agents),
@@ -90,9 +88,7 @@ class Generals(pettingzoo.ParallelEnv):
             self.agents = []
             # if replay is on, store the game
             if self.replay:
-                utils.store_replay(
-                    self.game.map, self.action_history, self.replay
-                )
+                utils.store_replay(self.game.map, self.action_history, self.replay)
 
         return observations, rewards, terminated, truncated, infos
 

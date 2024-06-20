@@ -1,5 +1,5 @@
 import numpy as np
-import importlib.resources
+from importlib.resources import files
 from .constants import PASSABLE, MOUNTAIN, CITY, GENERAL
 
 from typing import List, Dict, Tuple
@@ -64,14 +64,14 @@ def load_map(map_name: str) -> np.ndarray:
         np.ndarray: map layout
     """
     try:
-        with importlib.resources.path("generals.maps", map_name) as path:
-            with open(path, "r") as f:
-                map = np.array([list(line.strip()) for line in f]).astype(np.float32)
-                validity = validate_map(map)
-                if not validity:
-                    raise ValueError(
-                        "The map is invalid, because generals are separated by mountains"
-                    )
+        file_ref = str(files("generals.maps") / map_name)
+        with open(file_ref, "r") as f:
+            map = np.array([list(line.strip()) for line in f]).astype(np.float32)
+            validity = validate_map(map)
+            if not validity:
+                raise ValueError(
+                    "The map is invalid, because generals are separated by mountains"
+                )
             return map
     except ValueError:
         raise ValueError("Invalid map format or shape")

@@ -1,14 +1,14 @@
 import numpy as np
 
 import generals.game
-import generals.map
+import generals.utils
 import itertools
 
 def get_game(map_name=None):
     if map_name:
-        map = generals.map.load_map(map_name)
+        map = generals.utils.load_map(map_name)
     else:
-        map = generals.map.generate_map(
+        map = generals.utils.generate_map(
             grid_size=10,
             mountain_density=0.1,
             town_density=0.1,

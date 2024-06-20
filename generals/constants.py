@@ -1,5 +1,5 @@
 from typing import List, Tuple, Literal, Dict
-import importlib.resources
+from importlib.resources import files
 
 #################
 # Game Literals #
@@ -51,8 +51,8 @@ FONT_TYPE = "Quicksand-Medium.ttf" # Font options are Quicksand-SemiBold.ttf, Qu
 FONT_OFFSETS = [20, 16, 12, 8, 4]  # text position for different number of digits
 FONT_SIZE = 18
 try: 
-    with importlib.resources.path("generals.fonts", FONT_TYPE) as path:
-        FONT_PATH = path
+    file_ref = files("generals.fonts") / FONT_TYPE
+    FONT_PATH = str(file_ref)
 except FileNotFoundError:
     raise FileNotFoundError(f"Font file {FONT_TYPE} not found in the fonts directory")
 
@@ -61,17 +61,14 @@ except FileNotFoundError:
 # Icons #
 #########
 try:
-    with importlib.resources.path("generals.images", "crownie.png") as path:
-        GENERAL_PATH = path
+    GENERAL_PATH = str(files("generals.images") / "crownie.png")
 except FileNotFoundError:
     raise FileNotFoundError("Image not found")
 try:
-    with importlib.resources.path("generals.images", "citie.png") as path:
-        CITY_PATH = path
+    CITY_PATH = str(files("generals.images") / "citie.png")
 except FileNotFoundError:
     raise FileNotFoundError("Image not found")
 try:
-    with importlib.resources.path("generals.images", "mountainie.png") as path:
-        MOUNTAIN_PATH = path
+    MOUNTAIN_PATH = str(files("generals.images") / "mountainie.png")
 except FileNotFoundError:
     raise FileNotFoundError("Image not found")

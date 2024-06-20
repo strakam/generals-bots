@@ -1,5 +1,5 @@
 import numpy as np
-from generals.map import generate_map, validate_map
+from generals.utils import generate_map, validate_map
 
 
 def test_validate_map():
@@ -86,3 +86,5 @@ def test_generate_map():
         assert np.sum(generals) == n_generals
         # count tiles with number bigger than 4
         assert np.sum(map > 4) == 0
+
+

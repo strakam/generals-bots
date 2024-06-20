@@ -1,7 +1,7 @@
 import numpy as np
 from generals.env import generals_v0
 import generals.config as game_config
-import generals.map
+import generals.utils
 
 config = game_config.Config(
     grid_size=16,
@@ -9,7 +9,7 @@ config = game_config.Config(
     #    map_name='test_map'
 )
 
-map, action_sequence = generals.map.load_replay("test")
+map, action_sequence = generals.utils.load_replay("test")
 env = generals_v0(config)
 o, i = env.reset(seed=42, options={"map": map, "replay": True})
 agent_names = ['red', 'blue']

@@ -1,23 +1,31 @@
 import numpy as np
 from generals.env import generals_v0
-import generals.config as game_config
+import generals.utils
 
-config = game_config.Config(
-    grid_size=16,
-    starting_positions=[[1, 1], [5, 5]],
-    #    map_name='test_map'
+# by hand
+map_string = """
+0001
+1003
+2001
+0104
+"""
+
+map = generals.utils.map_from_string(map_string)
+
+# from file
+map = generals.utils.load_map("test_map")
+
+# generate
+map = generals.utils.generate_map(
+    grid_size=4,
+    mountain_density=0.1,
+    town_density=0.1,
+    n_generals=2,
+    general_positions=None,
 )
 
-env = generals_v0(config)
-o, i, = env.reset(seed=42, options={
-    "map": np.array([
-        [0., 0., 0., 1.,],
-        [1., 0., 0., 3.,],
-        [2., 0., 0., 1.,],
-        [0., 1., 0., 4.,],
-    ]),
-    "replay": "test",
-})
+env = generals_v0(map)
+o, i, = env.reset(seed=42, options={"replay": "test"})
 
 agent_names = ['red', 'blue']
 
