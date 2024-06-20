@@ -5,29 +5,17 @@ from typing import Tuple, Dict, List, Union # type: ignore
 from .map import generate_map, load_map # type: ignore
 from .constants import PASSABLE, MOUNTAIN, CITY, GENERAL # type: ignore
 from .constants import UP, DOWN, LEFT, RIGHT # type: ignore
+from .constants import INCREMENT_RATE # type: ignore
 
 from scipy.ndimage import maximum_filter
 
 
 class Game():
-    def __init__(self, config: conf.Config, agents: List[str]):
-        self.config = config
+    def __init__(self, map: np.ndarray, agents: List[str]):
         self.agents = agents
         self.agent_id = {agent: i for i, agent in enumerate(agents)}
         self.time = 0
         self.turn = 0
-
-
-        # Create map layout
-        if self.config.map_name:
-            map = load_map(self.config.map_name)
-        else:
-            map = generate_map(
-                grid_size=self.config.grid_size,
-                mountain_density=self.config.mountain_density,
-                town_density=self.config.town_density,
-                n_generals=len(self.agents)
-            )
 
         spatial_dim = (map.shape[0], map.shape[1])
         self.map = map
@@ -57,9 +45,8 @@ class Game():
                 for id, agent in enumerate(self.agents)}
         }
 
-        # initialize city costs
-        minimum_cost = 40
-        self.city_costs = np.random.choice(range(11), size=spatial_dim).astype(np.float32) + minimum_cost
+        # initialize city costs (constant for now)
+        self.city_costs = 40
         self.channels['army'] += self.city_costs * self.channels['city']
 
         # Public statistics about players
@@ -213,7 +200,7 @@ class Game():
 
         owners = self.agents
         # every TICK_RATE steps, increase army size in each cell
-        if self.time % self.config.increment_rate == 0:
+        if self.time % INCREMENT_RATE == 0:
             for owner in owners:
                 self.channels['army'] += self.channels[f'ownership_{owner}']
 

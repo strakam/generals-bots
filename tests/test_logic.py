@@ -1,17 +1,21 @@
 import numpy as np
 
-import generals.config as conf
 import generals.game
+import generals.map
 import itertools
 
 def get_game(map_name=None):
-    config = conf.Config(
-        grid_size=10,
-        general_positions=[[3, 3], [1, 3]]
-    )
     if map_name:
-        config.map_name = map_name
-    return generals.game.Game(config, ['red', 'blue'])
+        map = generals.map.load_map(map_name)
+    else:
+        map = generals.map.generate_map(
+            grid_size=10,
+            mountain_density=0.1,
+            town_density=0.1,
+            n_generals=2,
+            general_positions=[[3, 3], [1, 3]]
+        )
+    return generals.game.Game(map, ['red', 'blue'])
 
 def test_grid_creation():
     """

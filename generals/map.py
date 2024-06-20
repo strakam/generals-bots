@@ -2,12 +2,17 @@ import numpy as np
 import importlib.resources
 from .constants import PASSABLE, MOUNTAIN, CITY, GENERAL
 
+from typing import List, Dict, Tuple
+import time
+import uuid
+
 
 def generate_map(
     grid_size: int = 10,
     mountain_density: float = 0.1,
     town_density: float = 0.1,
     n_generals: int = 2,
+    general_positions: List[Tuple[int, int]] = None
 ) -> np.ndarray:
     spatial_dim = (grid_size, grid_size)
     p_neutral = 1 - mountain_density - town_density
@@ -15,9 +20,10 @@ def generate_map(
     map = np.random.choice([PASSABLE, MOUNTAIN, CITY], size=spatial_dim, p=probs)
 
     # place generals on random squares
-    general_indices = np.random.choice(grid_size, size=(n_generals, 2), replace=False)
+    if general_positions is None:
+        general_positions = np.random.choice(grid_size, size=(n_generals, 2), replace=False)
 
-    for i, idx in enumerate(general_indices):
+    for i, idx in enumerate(general_positions):
         map[idx[0], idx[1]] = GENERAL + i
 
     # generate until valid map
@@ -80,3 +86,25 @@ def validate_map(map: np.ndarray) -> bool:
     visited = np.zeros_like(map, dtype=bool)
     dfs(map, visited, start)
     return visited[end[0], end[1]]
+
+
+def store_replay(
+    map: np.ndarray,
+    action_sequence: List[Dict[str, np.ndarray]],
+    agents: List[str],
+    path: str = None
+):
+    _time = time.strftime("%Y%m%d-%H%M%S")
+    _uuid = uuid.uuid4().hex[:4] # in case seconds are not enough (e.g. in eval mode)
+    names = "_".join(agents)
+    filename = f"{names}_{_time}_{_uuid}.txt" if path is None else path
+
+    with open(filename, "w") as f:
+        f.write(f"Map:\n{map}\n\n")
+        for actions in action_sequence:
+            for agent, action in actions.items():
+                f.write(f"{agent}: {action}\n")
+            f.write("\n")
+
+def load_replay(path: str) -> (np.ndarray, List[Dict[str, np.ndarray]]):
+    return None, None

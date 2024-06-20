@@ -17,6 +17,11 @@ DOWN: List[int] = [1, 0]
 LEFT: List[int] = [0, -1]
 RIGHT: List[int] = [0, 1]
 
+##################
+# Game constants #
+##################
+INCREMENT_RATE: int = 50
+
 ########################
 # Grid visual settings #
 ########################
