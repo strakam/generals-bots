@@ -21,7 +21,7 @@ def init_screen(game_config: conf.Config):
 
     config = game_config
 
-    grid_offset = c.UI_ROW_HEIGHT * (game_config.n_players+1)
+    grid_offset = c.UI_ROW_HEIGHT * (game_config.n_players + 1)
     window_width = c.SQUARE_SIZE * game_config.grid_size
     window_height = c.SQUARE_SIZE * game_config.grid_size + grid_offset
 
@@ -35,6 +35,7 @@ def init_screen(game_config: conf.Config):
 
     global FONT
     FONT = pygame.font.Font(c.FONT_PATH, c.FONT_SIZE)
+
 
 def handle_events():
     """
@@ -50,10 +51,11 @@ def handle_events():
                 pygame.quit()
                 quit()
 
+
 def render_gui(game: game.Game, names: List[str]):
     ids = [game.agent_id[name] for name in names]
-    army_counts = ["Army"] + [str(game.player_stats[name]['army']) for name in names]
-    land_counts = ["Land"] + [str(game.player_stats[name]['land']) for name in names]
+    army_counts = ["Army"] + [str(game.player_stats[name]["army"]) for name in names]
+    land_counts = ["Land"] + [str(game.player_stats[name]["land"]) for name in names]
     names = ["Turn"] + [name for name in names]
 
     # white background for GUI
@@ -64,7 +66,12 @@ def render_gui(game: game.Game, names: List[str]):
         pygame.draw.rect(
             screen,
             c.PLAYER_COLORS[agent_id],
-            (0, (i+1) * c.UI_ROW_HEIGHT, window_width-2*c.GUI_CELL_WIDTH, c.UI_ROW_HEIGHT)
+            (
+                0,
+                (i + 1) * c.UI_ROW_HEIGHT,
+                window_width - 2 * c.GUI_CELL_WIDTH,
+                c.UI_ROW_HEIGHT,
+            ),
         )
 
     # draw lines between rows
@@ -74,7 +81,7 @@ def render_gui(game: game.Game, names: List[str]):
             c.BLACK,
             (0, i * c.UI_ROW_HEIGHT),
             (window_width, i * c.UI_ROW_HEIGHT),
-            c.LINE_WIDTH
+            c.LINE_WIDTH,
         )
 
     # draw vertical lines cell_width from the end and 2*cell_width from the end
@@ -82,22 +89,22 @@ def render_gui(game: game.Game, names: List[str]):
         pygame.draw.line(
             screen,
             c.BLACK,
-            (window_width - i*c.GUI_CELL_WIDTH, 0),
-            (window_width - i*c.GUI_CELL_WIDTH, grid_offset),
-            c.LINE_WIDTH
+            (window_width - i * c.GUI_CELL_WIDTH, 0),
+            (window_width - i * c.GUI_CELL_WIDTH, grid_offset),
+            c.LINE_WIDTH,
         )
 
     # write live statistics
-    for i in range(len(ids)+1):
+    for i in range(len(ids) + 1):
         if i == 0:
-            turn = str(game.time//2) + ("." if game.time % 2 == 1 else "")
-            text = FONT.render(f'{names[i]}: {turn}', True, c.BLACK)
+            turn = str(game.time // 2) + ("." if game.time % 2 == 1 else "")
+            text = FONT.render(f"{names[i]}: {turn}", True, c.BLACK)
         else:
-            text = FONT.render(f'{names[i]}', True, c.BLACK)
+            text = FONT.render(f"{names[i]}", True, c.BLACK)
         top_offset = i * c.UI_ROW_HEIGHT + 15
         screen.blit(text, (10, top_offset))
         text = FONT.render(army_counts[i], True, c.BLACK)
-        screen.blit(text, (window_width - 2*c.GUI_CELL_WIDTH + 25, top_offset))
+        screen.blit(text, (window_width - 2 * c.GUI_CELL_WIDTH + 25, top_offset))
         text = FONT.render(land_counts[i], True, c.BLACK)
         screen.blit(text, (window_width - c.GUI_CELL_WIDTH + 25, top_offset))
 
@@ -113,15 +120,15 @@ def render_grid(game: game.Game, agents: List[str]):
     # draw visibility squares
     visible_map = np.zeros((config.grid_size, config.grid_size), dtype=np.float32)
     for agent in agents:
-        ownership = game.channels['ownership_' + agent]
+        ownership = game.channels["ownership_" + agent]
         visibility = game.visibility_channel(ownership)
         visibility_indices = game.channel_to_indices(visibility)
         draw_channel(visibility_indices, c.WHITE)
-        visible_map = np.logical_or(visible_map, visibility) # get all visible cells
+        visible_map = np.logical_or(visible_map, visibility)  # get all visible cells
 
     # draw ownership squares
     for agent in agents:
-        ownership = game.channels['ownership_' + agent]
+        ownership = game.channels["ownership_" + agent]
         ownership_indices = game.channel_to_indices(ownership)
         draw_channel(ownership_indices, c.PLAYER_COLORS[game.agent_id[agent]])
 
@@ -132,14 +139,14 @@ def render_grid(game: game.Game, agents: List[str]):
             c.BLACK,
             (0, i * c.SQUARE_SIZE + grid_offset),
             (window_width, i * c.SQUARE_SIZE + grid_offset),
-            c.LINE_WIDTH
+            c.LINE_WIDTH,
         )
         pygame.draw.line(
             screen,
-            config.BLACK,
+            c.BLACK,
             (i * c.SQUARE_SIZE, grid_offset),
             (i * c.SQUARE_SIZE, window_height),
-            c.LINE_WIDTH
+            c.LINE_WIDTH,
         )
 
     # # draw background as squares
@@ -148,35 +155,44 @@ def render_grid(game: game.Game, agents: List[str]):
     draw_channel(invisible_indices, c.FOG_OF_WAR)
 
     # draw mountain
-    mountain_indices = game.channel_to_indices(game.channels['mountain'])
-    visible_mountain = np.logical_and(game.channels['mountain'], visible_map)
+    mountain_indices = game.channel_to_indices(game.channels["mountain"])
+    visible_mountain = np.logical_and(game.channels["mountain"], visible_map)
     visible_mountain_indices = game.channel_to_indices(visible_mountain)
     draw_channel(visible_mountain_indices, c.VISIBLE_MOUNTAIN)
     draw_images(mountain_indices, MOUNTAIN_IMG)
 
-
     # draw general
-    general_indices = game.channel_to_indices(game.channels['general'])
+    general_indices = game.channel_to_indices(game.channels["general"])
     draw_images(general_indices, GENERAL_IMG)
 
     # draw neutral visible city color
-    visible_cities = np.logical_and(game.channels['city'], visible_map)
-    visible_cities_neutral = np.logical_and(visible_cities, game.channels['ownership_neutral'])
+    visible_cities = np.logical_and(game.channels["city"], visible_map)
+    visible_cities_neutral = np.logical_and(
+        visible_cities, game.channels["ownership_neutral"]
+    )
     visible_cities_neutral_indices = game.channel_to_indices(visible_cities_neutral)
-    draw_channel(visible_cities_neutral_indices, config.NEUTRAL_CASTLE)
+    draw_channel(visible_cities_neutral_indices, c.NEUTRAL_CASTLE)
 
     # draw visible city images
     visible_cities_indices = game.channel_to_indices(visible_cities)
     draw_images(visible_cities_indices, CITY_IMG)
 
     # draw army counts on visibility mask
-    army = game.channels['army'] * visible_map
+    army = game.channels["army"] * visible_map
     visible_army_indices = game.channel_to_indices(army)
     y_offset = 15
     for i, j in visible_army_indices:
-        text = FONT.render(str(int(army[i, j])), True, config.WHITE)
-        x_offset = c.FONT_OFFSETS[min(len(c.FONT_OFFSETS)-1, len(str(int(army[i, j])))-1)]
-        screen.blit(text, (j * config.SQUARE_SIZE + x_offset, i * config.SQUARE_SIZE + y_offset + config.GRID_OFFSET))
+        text = FONT.render(str(int(army[i, j])), True, c.WHITE)
+        x_offset = c.FONT_OFFSETS[
+            min(len(c.FONT_OFFSETS) - 1, len(str(int(army[i, j]))) - 1)
+        ]
+        screen.blit(
+            text,
+            (
+                j * c.SQUARE_SIZE + x_offset,
+                i * c.SQUARE_SIZE + y_offset + grid_offset,
+            ),
+        )
 
 
 def draw_channel(channel: list[Tuple[int, int]], color: Tuple[int, int, int]):
@@ -187,7 +203,7 @@ def draw_channel(channel: list[Tuple[int, int]], color: Tuple[int, int, int]):
         channel: list of tuples with indices of the channel
         color: color of the squares
     """
-    size, offset = config.SQUARE_SIZE, config.GRID_OFFSET
+    size, offset = c.SQUARE_SIZE, grid_offset
     w = c.LINE_WIDTH
     for i, j in channel:
         pygame.draw.rect(
@@ -195,6 +211,7 @@ def draw_channel(channel: list[Tuple[int, int]], color: Tuple[int, int, int]):
             color,
             (j * size + w, i * size + w + offset, size - w, size - w),
         )
+
 
 def draw_images(channel: list[Tuple[int, int]], image):
     """
@@ -205,6 +222,6 @@ def draw_images(channel: list[Tuple[int, int]], image):
         channel: list of tuples with indices of the channel
         image: pygame image object
     """
-    size, offset = config.SQUARE_SIZE, config.GRID_OFFSET
+    size, offset = c.SQUARE_SIZE, grid_offset
     for i, j in channel:
         screen.blit(image, (j * size + 3, i * size + 3 + offset))
