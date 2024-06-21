@@ -1,6 +1,6 @@
 from __future__ import annotations
 from generals.env import generals_v0
-import generals.config as game_config
+import generals.utils
 import warnings
 
 import numpy as np
@@ -141,10 +141,9 @@ def parallel_api_test(par_env: ParallelEnv, num_cycles=1000):
     print("Passed Parallel API test")
 
 if __name__ == "__main__":
-    config = game_config.Config(
-        grid_size=10,
-    )
-    env = generals_v0(config, render_mode="none")
+
+    map = generals.utils.generate_map(10, 0.1, 0.1, 2)
+    env = generals_v0(map, render_mode="none")
     # test the environment with parallel_api_test
     import time
     start = time.time()

@@ -132,10 +132,9 @@ def load_replay(path: str):
     with open(path, "r") as f:
         lines = f.readlines()
         # take rows until first empty line
-        map = np.array(
-            [[int(cell) for cell in row.strip()] for row in lines[: lines.index("\n")]],
-            dtype=np.float32,
-        )
+        rows = lines[: lines.index("\n")]
+        map_string = "".join(rows)
+        map = map_from_string(map_string)
         # after empty line, read actions
         actions = []
         for line in lines[lines.index("\n") + 1 :]:
