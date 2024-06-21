@@ -17,7 +17,7 @@ map = generals.utils.load_map("test_map")
 
 # generate
 map = generals.utils.generate_map(
-    grid_size=4,
+    grid_size=16,
     mountain_density=0.1,
     town_density=0.1,
     n_generals=2,

@@ -26,8 +26,10 @@ def init_screen(agents: List[str], grid_size: int):
 
     screen = pygame.display.set_mode((window_width, window_height))
     clock = pygame.time.Clock()
-    global agent_pov
+
+    global agent_pov, game_speed
     agent_pov = {name: True for name in agents}
+    game_speed = c.GAME_SPEED
 
     global MOUNTAIN_IMG, GENERAL_IMG, CITY_IMG
     MOUNTAIN_IMG = pygame.image.load(str(c.MOUNTAIN_PATH), "png")
@@ -43,7 +45,7 @@ def render(game: game.Game):
     render_grid(game)
     render_gui(game)
     pygame.display.flip()
-    time.sleep(0.1)  # move to constants
+    time.sleep(game_speed)
 
 
 def handle_events(game: game.Game):
@@ -56,10 +58,17 @@ def handle_events(game: game.Game):
             pygame.quit()
             quit()
         if event.type == pygame.KEYDOWN:
+            global game_speed
             # quit game if q is pressed
             if event.key == pygame.K_q:
                 pygame.quit()
                 quit()
+            # speed up game right arrow is pressed
+            if event.key == pygame.K_RIGHT:
+                game_speed = max(1/16, game_speed / 2)
+            # slow down game left arrow is pressed
+            if event.key == pygame.K_LEFT:
+                game_speed = min(1, game_speed * 2)
         if event.type == pygame.MOUSEBUTTONDOWN:
             x, y = pygame.mouse.get_pos()
             for i, agent in enumerate(agents):
@@ -72,6 +81,7 @@ def render_gui(game: game.Game):
     ids = [game.agent_id[name] for name in names]
     army_counts = ["Army"] + [str(game.player_stats[name]["army"]) for name in names]
     land_counts = ["Land"] + [str(game.player_stats[name]["land"]) for name in names]
+    povs = ["POV"] + ["  X" if agent_pov[name] else " " for name in names]
     names = ["Turn"] + [name for name in names]
 
     # white background for GUI
@@ -85,7 +95,7 @@ def render_gui(game: game.Game):
             (
                 0,
                 (i + 1) * c.UI_ROW_HEIGHT,
-                window_width - 2 * c.GUI_CELL_WIDTH,
+                window_width - 3 * c.GUI_CELL_WIDTH,
                 c.UI_ROW_HEIGHT,
             ),
         )
@@ -101,7 +111,7 @@ def render_gui(game: game.Game):
         )
 
     # draw vertical lines cell_width from the end and 2*cell_width from the end
-    for i in range(1, 3):
+    for i in range(1, 4):
         pygame.draw.line(
             screen,
             c.BLACK,
@@ -111,6 +121,9 @@ def render_gui(game: game.Game):
         )
 
     # write live statistics
+    speed = "Paused" if game_speed == 0 else str(1/(2*game_speed)) + "x"
+    text = FONT.render(f"Game speed: {speed}", True, c.BLACK)
+    screen.blit(text, (150, 15))
     for i in range(len(ids) + 1):
         if i == 0:
             turn = str(game.time // 2) + ("." if game.time % 2 == 1 else "")
@@ -123,6 +136,8 @@ def render_gui(game: game.Game):
         screen.blit(text, (window_width - 2 * c.GUI_CELL_WIDTH + 25, top_offset))
         text = FONT.render(land_counts[i], True, c.BLACK)
         screen.blit(text, (window_width - c.GUI_CELL_WIDTH + 25, top_offset))
+        text = FONT.render(povs[i], True, c.BLACK)
+        screen.blit(text, (window_width - 3 * c.GUI_CELL_WIDTH + 25, top_offset))
 
 
 def render_grid(game: game.Game):

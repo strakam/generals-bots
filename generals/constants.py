@@ -21,6 +21,7 @@ RIGHT: List[int] = [0, 1]
 # Game constants #
 ##################
 INCREMENT_RATE: int = 50
+GAME_SPEED: float = 0.5
 
 ########################
 # Grid visual settings #
