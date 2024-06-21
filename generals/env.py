@@ -1,7 +1,6 @@
 import numpy as np
 import functools
 from copy import copy
-import time
 
 
 import pettingzoo
@@ -36,7 +35,7 @@ class Generals(pettingzoo.ParallelEnv):
 
         if render_mode == "human":
             rendering.init_screen(
-                n_players=len(self.agents),
+                agents=self.agents,
                 grid_size=self.map.shape[0],
             )
 
@@ -52,11 +51,7 @@ class Generals(pettingzoo.ParallelEnv):
 
     def render(self):
         if self.render_mode == "human":
-            rendering.handle_events()
-            rendering.render_grid(self.game, self.agents)
-            rendering.render_gui(self.game, self.agents)
-            rendering.pygame.display.flip()
-            time.sleep(0.1)  # move to constants
+            rendering.render(self.game)
 
     def reset(self, seed=None, options={}):
         self.agents = copy(self.possible_agents)

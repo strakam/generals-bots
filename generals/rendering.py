@@ -1,12 +1,13 @@
 import numpy as np
 import pygame
+import time
 from . import game
 from . import constants as c
 
 from typing import Tuple, List
 
 
-def init_screen(n_players: int, grid_size: int):
+def init_screen(agents: List[str], grid_size: int):
     """
     Initialize pygame window
 
@@ -18,13 +19,15 @@ def init_screen(n_players: int, grid_size: int):
 
     global screen, clock, _grid_size, window_width, window_height, grid_offset
     _grid_size = grid_size
-    grid_offset = c.UI_ROW_HEIGHT * (n_players + 1)
-    # TODO: remove constants 
+    grid_offset = c.UI_ROW_HEIGHT * (len(agents) + 1)
+    # TODO: remove constants
     window_width = max(400, c.SQUARE_SIZE * grid_size)
     window_height = max(400, c.SQUARE_SIZE * grid_size + grid_offset)
 
     screen = pygame.display.set_mode((window_width, window_height))
     clock = pygame.time.Clock()
+    global agent_pov
+    agent_pov = {name: True for name in agents}
 
     global MOUNTAIN_IMG, GENERAL_IMG, CITY_IMG
     MOUNTAIN_IMG = pygame.image.load(str(c.MOUNTAIN_PATH), "png")
@@ -35,10 +38,19 @@ def init_screen(n_players: int, grid_size: int):
     FONT = pygame.font.Font(c.FONT_PATH, c.FONT_SIZE)
 
 
-def handle_events():
+def render(game: game.Game):
+    handle_events(game)
+    render_grid(game)
+    render_gui(game)
+    pygame.display.flip()
+    time.sleep(0.1)  # move to constants
+
+
+def handle_events(game: game.Game):
     """
     Handle pygame events
     """
+    agents = game.agents
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
@@ -48,9 +60,15 @@ def handle_events():
             if event.key == pygame.K_q:
                 pygame.quit()
                 quit()
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            x, y = pygame.mouse.get_pos()
+            for i, agent in enumerate(agents):
+                if y < c.UI_ROW_HEIGHT * (i + 2) and y > c.UI_ROW_HEIGHT * (i+1):
+                    agent_pov[agent] = not agent_pov[agent]
 
 
-def render_gui(game: game.Game, names: List[str]):
+def render_gui(game: game.Game):
+    names = game.agents
     ids = [game.agent_id[name] for name in names]
     army_counts = ["Army"] + [str(game.player_stats[name]["army"]) for name in names]
     land_counts = ["Land"] + [str(game.player_stats[name]["land"]) for name in names]
@@ -107,7 +125,7 @@ def render_gui(game: game.Game, names: List[str]):
         screen.blit(text, (window_width - c.GUI_CELL_WIDTH + 25, top_offset))
 
 
-def render_grid(game: game.Game, agents: List[str]):
+def render_grid(game: game.Game):
     """
     Render grid part of the game.
 
@@ -115,9 +133,12 @@ def render_grid(game: game.Game, agents: List[str]):
         game: Game object
         agent_ids: list of agent ids from which perspective the game is rendered
     """
+    agents = game.agents
     # draw visibility squares
     visible_map = np.zeros((_grid_size, _grid_size), dtype=np.float32)
     for agent in agents:
+        if not agent_pov[agent]:
+            continue
         ownership = game.channels["ownership_" + agent]
         visibility = game.visibility_channel(ownership)
         visibility_indices = game.channel_to_indices(visibility)
@@ -160,8 +181,11 @@ def render_grid(game: game.Game, agents: List[str]):
     draw_images(mountain_indices, MOUNTAIN_IMG)
 
     # draw general
-    general_indices = game.channel_to_indices(game.channels["general"])
-    draw_images(general_indices, GENERAL_IMG)
+    for agent, pov in agent_pov.items():
+        if pov:
+            agent_general = np.logical_and(game.channels[f'ownership_{agent}'], game.channels["general"])
+            general_indices = game.channel_to_indices(agent_general)
+            draw_images(general_indices, GENERAL_IMG)
 
     # draw neutral visible city color
     visible_cities = np.logical_and(game.channels["city"], visible_map)
