@@ -65,7 +65,7 @@ def handle_events(game: game.Game):
                 quit()
             # speed up game right arrow is pressed
             if event.key == pygame.K_RIGHT:
-                game_speed = max(1/16, game_speed / 2)
+                game_speed = max(1/2**12, game_speed / 2)
             # slow down game left arrow is pressed
             if event.key == pygame.K_LEFT:
                 game_speed = min(1, game_speed * 2)
