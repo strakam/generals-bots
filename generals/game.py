@@ -13,7 +13,6 @@ class Game:
         self.agents = agents
         self.agent_id = {agent: i for i, agent in enumerate(agents)}
         self.time = 0
-        self.turn = 0
 
         spatial_dim = (map.shape[0], map.shape[1])
         self.map = map

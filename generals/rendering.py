@@ -1,10 +1,8 @@
 import numpy as np
 import pygame
 import time
-import asyncio
 from . import game
 from . import constants as c
-import threading
 
 from typing import Tuple, List
 
@@ -23,8 +21,10 @@ class Renderer:
         self.grid_size = grid_size
         self.grid_offset = c.UI_ROW_HEIGHT * (len(agents) + 1)
         # TODO: remove constants
-        self.window_width = max(400, c.SQUARE_SIZE * grid_size)
-        self.window_height = max(400, c.SQUARE_SIZE * grid_size + self.grid_offset)
+        self.window_width = max(c.MINIMUM_WINDOW_SIZE, c.SQUARE_SIZE * grid_size)
+        self.window_height = max(
+            c.MINIMUM_WINDOW_SIZE, c.SQUARE_SIZE * grid_size + self.grid_offset
+        )
 
         self.screen = pygame.display.set_mode((self.window_width, self.window_height))
         self.clock = pygame.time.Clock()
@@ -38,17 +38,12 @@ class Renderer:
 
         self._font = pygame.font.Font(c.FONT_PATH, c.FONT_SIZE)
 
-
     def render(self, game: game.Game):
         self.handle_events(game)
         self.render_grid(game)
         self.render_gui(game)
         pygame.display.flip()
         time.sleep(self.game_speed)
-
-
-    def update(self, game: game.Game):
-        self.game = game
 
     def handle_events(self, game: game.Game):
         """
@@ -72,7 +67,7 @@ class Renderer:
                 if event.key == pygame.K_LEFT:
                     self.game_speed = min(1, self.game_speed * 2)
             if event.type == pygame.MOUSEBUTTONDOWN:
-                x, y = pygame.mouse.get_pos()
+                _, y = pygame.mouse.get_pos()
                 for i, agent in enumerate(agents):
                     if y < c.UI_ROW_HEIGHT * (i + 2) and y > c.UI_ROW_HEIGHT * (i + 1):
                         self.agent_pov[agent] = not self.agent_pov[agent]
@@ -139,19 +134,20 @@ class Renderer:
                 text = self._font.render(f"{names[i]}: {turn}", True, c.BLACK)
             else:
                 text = self._font.render(f"{names[i]}", True, c.BLACK)
-            top_offset = i * c.UI_ROW_HEIGHT + 15
-            self.screen.blit(text, (10, top_offset))
+            y_offset = i * c.UI_ROW_HEIGHT + 15
+            x_offset = 27
+            self.screen.blit(text, (10, y_offset))
             text = self._font.render(army_counts[i], True, c.BLACK)
             self.screen.blit(
-                text, (self.window_width - 2 * c.GUI_CELL_WIDTH + 25, top_offset)
+                text, (self.window_width - 2 * c.GUI_CELL_WIDTH + x_offset, y_offset)
             )
             text = self._font.render(land_counts[i], True, c.BLACK)
             self.screen.blit(
-                text, (self.window_width - c.GUI_CELL_WIDTH + 25, top_offset)
+                text, (self.window_width - c.GUI_CELL_WIDTH + x_offset, y_offset)
             )
             text = self._font.render(povs[i], True, c.BLACK)
             self.screen.blit(
-                text, (self.window_width - 3 * c.GUI_CELL_WIDTH + 25, top_offset)
+                text, (self.window_width - 3 * c.GUI_CELL_WIDTH + x_offset, y_offset)
             )
 
     def render_grid(self, game: game.Game):
@@ -214,9 +210,7 @@ class Renderer:
         self.draw_images(mountain_indices, self._mountain_img)
 
         # Draw invisible cities as mountains
-        invisible_cities = np.logical_and(
-            game.channels["city"], invisible_map
-        )
+        invisible_cities = np.logical_and(game.channels["city"], invisible_map)
         invisible_cities_indices = game.channel_to_indices(invisible_cities)
         self.draw_images(invisible_cities_indices, self._mountain_img)
 
