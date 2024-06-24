@@ -1,8 +1,10 @@
 import numpy as np
 import pygame
 import time
+import asyncio
 from . import game
 from . import constants as c
+import threading
 
 from typing import Tuple, List
 
@@ -36,12 +38,17 @@ class Renderer:
 
         self._font = pygame.font.Font(c.FONT_PATH, c.FONT_SIZE)
 
+
     def render(self, game: game.Game):
         self.handle_events(game)
         self.render_grid(game)
         self.render_gui(game)
         pygame.display.flip()
         time.sleep(self.game_speed)
+
+
+    def update(self, game: game.Game):
+        self.game = game
 
     def handle_events(self, game: game.Game):
         """
@@ -197,12 +204,21 @@ class Renderer:
         invisible_indices = game.channel_to_indices(invisible_map)
         self.draw_channel(invisible_indices, c.FOG_OF_WAR)
 
-        # draw mountain
-        mountain_indices = game.channel_to_indices(game.channels["mountain"])
+        # Draw different color for visible mountains
         visible_mountain = np.logical_and(game.channels["mountain"], visible_map)
         visible_mountain_indices = game.channel_to_indices(visible_mountain)
         self.draw_channel(visible_mountain_indices, c.VISIBLE_MOUNTAIN)
+
+        # Draw mountain image everywhere it is
+        mountain_indices = game.channel_to_indices(game.channels["mountain"])
         self.draw_images(mountain_indices, self._mountain_img)
+
+        # Draw invisible cities as mountains
+        invisible_cities = np.logical_and(
+            game.channels["city"], invisible_map
+        )
+        invisible_cities_indices = game.channel_to_indices(invisible_cities)
+        self.draw_images(invisible_cities_indices, self._mountain_img)
 
         # draw general
         for agent, pov in self.agent_pov.items():

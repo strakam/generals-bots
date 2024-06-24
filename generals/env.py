@@ -1,6 +1,8 @@
 import numpy as np
 import functools
 from copy import copy
+import asyncio
+import pygame
 
 
 import pettingzoo
@@ -73,7 +75,6 @@ class Generals(pettingzoo.ParallelEnv):
 
     def step(self, actions):
         observations, rewards, terminated, truncated, infos = self.game.step(actions)
-
         if self.replay:
             self.action_history.append(actions)
 
@@ -89,4 +90,4 @@ class Generals(pettingzoo.ParallelEnv):
         return observations, rewards, terminated, truncated, infos
 
     def close(self):
-        self.rendering.pygame.quit()
+        pygame.quit()
