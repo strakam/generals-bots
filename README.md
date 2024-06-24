@@ -31,5 +31,5 @@ make t_replay
 
 ## Controls
 - `q` — quit/close the game
-- `Left/Right arrow` — increase/decrease the game speed
-- `Button` click on the player's row — toggle the FOV (Field Of View) of the given player
+- `←/→` — increase/decrease the game speed
+- `Mouse` click on the player's row — toggle the FOV (Field Of View) of the given player
