@@ -7,8 +7,7 @@ from . import constants as c
 from typing import Tuple, List
 
 
-
-class Renderer():
+class Renderer:
     def __init__(self, agents: List[str], grid_size: int):
         """
         Initialize pygame window
@@ -19,36 +18,30 @@ class Renderer():
         pygame.init()
         pygame.display.set_caption("Generals")
 
-        global screen, clock, _grid_size, window_width, window_height, grid_offset
-        _grid_size = grid_size
-        grid_offset = c.UI_ROW_HEIGHT * (len(agents) + 1)
+        self.grid_size = grid_size
+        self.grid_offset = c.UI_ROW_HEIGHT * (len(agents) + 1)
         # TODO: remove constants
-        window_width = max(400, c.SQUARE_SIZE * grid_size)
-        window_height = max(400, c.SQUARE_SIZE * grid_size + grid_offset)
+        self.window_width = max(400, c.SQUARE_SIZE * grid_size)
+        self.window_height = max(400, c.SQUARE_SIZE * grid_size + self.grid_offset)
 
-        screen = pygame.display.set_mode((window_width, window_height))
-        clock = pygame.time.Clock()
+        self.screen = pygame.display.set_mode((self.window_width, self.window_height))
+        self.clock = pygame.time.Clock()
 
-        global agent_pov, game_speed
-        agent_pov = {name: True for name in agents}
-        game_speed = c.GAME_SPEED
+        self.agent_pov = {name: True for name in agents}
+        self.game_speed = c.GAME_SPEED
 
-        global MOUNTAIN_IMG, GENERAL_IMG, CITY_IMG
-        MOUNTAIN_IMG = pygame.image.load(str(c.MOUNTAIN_PATH), "png")
-        GENERAL_IMG = pygame.image.load(str(c.GENERAL_PATH), "png")
-        CITY_IMG = pygame.image.load(str(c.CITY_PATH), "png")
+        self._mountain_img = pygame.image.load(str(c.MOUNTAIN_PATH), "png")
+        self._general_img = pygame.image.load(str(c.GENERAL_PATH), "png")
+        self._city_img = pygame.image.load(str(c.CITY_PATH), "png")
 
-        global FONT
-        FONT = pygame.font.Font(c.FONT_PATH, c.FONT_SIZE)
-
+        self._font = pygame.font.Font(c.FONT_PATH, c.FONT_SIZE)
 
     def render(self, game: game.Game):
         self.handle_events(game)
         self.render_grid(game)
         self.render_gui(game)
         pygame.display.flip()
-        time.sleep(game_speed)
-
+        time.sleep(self.game_speed)
 
     def handle_events(self, game: game.Game):
         """
@@ -67,37 +60,42 @@ class Renderer():
                     quit()
                 # speed up game right arrow is pressed
                 if event.key == pygame.K_RIGHT:
-                    game_speed = max(1/2**12, game_speed / 2)
+                    self.game_speed = max(1 / 2**12, self.game_speed / 2)
                 # slow down game left arrow is pressed
                 if event.key == pygame.K_LEFT:
-                    game_speed = min(1, game_speed * 2)
+                    self.game_speed = min(1, self.game_speed * 2)
             if event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = pygame.mouse.get_pos()
                 for i, agent in enumerate(agents):
-                    if y < c.UI_ROW_HEIGHT * (i + 2) and y > c.UI_ROW_HEIGHT * (i+1):
-                        agent_pov[agent] = not agent_pov[agent]
-
+                    if y < c.UI_ROW_HEIGHT * (i + 2) and y > c.UI_ROW_HEIGHT * (i + 1):
+                        self.agent_pov[agent] = not self.agent_pov[agent]
 
     def render_gui(self, game: game.Game):
         names = game.agents
         ids = [game.agent_id[name] for name in names]
-        army_counts = ["Army"] + [str(game.player_stats[name]["army"]) for name in names]
-        land_counts = ["Land"] + [str(game.player_stats[name]["land"]) for name in names]
-        povs = ["POV"] + ["  X" if agent_pov[name] else " " for name in names]
+        army_counts = ["Army"] + [
+            str(game.player_stats[name]["army"]) for name in names
+        ]
+        land_counts = ["Land"] + [
+            str(game.player_stats[name]["land"]) for name in names
+        ]
+        povs = ["POV"] + ["  X" if self.agent_pov[name] else " " for name in names]
         names = ["Turn"] + [name for name in names]
 
         # white background for GUI
-        pygame.draw.rect(screen, c.WHITE, (0, 0, window_width, grid_offset))
+        pygame.draw.rect(
+            self.screen, c.WHITE, (0, 0, self.window_width, self.grid_offset)
+        )
 
         # draw rows with player colors
         for i, agent_id in enumerate(ids):
             pygame.draw.rect(
-                screen,
+                self.screen,
                 c.PLAYER_COLORS[agent_id],
                 (
                     0,
                     (i + 1) * c.UI_ROW_HEIGHT,
-                    window_width - 3 * c.GUI_CELL_WIDTH,
+                    self.window_width - 3 * c.GUI_CELL_WIDTH,
                     c.UI_ROW_HEIGHT,
                 ),
             )
@@ -105,42 +103,49 @@ class Renderer():
         # draw lines between rows
         for i in range(1, 3):
             pygame.draw.line(
-                screen,
+                self.screen,
                 c.BLACK,
                 (0, i * c.UI_ROW_HEIGHT),
-                (window_width, i * c.UI_ROW_HEIGHT),
+                (self.window_width, i * c.UI_ROW_HEIGHT),
                 c.LINE_WIDTH,
             )
 
         # draw vertical lines cell_width from the end and 2*cell_width from the end
         for i in range(1, 4):
             pygame.draw.line(
-                screen,
+                self.screen,
                 c.BLACK,
-                (window_width - i * c.GUI_CELL_WIDTH, 0),
-                (window_width - i * c.GUI_CELL_WIDTH, grid_offset),
+                (self.window_width - i * c.GUI_CELL_WIDTH, 0),
+                (self.window_width - i * c.GUI_CELL_WIDTH, self.grid_offset),
                 c.LINE_WIDTH,
             )
 
         # write live statistics
-        speed = "Paused" if game_speed == 0 else str(1/(2*game_speed)) + "x"
-        text = FONT.render(f"Game speed: {speed}", True, c.BLACK)
-        screen.blit(text, (150, 15))
+        speed = (
+            "Paused" if self.game_speed == 0 else str(1 / (2 * self.game_speed)) + "x"
+        )
+        text = self._font.render(f"Game speed: {speed}", True, c.BLACK)
+        self.screen.blit(text, (150, 15))
         for i in range(len(ids) + 1):
             if i == 0:
                 turn = str(game.time // 2) + ("." if game.time % 2 == 1 else "")
-                text = FONT.render(f"{names[i]}: {turn}", True, c.BLACK)
+                text = self._font.render(f"{names[i]}: {turn}", True, c.BLACK)
             else:
-                text = FONT.render(f"{names[i]}", True, c.BLACK)
+                text = self._font.render(f"{names[i]}", True, c.BLACK)
             top_offset = i * c.UI_ROW_HEIGHT + 15
-            screen.blit(text, (10, top_offset))
-            text = FONT.render(army_counts[i], True, c.BLACK)
-            screen.blit(text, (window_width - 2 * c.GUI_CELL_WIDTH + 25, top_offset))
-            text = FONT.render(land_counts[i], True, c.BLACK)
-            screen.blit(text, (window_width - c.GUI_CELL_WIDTH + 25, top_offset))
-            text = FONT.render(povs[i], True, c.BLACK)
-            screen.blit(text, (window_width - 3 * c.GUI_CELL_WIDTH + 25, top_offset))
-
+            self.screen.blit(text, (10, top_offset))
+            text = self._font.render(army_counts[i], True, c.BLACK)
+            self.screen.blit(
+                text, (self.window_width - 2 * c.GUI_CELL_WIDTH + 25, top_offset)
+            )
+            text = self._font.render(land_counts[i], True, c.BLACK)
+            self.screen.blit(
+                text, (self.window_width - c.GUI_CELL_WIDTH + 25, top_offset)
+            )
+            text = self._font.render(povs[i], True, c.BLACK)
+            self.screen.blit(
+                text, (self.window_width - 3 * c.GUI_CELL_WIDTH + 25, top_offset)
+            )
 
     def render_grid(self, game: game.Game):
         """
@@ -152,15 +157,17 @@ class Renderer():
         """
         agents = game.agents
         # draw visibility squares
-        visible_map = np.zeros((_grid_size, _grid_size), dtype=np.float32)
+        visible_map = np.zeros((self.grid_size, self.grid_size), dtype=np.float32)
         for agent in agents:
-            if not agent_pov[agent]:
+            if not self.agent_pov[agent]:
                 continue
             ownership = game.channels["ownership_" + agent]
             visibility = game.visibility_channel(ownership)
             visibility_indices = game.channel_to_indices(visibility)
             self.draw_channel(visibility_indices, c.WHITE)
-            visible_map = np.logical_or(visible_map, visibility)  # get all visible cells
+            visible_map = np.logical_or(
+                visible_map, visibility
+            )  # get all visible cells
 
         # draw ownership squares
         for agent in agents:
@@ -169,19 +176,19 @@ class Renderer():
             self.draw_channel(ownership_indices, c.PLAYER_COLORS[game.agent_id[agent]])
 
         # draw lines
-        for i in range(1, _grid_size):
+        for i in range(1, self.grid_size):
             pygame.draw.line(
-                screen,
+                self.screen,
                 c.BLACK,
-                (0, i * c.SQUARE_SIZE + grid_offset),
-                (window_width, i * c.SQUARE_SIZE + grid_offset),
+                (0, i * c.SQUARE_SIZE + self.grid_offset),
+                (self.window_width, i * c.SQUARE_SIZE + self.grid_offset),
                 c.LINE_WIDTH,
             )
             pygame.draw.line(
-                screen,
+                self.screen,
                 c.BLACK,
-                (i * c.SQUARE_SIZE, grid_offset),
-                (i * c.SQUARE_SIZE, window_height),
+                (i * c.SQUARE_SIZE, self.grid_offset),
+                (i * c.SQUARE_SIZE, self.window_height),
                 c.LINE_WIDTH,
             )
 
@@ -195,14 +202,16 @@ class Renderer():
         visible_mountain = np.logical_and(game.channels["mountain"], visible_map)
         visible_mountain_indices = game.channel_to_indices(visible_mountain)
         self.draw_channel(visible_mountain_indices, c.VISIBLE_MOUNTAIN)
-        self.draw_images(mountain_indices, MOUNTAIN_IMG)
+        self.draw_images(mountain_indices, self._mountain_img)
 
         # draw general
-        for agent, pov in agent_pov.items():
+        for agent, pov in self.agent_pov.items():
             if pov:
-                agent_general = np.logical_and(game.channels[f'ownership_{agent}'], game.channels["general"])
+                agent_general = np.logical_and(
+                    game.channels[f"ownership_{agent}"], game.channels["general"]
+                )
                 general_indices = game.channel_to_indices(agent_general)
-                self.draw_images(general_indices, GENERAL_IMG)
+                self.draw_images(general_indices, self._general_img)
 
         # draw neutral visible city color
         visible_cities = np.logical_and(game.channels["city"], visible_map)
@@ -214,53 +223,51 @@ class Renderer():
 
         # draw visible city images
         visible_cities_indices = game.channel_to_indices(visible_cities)
-        self.draw_images(visible_cities_indices, CITY_IMG)
+        self.draw_images(visible_cities_indices, self._city_img)
 
         # draw army counts on visibility mask
         army = game.channels["army"] * visible_map
         visible_army_indices = game.channel_to_indices(army)
         y_offset = 15
         for i, j in visible_army_indices:
-            text = FONT.render(str(int(army[i, j])), True, c.WHITE)
+            text = self._font.render(str(int(army[i, j])), True, c.WHITE)
             x_offset = c.FONT_OFFSETS[
                 min(len(c.FONT_OFFSETS) - 1, len(str(int(army[i, j]))) - 1)
             ]
-            screen.blit(
+            self.screen.blit(
                 text,
                 (
                     j * c.SQUARE_SIZE + x_offset,
-                    i * c.SQUARE_SIZE + y_offset + grid_offset,
+                    i * c.SQUARE_SIZE + y_offset + self.grid_offset,
                 ),
             )
 
-
     def draw_channel(self, channel: list[Tuple[int, int]], color: Tuple[int, int, int]):
         """
-        Draw channel squares on the screen
+        Draw channel squares on the self.screen
 
         Args:
             channel: list of tuples with indices of the channel
             color: color of the squares
         """
-        size, offset = c.SQUARE_SIZE, grid_offset
+        size, offset = c.SQUARE_SIZE, self.grid_offset
         w = c.LINE_WIDTH
         for i, j in channel:
             pygame.draw.rect(
-                screen,
+                self.screen,
                 color,
                 (j * size + w, i * size + w + offset, size - w, size - w),
             )
 
-
     def draw_images(self, channel: list[Tuple[int, int]], image):
         """
-        Draw images on the screen
+        Draw images on the self.screen
 
         Args:
-            screen: pygame screen object
+            self.screen: pygame self.screen object
             channel: list of tuples with indices of the channel
             image: pygame image object
         """
-        size, offset = c.SQUARE_SIZE, grid_offset
+        size, offset = c.SQUARE_SIZE, self.grid_offset
         for i, j in channel:
-            screen.blit(image, (j * size + 3, i * size + 3 + offset))
+            self.screen.blit(image, (j * size + 3, i * size + 3 + offset))
