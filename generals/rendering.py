@@ -217,8 +217,11 @@ class Renderer:
         # draw general
         for agent, pov in self.agent_pov.items():
             if pov:
+                visible_squares = game.visibility_channel(
+                    game.channels["ownership_" + agent]
+                )
                 agent_general = np.logical_and(
-                    game.channels[f"ownership_{agent}"], game.channels["general"]
+                    visible_squares, game.channels["general"]
                 )
                 general_indices = game.channel_to_indices(agent_general)
                 self.draw_images(general_indices, self._general_img)
