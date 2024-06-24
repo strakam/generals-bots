@@ -7,7 +7,8 @@ import pettingzoo
 
 from typing import List
 
-from . import game, rendering, utils
+from . import game, utils
+from .rendering import Renderer
 
 
 def generals_v0(map: np.ndarray, render_mode="human"):
@@ -34,7 +35,7 @@ class Generals(pettingzoo.ParallelEnv):
         self.possible_agents = self.agents[:]
 
         if render_mode == "human":
-            rendering.init_screen(
+            self.renderer = Renderer(
                 agents=self.agents,
                 grid_size=self.map.shape[0],
             )
@@ -51,7 +52,7 @@ class Generals(pettingzoo.ParallelEnv):
 
     def render(self):
         if self.render_mode == "human":
-            rendering.render(self.game)
+            self.renderer.render(self.game)
 
     def reset(self, seed=None, options={}):
         self.agents = copy(self.possible_agents)
@@ -88,4 +89,4 @@ class Generals(pettingzoo.ParallelEnv):
         return observations, rewards, terminated, truncated, infos
 
     def close(self):
-        rendering.pygame.quit()
+        self.rendering.pygame.quit()
