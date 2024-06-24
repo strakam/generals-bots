@@ -4,10 +4,11 @@ from importlib.resources import files
 #################
 # Game Literals #
 #################
-PASSABLE: Literal[0] = 0
-MOUNTAIN: Literal[1] = 1
-CITY: Literal[2] = 2
-GENERAL: Literal[3] = 3
+PASSABLE: Literal[0] = '.'
+MOUNTAIN: Literal[1] = '#'
+# CITY can be any digit 0-9
+CITY: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9] = 0
+GENERAL: Literal['A'] = 'A'
 
 #########
 # Moves #
@@ -30,7 +31,7 @@ SQUARE_SIZE: int = 50
 UI_ROW_HEIGHT: int = 50
 LINE_WIDTH: int = 1
 GUI_CELL_WIDTH: int = 100
-MINIMUM_WINDOW_SIZE: int = 400
+MINIMUM_WINDOW_SIZE: int = 700
 
 ##########
 # Colors #

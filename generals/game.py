@@ -19,7 +19,7 @@ class Game:
         self.grid_size = spatial_dim[0]  # works only for square maps now
 
         self.general_positions = {
-            agent: np.argwhere(map == GENERAL + self.agent_id[agent])[0]
+            agent: np.argwhere(map == chr(ord(GENERAL) + self.agent_id[agent]))[0]
             for agent in self.agents
         }
 
@@ -31,15 +31,17 @@ class Game:
         # Passable - passable mask (1 if cell is passable, 0 otherwise)
         # Ownership_i - ownership mask for player i (1 if player i owns cell, 0 otherwise)
         # Ownerhsip_0 - ownership mask for neutral cells that are passable (1 if cell is neutral, 0 otherwise)
+        # np where to use if map is in 'A-Z' 
+        valid_generals = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
         self.channels = {
-            "army": np.where(map >= GENERAL, 1, 0).astype(np.float32),
-            "general": np.where(map >= GENERAL, 1, 0).astype(np.float32),
+            "army": np.where(np.isin(map, valid_generals), 1, 0).astype(np.float32),
+            "general": np.where(np.isin(map, valid_generals), 1, 0).astype(np.float32),
             "mountain": np.where(map == MOUNTAIN, 1, 0).astype(np.float32),
-            "city": np.where(map == CITY, 1, 0).astype(np.float32),
+            "city": np.where(np.char.isdigit(map), 1, 0).astype(np.float32),
             "passable": (map != MOUNTAIN).astype(np.float32),
-            "ownership_neutral": ((map == PASSABLE) | (map == CITY)).astype(np.float32),
+            "ownership_neutral": ((map == PASSABLE) | (np.char.isdigit(map))).astype(np.float32),
             **{
-                f"ownership_{agent}": np.where(map == GENERAL + id, 1, 0).astype(
+                f"ownership_{agent}": np.where(map == chr(ord(GENERAL) + id), 1, 0).astype(
                     np.float32
                 )
                 for id, agent in enumerate(self.agents)
@@ -47,8 +49,9 @@ class Game:
         }
 
         # initialize city costs (constant for now)
-        self.city_costs = 40
-        self.channels["army"] += self.city_costs * self.channels["city"]
+        base_cost = 40
+        city_costs = np.where(np.char.isdigit(map), map, 0).astype(np.float32)
+        self.channels["army"] += base_cost * self.channels["city"] + city_costs
 
         # Public statistics about players
         self.player_stats = {

@@ -3,26 +3,26 @@ from generals.env import generals_v0
 import generals.utils
 
 # by hand
-map_string = """
-0001
-1003
-2001
-0104
+map_string = \
 """
-
+...#
+#..A
+2..#
+.#.B
+"""
 map = generals.utils.map_from_string(map_string)
 
 # from file
 map = generals.utils.load_map("test_map")
 
 # generate
-map = generals.utils.generate_map(
-    grid_size=16,
-    mountain_density=0.1,
-    town_density=0.1,
-    n_generals=2,
-    general_positions=None,
-)
+# map = generals.utils.generate_map(
+#     grid_size=16,
+#     mountain_density=0.2,
+#     town_density=0.05,
+#     n_generals=2,
+#     general_positions=None,
+# )
 
 env = generals_v0(map)
 o, i, = env.reset(seed=42, options={"replay": "test"})

@@ -381,6 +381,8 @@ def test_game_step():
         [1, 1, 0, 0],
         [0, 0, 5, 9],
     ], dtype=np.float32)
+    print(game.channels['army'])
+    print(reference_army)
     assert (game.channels['army'] == reference_army).all()
 
     reference_ownership_red = np.array([

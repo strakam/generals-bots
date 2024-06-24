@@ -7,17 +7,22 @@ from typing import List, Dict, Tuple
 
 def generate_map(
     grid_size: int = 10,
-    mountain_density: float = 0.1,
-    town_density: float = 0.1,
+    mountain_density: float = 0.2,
+    town_density: float = 0.05,
     n_generals: int = 2,
     general_positions: List[Tuple[int, int]] = None,
 ) -> np.ndarray:
     spatial_dim = (grid_size, grid_size)
     p_neutral = 1 - mountain_density - town_density
-    probs = [p_neutral, mountain_density, town_density]
+    probs = [p_neutral, mountain_density] + [town_density / 10] * 10
     map = np.random.choice(
-        [PASSABLE, MOUNTAIN, CITY], size=spatial_dim, p=probs
-    ).astype(np.float32)
+        [PASSABLE, MOUNTAIN, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9], size=spatial_dim, p=probs
+    )
+    # print(mountain_density, town_density, n_generals)
+    # print(f'Grid size is {grid_size**2}')
+    # print(f'Number of towns is {np.sum(map == CITY)} which is {np.sum(map == CITY) / grid_size**2 * 100}%')
+    # print(f'Number of mountains is {np.sum(map == MOUNTAIN)} which is {np.sum(map == MOUNTAIN) / grid_size**2 * 100}%')
+
 
     # place generals on random squares
     if general_positions is None:
@@ -26,7 +31,8 @@ def generate_map(
         )
 
     for i, idx in enumerate(general_positions):
-        map[idx[0], idx[1]] = GENERAL + i
+        # convert 'A'
+        map[idx[0], idx[1]] = chr(ord('A') + i)
 
     # generate until valid map
     return (
@@ -44,12 +50,7 @@ def map_from_string(map_str: str) -> np.ndarray:
         map_str: str
     """
     map_list = map_str.strip().split("\n")
-    map = np.array([list(row) for row in map_list]).astype(np.float32)
-    validity = validate_map(map)
-    if not validity:
-        raise ValueError(
-            "The map is invalid, because generals are separated by mountains"
-        )
+    map = np.array([list(row) for row in map_list])
     return map
 
 
@@ -66,7 +67,7 @@ def load_map(map_name: str) -> np.ndarray:
     try:
         file_ref = str(files("generals.maps") / map_name)
         with open(file_ref, "r") as f:
-            map = np.array([list(line.strip()) for line in f]).astype(np.float32)
+            map = np.array([list(line.strip()) for line in f])
             validity = validate_map(map)
             if not validity:
                 raise ValueError(
@@ -77,7 +78,7 @@ def load_map(map_name: str) -> np.ndarray:
         raise ValueError("Invalid map format or shape")
 
 
-def validate_map(map: np.ndarray) -> bool:
+def validate_map(map: str) -> bool:
     """
     Validate map layout.
     WORKS ONLY FOR 2 GENERALS (for now)
@@ -100,7 +101,7 @@ def validate_map(map: np.ndarray) -> bool:
             new_square = (i + di, j + dj)
             dfs(map, visited, new_square)
 
-    generals = np.argwhere(np.isin(map, [3, 4]))  # hardcoded for now
+    generals = np.argwhere(np.isin(map, ['A', 'B']))  # hardcoded for now
     start, end = generals[0], generals[1]
     visited = np.zeros_like(map, dtype=bool)
     dfs(map, visited, start)
@@ -114,7 +115,7 @@ def store_replay(
 ):
     print(f"Storing replay {name}")
     with open(name, "w") as f:
-        map = "\n".join(["".join([str(int(cell)) for cell in row]) for row in map])
+        map = "\n".join(["".join([cell for cell in row]) for row in map])
         f.write(f"{map}\n\n")
         for player_action in action_sequence:
             # action shouldnt be printed with brackets
