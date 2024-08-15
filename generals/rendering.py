@@ -53,7 +53,6 @@ class Renderer:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
-                quit()
             if event.type == pygame.KEYDOWN:
                 global game_speed
                 # quit game if q is pressed
