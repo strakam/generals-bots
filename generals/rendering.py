@@ -1,6 +1,5 @@
 import numpy as np
 import pygame
-import time
 from . import game
 from . import constants as c
 
@@ -20,7 +19,6 @@ class Renderer:
 
         self.grid_size = grid_size
         self.grid_offset = c.UI_ROW_HEIGHT * (len(agents) + 1)
-        # TODO: remove constants
         self.window_width = max(c.MINIMUM_WINDOW_SIZE, c.SQUARE_SIZE * grid_size)
         self.window_height = max(
             c.MINIMUM_WINDOW_SIZE, c.SQUARE_SIZE * grid_size + self.grid_offset
@@ -43,7 +41,6 @@ class Renderer:
         self.render_grid(game)
         self.render_gui(game)
         pygame.display.flip()
-        time.sleep(self.game_speed)
 
     def handle_events(self, game: game.Game):
         """

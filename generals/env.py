@@ -1,7 +1,6 @@
 import numpy as np
 import functools
 from copy import copy
-import asyncio
 import pygame
 
 

@@ -1,6 +1,9 @@
 run:
 	python3 -m tests.test_run
 
+human:
+	python3 -m tests.test_human
+
 t_replay:
 	python3 -m tests.test_replay
 

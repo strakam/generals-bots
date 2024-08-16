@@ -1,4 +1,5 @@
 import numpy as np
+import time
 from generals.env import generals_v0
 import generals.utils
 
@@ -28,15 +29,19 @@ env = generals_v0(map)
 o, i, = env.reset(seed=42, options={"replay": "test"})
 
 agent_names = ['red', 'blue']
+tick = 0
 
 while env.agents:
     actions = {}
-    for agent in env.agents:
-        mask = o[agent]['action_mask']
-        valid_actions = np.argwhere(mask == 1)
-        action = np.random.choice(len(valid_actions))
-        actions[agent] = valid_actions[action]
-    o, r, te, tr, i = env.step(actions)
+    if tick % 10 == 0:
+        for agent in env.agents:
+            mask = o[agent]['action_mask']
+            valid_actions = np.argwhere(mask == 1)
+            action = np.random.choice(len(valid_actions))
+            actions[agent] = valid_actions[action]
+        o, r, te, tr, i = env.step(actions)
     env.render()
+    time.sleep(0.05)
+    tick += 1
 env.close()
 
