@@ -51,17 +51,16 @@ class Renderer:
             if event.type == pygame.QUIT:
                 pygame.quit()
             if event.type == pygame.KEYDOWN:
-                global game_speed
                 # quit game if q is pressed
                 if event.key == pygame.K_q:
                     pygame.quit()
                     quit()
                 # speed up game right arrow is pressed
                 if event.key == pygame.K_RIGHT:
-                    self.game_speed = max(1 / 2**12, self.game_speed / 2)
+                    self.game_speed = max(1/4, self.game_speed / 2)
                 # slow down game left arrow is pressed
                 if event.key == pygame.K_LEFT:
-                    self.game_speed = min(1, self.game_speed * 2)
+                    self.game_speed = min(32, self.game_speed * 2)
             if event.type == pygame.MOUSEBUTTONDOWN:
                 _, y = pygame.mouse.get_pos()
                 for i, agent in enumerate(agents):
@@ -120,7 +119,7 @@ class Renderer:
 
         # write live statistics
         speed = (
-            "Paused" if self.game_speed == 0 else str(1 / (2 * self.game_speed)) + "x"
+            "Paused" if self.game_speed == 0 else str(8 /  self.game_speed) + "x"
         )
         text = self._font.render(f"Game speed: {speed}", True, c.BLACK)
         self.screen.blit(text, (150, 15))

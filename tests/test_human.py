@@ -32,8 +32,9 @@ agent_names = ['red', 'blue']
 tick = 0
 
 while env.agents:
-    actions = {}
-    if tick % 10 == 0:
+    if tick % env.renderer.game_speed == 0:
+        # think whether I should reset 'tick' or not
+        actions = {}
         for agent in env.agents:
             mask = o[agent]['action_mask']
             valid_actions = np.argwhere(mask == 1)
@@ -41,7 +42,7 @@ while env.agents:
             actions[agent] = valid_actions[action]
         o, r, te, tr, i = env.step(actions)
     env.render()
-    time.sleep(0.05)
+    time.sleep(0.064)
     tick += 1
 env.close()
 
