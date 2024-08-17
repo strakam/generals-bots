@@ -1,0 +1,7 @@
+- store game as a list of frames
+- game is stored as a list of dicts, where dicts have multiple channels
+- minimize storage by using cheap types
+- user interaction will have play/replay mode where in play mode we play, in replay mode we can move between timeframes
+and after moving we can switch to play mode
+
+
