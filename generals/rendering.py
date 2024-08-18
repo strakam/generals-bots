@@ -29,6 +29,7 @@ class Renderer:
 
         self.agent_pov = {name: True for name in agents}
         self.game_speed = c.GAME_SPEED
+        self.paused = False
 
         self._mountain_img = pygame.image.load(str(c.MOUNTAIN_PATH), "png")
         self._general_img = pygame.image.load(str(c.GENERAL_PATH), "png")
@@ -61,6 +62,8 @@ class Renderer:
                 # slow down game left arrow is pressed
                 if event.key == pygame.K_LEFT:
                     self.game_speed = min(32, self.game_speed * 2)
+                if event.key == pygame.K_p:
+                    self.paused = not self.paused
             if event.type == pygame.MOUSEBUTTONDOWN:
                 _, y = pygame.mouse.get_pos()
                 for i, agent in enumerate(agents):
@@ -119,7 +122,7 @@ class Renderer:
 
         # write live statistics
         speed = (
-            "Paused" if self.game_speed == 0 else str(8 /  self.game_speed) + "x"
+            "Paused" if self.paused else str(8 /  self.game_speed) + "x"
         )
         text = self._font.render(f"Game speed: {speed}", True, c.BLACK)
         self.screen.blit(text, (150, 15))

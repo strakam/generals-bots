@@ -32,7 +32,7 @@ agent_names = ['red', 'blue']
 tick = 0
 
 while env.agents:
-    if tick % env.renderer.game_speed == 0:
+    if not env.renderer.paused and tick % env.renderer.game_speed == 0:
         # think whether I should reset 'tick' or not
         actions = {}
         for agent in env.agents:
