@@ -1,7 +1,7 @@
 import numpy as np
 import gymnasium as gym
 from typing import Dict, List  # type: ignore
-from .constants import PASSABLE, MOUNTAIN, CITY, GENERAL  # type: ignore
+from .constants import PASSABLE, MOUNTAIN, GENERAL  # type: ignore
 from .constants import UP, DOWN, LEFT, RIGHT  # type: ignore
 from .constants import INCREMENT_RATE  # type: ignore
 
@@ -35,14 +35,14 @@ class Game:
         valid_generals = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
         self.channels = {
             "army": np.where(np.isin(map, valid_generals), 1, 0).astype(np.float32),
-            "general": np.where(np.isin(map, valid_generals), 1, 0).astype(np.float32),
-            "mountain": np.where(map == MOUNTAIN, 1, 0).astype(np.float32),
-            "city": np.where(np.char.isdigit(map), 1, 0).astype(np.float32),
-            "passable": (map != MOUNTAIN).astype(np.float32),
-            "ownership_neutral": ((map == PASSABLE) | (np.char.isdigit(map))).astype(np.float32),
+            "general": np.where(np.isin(map, valid_generals), 1, 0).astype(bool),
+            "mountain": np.where(map == MOUNTAIN, 1, 0).astype(bool),
+            "city": np.where(np.char.isdigit(map), 1, 0).astype(bool),
+            "passable": (map != MOUNTAIN).astype(bool),
+            "ownership_neutral": ((map == PASSABLE) | (np.char.isdigit(map))).astype(bool),
             **{
                 f"ownership_{agent}": np.where(map == chr(ord(GENERAL) + id), 1, 0).astype(
-                    np.float32
+                    bool
                 )
                 for id, agent in enumerate(self.agents)
             },
