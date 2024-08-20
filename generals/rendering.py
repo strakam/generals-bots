@@ -73,11 +73,12 @@ class Renderer:
     def render_gui(self, game: game.Game):
         names = game.agents
         ids = [game.agent_id[name] for name in names]
+        player_stats = game.get_players_stats()
         army_counts = ["Army"] + [
-            str(game.player_stats[name]["army"]) for name in names
+            str(player_stats[name]["army"]) for name in names
         ]
         land_counts = ["Land"] + [
-            str(game.player_stats[name]["land"]) for name in names
+            str(player_stats[name]["land"]) for name in names
         ]
         povs = ["POV"] + ["  X" if self.agent_pov[name] else " " for name in names]
         names = ["Turn"] + [name for name in names]
