@@ -37,15 +37,10 @@ class Renderer:
 
         self._font = pygame.font.Font(c.FONT_PATH, c.FONT_SIZE)
 
-    def render(self, game: game.Game):
-        self.handle_events(game)
-        self.render_grid(game)
-        self.render_gui(game)
-        pygame.display.flip()
 
-    def handle_events(self, game: game.Game):
+    def handle_gui_events(self, game: game.Game):
         """
-        Handle pygame events
+        Handle pygame GUI events
         """
         agents = game.agents
         for event in pygame.event.get():
@@ -69,6 +64,11 @@ class Renderer:
                 for i, agent in enumerate(agents):
                     if y < c.UI_ROW_HEIGHT * (i + 2) and y > c.UI_ROW_HEIGHT * (i + 1):
                         self.agent_pov[agent] = not self.agent_pov[agent]
+
+    def render(self, game: game.Game):
+        self.render_grid(game)
+        self.render_gui(game)
+        pygame.display.flip()
 
     def render_gui(self, game: game.Game):
         names = game.agents

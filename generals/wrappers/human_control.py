@@ -3,6 +3,7 @@ import numpy as np
 from copy import deepcopy
 from pettingzoo.utils.wrappers.base import BaseWrapper
 from generals.env import Generals, generals_v0
+import pygame
 import generals.utils
 
 def run(map: np.ndarray, replay: str = None):
@@ -27,8 +28,20 @@ def run(map: np.ndarray, replay: str = None):
     # Game loop where we send timestamps to agents
 
     ###
-    env.game.channels = game_states[0]
+    env.game.channels = game_states[32]
+    t = 0
     while True:
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_q:
+                    pygame.quit()
+                    quit()
+                if event.key == pygame.K_h:
+                    t = max(0, t - 1)
+                if event.key == pygame.K_l:
+                    t = min(len(game_states) - 1, t + 1)
+        env.renderer.handle_gui_events(env.game)
+        env.game.channels = game_states[t]
         env.render()
         time.sleep(0.064)
 
