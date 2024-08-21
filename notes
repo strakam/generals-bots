@@ -5,3 +5,13 @@
 and after moving we can switch to play mode
 
 
+
+- How are players loaded? 
+  - as List of players
+- Everybody has replay actions and queue actions
+- Actions decided based on info (timestep)
+- Replay actions independent
+
+- What happens when user goes 'backwards'?
+  - change timestep, go back in frames
+  - also decrease time by 1

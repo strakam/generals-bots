@@ -53,16 +53,6 @@ class Game:
         city_costs = np.where(np.char.isdigit(map), map, 0).astype(np.float32)
         self.channels["army"] += base_cost * self.channels["city"] + city_costs
 
-        # Public statistics about players
-        self.player_stats = {
-            agent: {
-                "army": 1,
-                "land": 1,
-                "general_position": self.general_positions[agent],
-            }
-            for agent in self.agents
-        }
-
         box = gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.float32)
         self.observation_space = gym.spaces.Dict(
             {
@@ -232,14 +222,19 @@ class Game:
                     update_mask * self.channels[f"ownership_{owner}"]
                 )
 
-        # update player statistics
+    def get_players_stats(self):
+        """
+        Returns a dictionary of player statistics.
+        """
+        players_stats = {}
         for agent in self.agents:
             army_size = np.sum(
                 self.channels["army"] * self.channels[f"ownership_{agent}"]
             ).astype(np.int32)
             land_size = np.sum(self.channels[f"ownership_{agent}"]).astype(np.int32)
-            self.player_stats[agent]["army"] = army_size
-            self.player_stats[agent]["land"] = land_size
+            players_stats[agent] = {"army": army_size, "land": land_size}
+        return players_stats
+
 
     def _agent_observation(self, agent: str) -> Dict[str, np.ndarray]:
         """
