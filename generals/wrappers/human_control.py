@@ -27,9 +27,14 @@ def run(map: np.ndarray, replay: str = None):
 
     # Game loop where we send timestamps to agents
 
+    pygame.key.set_repeat(200, 50)
+
     ###
-    env.game.channels = game_states[32]
+    f = 32
+    env.game.channels = game_states[f]
+    env.game.time = f
     t = 0
+    last_time = 0
     while True:
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
@@ -40,10 +45,12 @@ def run(map: np.ndarray, replay: str = None):
                     t = max(0, t - 1)
                 if event.key == pygame.K_l:
                     t = min(len(game_states) - 1, t + 1)
-        env.renderer.handle_gui_events(env.game)
-        env.game.channels = game_states[t]
-        env.render()
-        time.sleep(0.064)
+        if time.time() - last_time > 0.064:
+            env.game.channels = game_states[t]
+            env.game.time = t
+            last_time = time.time()
+            print(t)
+            env.render()
 
 
 
