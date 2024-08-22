@@ -56,10 +56,10 @@ class Renderer:
                     pygame.quit()
                     quit()
                 # speed up game right arrow is pressed
-                if event.key == pygame.K_RIGHT:
+                if event.key == pygame.K_RIGHT and not self.paused:
                     self.game_speed = max(1/4, self.game_speed / 2)
                 # slow down game left arrow is pressed
-                if event.key == pygame.K_LEFT:
+                if event.key == pygame.K_LEFT and not self.paused:
                     self.game_speed = min(32, self.game_speed * 2)
                 if event.key == pygame.K_SPACE:
                     self.paused = not self.paused
