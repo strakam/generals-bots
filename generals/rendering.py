@@ -30,7 +30,7 @@ class Renderer:
 
         self.agent_pov = {name: True for name in agents}
         self.game_speed = c.GAME_SPEED
-        self.paused = False
+        self.paused = True
 
         self._mountain_img = pygame.image.load(str(c.MOUNTAIN_PATH), "png")
         self._general_img = pygame.image.load(str(c.GENERAL_PATH), "png")

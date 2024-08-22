@@ -257,7 +257,7 @@ class Game:
         !!! Currently supports only 1v1 games !!!
 
         Args:
-            agent_id: int, currently only 1 or 2
+            agent: str
 
         Returns:
             np.ndarray: observation for the given agent

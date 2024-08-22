@@ -12,6 +12,7 @@ class Player:
     def play(self, observation):
         mask = observation['action_mask']
         valid_actions = np.argwhere(mask == 1)
+        # check if there are any valid actions
         action = np.random.choice(len(valid_actions))
         return valid_actions[action]
 
@@ -36,12 +37,13 @@ def run(map: np.ndarray, replay: str = None):
         game_states.append(deepcopy(env.game.channels))
         index += 1
     # Give actions sequences to agents
+    env = generals_v0(map) # created map
+    env.reset()
     agents = {agent: Player(agent) for agent in env.agents}
     ###
-    f = 32
-    env.game.channels = game_states[f]
-    env.game.time = f
-    t = 0
+    t = 300
+    env.game.channels = game_states[t]
+    env.game.time = t
     last_time = 0
     while True:
         control_events = env.renderer.handle_events(env.game)
@@ -57,6 +59,9 @@ def run(map: np.ndarray, replay: str = None):
                     actions[agent] = agents[agent].play(o[agent])
                 o, r, te, tr, i = env.step(actions)
                 t = env.game.time
+                game_states.append(deepcopy(env.game.channels))
+                # remove all elements from game_states after t
+                game_states = game_states[: t + 1]
 
             last_time = time.time()
             env.render()
