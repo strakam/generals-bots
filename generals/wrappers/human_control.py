@@ -48,11 +48,12 @@ def run(map: np.ndarray, replay: str = None):
     while True:
         control_events = env.renderer.handle_events(env.game)
         t = max(0, min(len(game_states) - 1, t + control_events["time_change"]))
-        if time.time() - last_time > 0.064:
-            if env.renderer.paused:
+        # print(env.renderer.game_speed, env.renderer.game_speed * 0.512)
+        if time.time() - last_time > env.renderer.game_speed * 0.512:
+            if env.renderer.paused and env.game.time != t:
                 env.game.channels = game_states[t]
                 env.game.time = t
-            else:
+            elif not env.renderer.paused:
                 o = env.game.get_all_observations()
                 actions = {}
                 for agent in env.agents:
@@ -64,7 +65,7 @@ def run(map: np.ndarray, replay: str = None):
                 game_states = game_states[: t + 1]
 
             last_time = time.time()
-            env.render()
+        env.render()
 
 
 
