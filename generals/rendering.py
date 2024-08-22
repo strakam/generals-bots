@@ -16,6 +16,7 @@ class Renderer:
         """
         pygame.init()
         pygame.display.set_caption("Generals")
+        pygame.key.set_repeat(500, 64)
 
         self.grid_size = grid_size
         self.grid_offset = c.UI_ROW_HEIGHT * (len(agents) + 1)
@@ -38,11 +39,14 @@ class Renderer:
         self._font = pygame.font.Font(c.FONT_PATH, c.FONT_SIZE)
 
 
-    def handle_gui_events(self, game: game.Game):
+    def handle_events(self, game: game.Game):
         """
         Handle pygame GUI events
         """
         agents = game.agents
+        control_events = {
+            'time_change': 0,
+        }
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -59,11 +63,16 @@ class Renderer:
                     self.game_speed = min(32, self.game_speed * 2)
                 if event.key == pygame.K_p:
                     self.paused = not self.paused
+                if event.key == pygame.K_h:
+                    control_events['time_change'] = -1
+                if event.key == pygame.K_l:
+                    control_events['time_change'] = 1
             if event.type == pygame.MOUSEBUTTONDOWN:
                 _, y = pygame.mouse.get_pos()
                 for i, agent in enumerate(agents):
                     if y < c.UI_ROW_HEIGHT * (i + 2) and y > c.UI_ROW_HEIGHT * (i + 1):
                         self.agent_pov[agent] = not self.agent_pov[agent]
+        return control_events
 
     def render(self, game: game.Game):
         self.render_grid(game)
