@@ -61,12 +61,14 @@ class Renderer:
                 # slow down game left arrow is pressed
                 if event.key == pygame.K_LEFT:
                     self.game_speed = min(32, self.game_speed * 2)
-                if event.key == pygame.K_p:
+                if event.key == pygame.K_SPACE:
                     self.paused = not self.paused
                 if event.key == pygame.K_h:
                     control_events['time_change'] = -1
+                    self.paused = True
                 if event.key == pygame.K_l:
                     control_events['time_change'] = 1
+                    self.paused = True
             if event.type == pygame.MOUSEBUTTONDOWN:
                 _, y = pygame.mouse.get_pos()
                 for i, agent in enumerate(agents):

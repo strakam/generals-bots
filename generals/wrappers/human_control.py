@@ -5,6 +5,20 @@ from generals.env import Generals, generals_v0
 import pygame
 import generals.utils
 
+class Player:
+    def __init__(self, name):
+        self.name = name
+
+    def play(self, observation):
+        mask = observation['action_mask']
+        valid_actions = np.argwhere(mask == 1)
+        action = np.random.choice(len(valid_actions))
+        return valid_actions[action]
+
+    def __str__(self):
+        return self.name
+
+
 def run(map: np.ndarray, replay: str = None):
     if replay is not None:
         map, action_sequence = generals.utils.load_replay(replay)
@@ -22,11 +36,7 @@ def run(map: np.ndarray, replay: str = None):
         game_states.append(deepcopy(env.game.channels))
         index += 1
     # Give actions sequences to agents
-
-
-    # Game loop where we send timestamps to agents
-
-
+    agents = {agent: Player(agent) for agent in env.agents}
     ###
     f = 32
     env.game.channels = game_states[f]
@@ -37,8 +47,17 @@ def run(map: np.ndarray, replay: str = None):
         control_events = env.renderer.handle_events(env.game)
         t = max(0, min(len(game_states) - 1, t + control_events["time_change"]))
         if time.time() - last_time > 0.064:
-            env.game.channels = game_states[t]
-            env.game.time = t
+            if env.renderer.paused:
+                env.game.channels = game_states[t]
+                env.game.time = t
+            else:
+                o = env.game.get_all_observations()
+                actions = {}
+                for agent in env.agents:
+                    actions[agent] = agents[agent].play(o[agent])
+                o, r, te, tr, i = env.step(actions)
+                t = env.game.time
+
             last_time = time.time()
             env.render()
 

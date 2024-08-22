@@ -203,6 +203,12 @@ class Game:
 
         return observations, rewards, terminated, truncated, infos
 
+    def get_all_observations(self):
+        """
+        Returns observations for all agents.
+        """
+        return {agent: self._agent_observation(agent) for agent in self.agents}
+
     def _global_game_update(self):
         """
         Update game state globally.
