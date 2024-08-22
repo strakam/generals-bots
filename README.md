@@ -32,4 +32,6 @@ make t_replay
 ## Controls
 - `q` — quit/close the game
 - `←/→` — increase/decrease the game speed
+- `h/l` - to control replay frames
+- `spacebar` - to pause
 - `Mouse` click on the player's row — toggle the FOV (Field Of View) of the given player

@@ -1,10 +1,24 @@
 import time
 import numpy as np
 from copy import deepcopy
-from pettingzoo.utils.wrappers.base import BaseWrapper
 from generals.env import Generals, generals_v0
 import pygame
 import generals.utils
+
+class Player:
+    def __init__(self, name):
+        self.name = name
+
+    def play(self, observation):
+        mask = observation['action_mask']
+        valid_actions = np.argwhere(mask == 1)
+        # check if there are any valid actions
+        action = np.random.choice(len(valid_actions))
+        return valid_actions[action]
+
+    def __str__(self):
+        return self.name
+
 
 def run(map: np.ndarray, replay: str = None):
     if replay is not None:
@@ -23,33 +37,33 @@ def run(map: np.ndarray, replay: str = None):
         game_states.append(deepcopy(env.game.channels))
         index += 1
     # Give actions sequences to agents
-
-
-    # Game loop where we send timestamps to agents
-
-    pygame.key.set_repeat(200, 50)
-
+    env = generals_v0(map) # created map
+    env.reset()
+    agents = {agent: Player(agent) for agent in env.agents}
     ###
-    f = 32
-    env.game.channels = game_states[f]
-    env.game.time = f
-    t = 0
+    t = 300
+    env.game.channels = game_states[t]
+    env.game.time = t
     last_time = 0
     while True:
-        for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_q:
-                    pygame.quit()
-                    quit()
-                if event.key == pygame.K_h:
-                    t = max(0, t - 1)
-                if event.key == pygame.K_l:
-                    t = min(len(game_states) - 1, t + 1)
+        control_events = env.renderer.handle_events(env.game)
+        t = max(0, min(len(game_states) - 1, t + control_events["time_change"]))
         if time.time() - last_time > 0.064:
-            env.game.channels = game_states[t]
-            env.game.time = t
+            if env.renderer.paused:
+                env.game.channels = game_states[t]
+                env.game.time = t
+            else:
+                o = env.game.get_all_observations()
+                actions = {}
+                for agent in env.agents:
+                    actions[agent] = agents[agent].play(o[agent])
+                o, r, te, tr, i = env.step(actions)
+                t = env.game.time
+                game_states.append(deepcopy(env.game.channels))
+                # remove all elements from game_states after t
+                game_states = game_states[: t + 1]
+
             last_time = time.time()
-            print(t)
             env.render()
 
 

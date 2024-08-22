@@ -16,6 +16,7 @@ class Renderer:
         """
         pygame.init()
         pygame.display.set_caption("Generals")
+        pygame.key.set_repeat(500, 64)
 
         self.grid_size = grid_size
         self.grid_offset = c.UI_ROW_HEIGHT * (len(agents) + 1)
@@ -29,7 +30,7 @@ class Renderer:
 
         self.agent_pov = {name: True for name in agents}
         self.game_speed = c.GAME_SPEED
-        self.paused = False
+        self.paused = True
 
         self._mountain_img = pygame.image.load(str(c.MOUNTAIN_PATH), "png")
         self._general_img = pygame.image.load(str(c.GENERAL_PATH), "png")
@@ -38,11 +39,14 @@ class Renderer:
         self._font = pygame.font.Font(c.FONT_PATH, c.FONT_SIZE)
 
 
-    def handle_gui_events(self, game: game.Game):
+    def handle_events(self, game: game.Game):
         """
         Handle pygame GUI events
         """
         agents = game.agents
+        control_events = {
+            'time_change': 0,
+        }
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -52,18 +56,25 @@ class Renderer:
                     pygame.quit()
                     quit()
                 # speed up game right arrow is pressed
-                if event.key == pygame.K_RIGHT:
+                if event.key == pygame.K_RIGHT and not self.paused:
                     self.game_speed = max(1/4, self.game_speed / 2)
                 # slow down game left arrow is pressed
-                if event.key == pygame.K_LEFT:
+                if event.key == pygame.K_LEFT and not self.paused:
                     self.game_speed = min(32, self.game_speed * 2)
-                if event.key == pygame.K_p:
+                if event.key == pygame.K_SPACE:
                     self.paused = not self.paused
+                if event.key == pygame.K_h:
+                    control_events['time_change'] = -1
+                    self.paused = True
+                if event.key == pygame.K_l:
+                    control_events['time_change'] = 1
+                    self.paused = True
             if event.type == pygame.MOUSEBUTTONDOWN:
                 _, y = pygame.mouse.get_pos()
                 for i, agent in enumerate(agents):
                     if y < c.UI_ROW_HEIGHT * (i + 2) and y > c.UI_ROW_HEIGHT * (i + 1):
                         self.agent_pov[agent] = not self.agent_pov[agent]
+        return control_events
 
     def render(self, game: game.Game):
         self.render_grid(game)

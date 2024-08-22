@@ -203,6 +203,12 @@ class Game:
 
         return observations, rewards, terminated, truncated, infos
 
+    def get_all_observations(self):
+        """
+        Returns observations for all agents.
+        """
+        return {agent: self._agent_observation(agent) for agent in self.agents}
+
     def _global_game_update(self):
         """
         Update game state globally.
@@ -251,7 +257,7 @@ class Game:
         !!! Currently supports only 1v1 games !!!
 
         Args:
-            agent_id: int, currently only 1 or 2
+            agent: str
 
         Returns:
             np.ndarray: observation for the given agent
