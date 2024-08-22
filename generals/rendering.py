@@ -29,7 +29,7 @@ class Renderer:
         self.clock = pygame.time.Clock()
 
         self.agent_pov = {name: True for name in agents}
-        self.game_speed = c.GAME_SPEED
+        self.game_speed = 1
         self.paused = True
 
         self._mountain_img = pygame.image.load(str(c.MOUNTAIN_PATH), "png")
@@ -57,7 +57,7 @@ class Renderer:
                     quit()
                 # speed up game right arrow is pressed
                 if event.key == pygame.K_RIGHT and not self.paused:
-                    self.game_speed = max(1/4, self.game_speed / 2)
+                    self.game_speed = max(1/16, self.game_speed / 2)
                 # slow down game left arrow is pressed
                 if event.key == pygame.K_LEFT and not self.paused:
                     self.game_speed = min(32, self.game_speed * 2)
@@ -134,7 +134,7 @@ class Renderer:
 
         # write live statistics
         speed = (
-            "Paused" if self.paused else str(8 /  self.game_speed) + "x"
+            "Paused" if self.paused else str(1 /  self.game_speed) + "x"
         )
         text = self._font.render(f"Game speed: {speed}", True, c.BLACK)
         self.screen.blit(text, (150, 15))
