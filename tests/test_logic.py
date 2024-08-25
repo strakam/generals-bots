@@ -354,16 +354,17 @@ def test_game_step():
     assert (game.channels['ownership_neutral'] == reference_ownership_neutral).all()
 
     reference_total_army_red = 20
-    assert game.player_stats['red']['army'] == reference_total_army_red
+    stats = game.get_players_stats()
+    assert stats['red']['army'] == reference_total_army_red
 
     reference_total_army_blue = 6
-    assert game.player_stats['blue']['army'] == reference_total_army_blue
+    assert stats['blue']['army'] == reference_total_army_blue
 
     reference_total_army_land = 6
-    assert game.player_stats['red']['land'] == reference_total_army_land
+    assert stats['red']['land'] == reference_total_army_land
 
     reference_total_army_land = 3
-    assert game.player_stats['blue']['land'] == reference_total_army_land
+    assert stats['blue']['land'] == reference_total_army_land
 
     #####################################################################################
     # Now red moves from (2, 1) DOWN (should not move) and blue moves from (0, 0) RIGHT #
@@ -410,16 +411,17 @@ def test_game_step():
     assert (game.channels['ownership_neutral'] == reference_ownership_neutral).all()
 
     reference_total_army_red = 21
-    assert game.player_stats['red']['army'] == reference_total_army_red
+    stats = game.get_players_stats()
+    assert stats['red']['army'] == reference_total_army_red
 
     reference_total_army_blue = 7
-    assert game.player_stats['blue']['army'] == reference_total_army_blue
+    assert stats['blue']['army'] == reference_total_army_blue
 
     reference_total_army_land = 6
-    assert game.player_stats['red']['land'] == reference_total_army_land
+    assert stats['red']['land'] == reference_total_army_land
 
     reference_total_army_land = 4
-    assert game.player_stats['blue']['land'] == reference_total_army_land
+    assert stats['blue']['land'] == reference_total_army_land
 
     ##############################
     # Test global army increment #
@@ -435,16 +437,17 @@ def test_game_step():
     assert (game.channels['army'] == reference_army).all()
 
     reference_total_army_red = 28
-    assert game.player_stats['red']['army'] == reference_total_army_red
+    stats = game.get_players_stats()
+    assert stats['red']['army'] == reference_total_army_red
 
     reference_total_army_blue = 12
-    assert game.player_stats['blue']['army'] == reference_total_army_blue
+    assert stats['blue']['army'] == reference_total_army_blue
 
     reference_total_army_land = 6
-    assert game.player_stats['red']['land'] == reference_total_army_land
+    assert stats['red']['land'] == reference_total_army_land
 
     reference_total_army_land = 4
-    assert game.player_stats['blue']['land'] == reference_total_army_land
+    assert stats['blue']['land'] == reference_total_army_land
 
 
 def test_agent_terminated():
