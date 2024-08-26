@@ -15,3 +15,17 @@ and after moving we can switch to play mode
 - What happens when user goes 'backwards'?
   - change timestep, go back in frames
   - also decrease time by 1
+
+- this means we dont need wrapper? 
+- frame history needs to be held somewhere
+- so no need for wrapper but still some class that governs this
+
+
+
+- make saved map smaller, now int32
+
+
+- keybindings into dicts, have 2 functions for GUI/REPLAY keybinds and for user input
+
+- double drawing of stuff ? like general positions
+- super+q softer killing of stuff
