@@ -55,6 +55,7 @@ class Renderer:
                 pygame.quit()
             if event.type == pygame.KEYDOWN:
                 self.changed = True
+                control_events['changed'] = True
                 # quit game if q is pressed
                 if event.key == pygame.K_q:
                     pygame.quit()
@@ -86,8 +87,6 @@ class Renderer:
         pygame.display.flip()
 
     def render_gui(self, game: game.Game):
-        if not self.changed:
-            return
         names = game.agents
         ids = [game.agent_id[name] for name in names]
         player_stats = game.get_players_stats()

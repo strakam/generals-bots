@@ -41,9 +41,10 @@ def run(map: np.ndarray, replay: str = None):
     env.reset()
     agents = {agent: Player(agent) for agent in env.agents}
     ###
-    t = 300
+    t = 0
     env.game.channels = game_states[t]
     env.game.time = t
+    env.render()
     last_time = 0
     while 1:
         _t = time.time()
@@ -66,6 +67,8 @@ def run(map: np.ndarray, replay: str = None):
             game_states = game_states[: t + 1]
             env.render()
             last_time = _t
+        elif "changed" in control_events:
+            env.render()
             
 
 
