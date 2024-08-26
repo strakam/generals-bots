@@ -44,11 +44,16 @@ def run(map: np.ndarray, replay: str = None):
     t = 0
     env.game.channels = game_states[t]
     env.game.time = t
+    input_time = 0
     env.render()
     last_time = 0
     while 1:
         _t = time.time()
-        control_events = env.renderer.handle_events(env.game)
+        if _t - input_time > 0.032:
+            control_events = env.renderer.handle_events(env.game)
+            input_time = _t
+        else:
+            control_events = {"time_change": 0}
         t = max(0, min(len(game_states) - 1, t + control_events["time_change"]))
         if env.renderer.paused and env.game.time != t:
             env.game.channels = game_states[t]
