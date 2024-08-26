@@ -45,11 +45,12 @@ def run(map: np.ndarray, replay: str = None):
     env.game.channels = game_states[t]
     env.game.time = t
     last_time = 0
-    while True:
+    last_render = 0
+    while 1:
+        _t = time.time()
         control_events = env.renderer.handle_events(env.game)
         t = max(0, min(len(game_states) - 1, t + control_events["time_change"]))
-        # print(env.renderer.game_speed, env.renderer.game_speed * 0.512)
-        if time.time() - last_time > env.renderer.game_speed * 0.512:
+        if _t - last_time > env.renderer.game_speed * 0.512:
             if env.renderer.paused and env.game.time != t:
                 env.game.channels = game_states[t]
                 env.game.time = t
@@ -63,9 +64,9 @@ def run(map: np.ndarray, replay: str = None):
                 game_states.append(deepcopy(env.game.channels))
                 # remove all elements from game_states after t
                 game_states = game_states[: t + 1]
-
-            last_time = time.time()
-        env.render()
+            last_time = _t
+        if _t - last_render > 0.064:
+            env.render()
 
 
 

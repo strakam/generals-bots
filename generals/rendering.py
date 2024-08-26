@@ -25,16 +25,17 @@ class Renderer:
             c.MINIMUM_WINDOW_SIZE, c.SQUARE_SIZE * grid_size + self.grid_offset
         )
 
-        self.screen = pygame.display.set_mode((self.window_width, self.window_height))
+        self.screen = pygame.display.set_mode((self.window_width, self.window_height), pygame.HWSURFACE | pygame.DOUBLEBUF)
         self.clock = pygame.time.Clock()
+        self.clock.tick(60)
 
         self.agent_pov = {name: True for name in agents}
         self.game_speed = 1
         self.paused = True
 
-        self._mountain_img = pygame.image.load(str(c.MOUNTAIN_PATH), "png")
-        self._general_img = pygame.image.load(str(c.GENERAL_PATH), "png")
-        self._city_img = pygame.image.load(str(c.CITY_PATH), "png")
+        self._mountain_img = pygame.image.load(str(c.MOUNTAIN_PATH), "png").convert_alpha()
+        self._general_img = pygame.image.load(str(c.GENERAL_PATH), "png").convert_alpha()
+        self._city_img = pygame.image.load(str(c.CITY_PATH), "png").convert_alpha()
 
         self._font = pygame.font.Font(c.FONT_PATH, c.FONT_SIZE)
 
