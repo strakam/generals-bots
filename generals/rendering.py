@@ -25,16 +25,19 @@ class Renderer:
             c.MINIMUM_WINDOW_SIZE, c.SQUARE_SIZE * grid_size + self.grid_offset
         )
 
-        self.screen = pygame.display.set_mode((self.window_width, self.window_height))
+        self.screen = pygame.display.set_mode((self.window_width, self.window_height), pygame.HWSURFACE | pygame.DOUBLEBUF)
         self.clock = pygame.time.Clock()
+        self.clock.tick(60)
+
 
         self.agent_pov = {name: True for name in agents}
         self.game_speed = 1
         self.paused = True
+        self.changed = True
 
-        self._mountain_img = pygame.image.load(str(c.MOUNTAIN_PATH), "png")
-        self._general_img = pygame.image.load(str(c.GENERAL_PATH), "png")
-        self._city_img = pygame.image.load(str(c.CITY_PATH), "png")
+        self._mountain_img = pygame.image.load(str(c.MOUNTAIN_PATH), "png").convert_alpha()
+        self._general_img = pygame.image.load(str(c.GENERAL_PATH), "png").convert_alpha()
+        self._city_img = pygame.image.load(str(c.CITY_PATH), "png").convert_alpha()
 
         self._font = pygame.font.Font(c.FONT_PATH, c.FONT_SIZE)
 
@@ -51,6 +54,8 @@ class Renderer:
             if event.type == pygame.QUIT:
                 pygame.quit()
             if event.type == pygame.KEYDOWN:
+                self.changed = True
+                control_events['changed'] = True
                 # quit game if q is pressed
                 if event.key == pygame.K_q:
                     pygame.quit()
@@ -159,6 +164,7 @@ class Renderer:
             self.screen.blit(
                 text, (self.window_width - 3 * c.GUI_CELL_WIDTH + x_offset, y_offset)
             )
+        self.changed = False
 
     def render_grid(self, game: game.Game):
         """
@@ -171,12 +177,19 @@ class Renderer:
         agents = game.agents
         # draw visibility squares
         visible_map = np.zeros((self.grid_size, self.grid_size), dtype=np.float32)
+        owned_map = np.zeros((self.grid_size, self.grid_size), dtype=np.float32)
+        for agent in agents:
+            owned_map = np.logical_or(
+                owned_map, game.channels["ownership_" + agent]
+            )
+        not_owned_map = np.logical_not(owned_map)
         for agent in agents:
             if not self.agent_pov[agent]:
                 continue
             ownership = game.channels["ownership_" + agent]
             visibility = game.visibility_channel(ownership)
-            visibility_indices = game.channel_to_indices(visibility)
+            _rendered_visibility = np.logical_and(visibility, not_owned_map)
+            visibility_indices = game.channel_to_indices(_rendered_visibility)
             self.draw_channel(visibility_indices, c.WHITE)
             visible_map = np.logical_or(
                 visible_map, visibility
@@ -205,7 +218,7 @@ class Renderer:
                 c.LINE_WIDTH,
             )
 
-        # # draw background as squares
+        # draw background as squares
         invisible_map = np.logical_not(visible_map)
         invisible_indices = game.channel_to_indices(invisible_map)
         self.draw_channel(invisible_indices, c.FOG_OF_WAR)
