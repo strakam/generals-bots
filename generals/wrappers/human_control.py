@@ -1,64 +1,4 @@
-import time
-import numpy as np
-from copy import deepcopy
-from generals.env import Generals, generals_v0
 import generals.utils
-
-class Player:
-    def __init__(self, name):
-        self.name = name
-
-    def play(self, observation):
-        mask = observation['action_mask']
-        valid_actions = np.argwhere(mask == 1)
-        action = np.random.choice(len(valid_actions))
-        return valid_actions[action]
-
-    def __str__(self):
-        return self.name
-
-
-def run(map: np.ndarray, replay: str = None):
-    if replay is not None:
-        map, game_states = generals.utils.load_replay(replay)
-    else:
-        game_states = [deepcopy(map)]
-    env = generals_v0(map) # created map
-    env.reset()
-
-    agents = {agent: Player(agent) for agent in env.agents}
-    ###
-    t = 0
-    input_time = 0
-    env.render()
-    last_time = 0
-    while 1:
-        _t = time.time()
-        if _t - input_time > 0.016:
-            control_events = env.renderer.handle_events(env.game)
-            input_time = _t
-            env.render()
-        else:
-            control_events = {"time_change": 0}
-        t = max(0, min(len(game_states) - 1, t + control_events["time_change"]))
-        if env.renderer.paused and env.game.time != t:
-            env.game.channels = game_states[t]
-            env.game.time = t
-            last_time = _t
-            env.render()
-        elif _t - last_time > env.renderer.game_speed * 0.512 and not env.renderer.paused:
-            o = env.game.get_all_observations()
-            actions = {}
-            for agent in env.agents:
-                actions[agent] = agents[agent].play(o[agent])
-            o, r, te, tr, i = env.step(actions)
-            t = env.game.time
-            game_states.append(deepcopy(env.game.channels))
-            # remove all elements from game_states after t
-            game_states = game_states[: t + 1]
-            last_time = _t
-            
-
 
 map = generals.utils.map_from_generator(
     grid_size=16,
@@ -67,5 +7,7 @@ map = generals.utils.map_from_generator(
     n_generals=2,
     general_positions=None,
 )
+agents = [generals.utils.Player("red"), generals.utils.Player("blue")]
 
-run(map, "test")
+# generals.utils.run_from_replay('test', agents)
+generals.utils.run_from_map(map, agents)

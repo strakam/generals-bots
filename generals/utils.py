@@ -1,3 +1,4 @@
+import time
 import numpy as np
 from importlib.resources import files
 from .constants import PASSABLE, MOUNTAIN, CITY, GENERAL
@@ -152,7 +153,7 @@ def load_replay(path: str):
     # Play actions to recreate states that happened
     from generals.env import generals_v0
     env = generals_v0(map)
-    _, _ = env.reset(seed=42)
+    _ = env.reset(seed=42)
     game_states = [deepcopy(env.game.channels)]
     for i in range(len(action_sequence)):
         actions = {}
@@ -162,3 +163,69 @@ def load_replay(path: str):
         game_states.append(deepcopy(env.game.channels))
 
     return map, game_states
+
+class Player:
+    def __init__(self, name):
+        self.name = name
+
+    def play(self, observation):
+        mask = observation['action_mask']
+        valid_actions = np.argwhere(mask == 1)
+        action = np.random.choice(len(valid_actions))
+        return valid_actions[action]
+
+    def __str__(self):
+        return self.name
+
+def _run_game_loop(map, game_states, agents):
+    assert validate_map(map), "Map is invalid"
+    assert len(agents) == 2, "Exactly two agents must be provided"
+    agents = {agent.name: agent for agent in agents}
+
+    from generals.env import generals_v0
+    env = generals_v0(map)
+    env.reset()
+    env.render()
+
+    game_step, last_input_time, last_move_time = 0, 0, 0
+
+    while 1:
+        _t = time.time()
+        if _t - last_input_time > 0.016:
+            control_events = env.renderer.handle_events(env.game)
+            last_input_time = _t
+            env.render()
+        else:
+            control_events = {"time_change": 0}
+        
+        game_step = max(0, min(len(game_states) - 1, game_step + control_events["time_change"]))
+        if env.renderer.paused and control_events["time_change"] != 0:
+            env.game.channels = game_states[game_step]
+            env.game.time = game_step
+            last_move_time = _t
+            env.render()
+        elif _t - last_move_time > env.renderer.game_speed * 0.512 and not env.renderer.paused:
+            observations = env.game.get_all_observations()
+            actions = {}
+            for agent in env.agents:
+                actions[agent] = agents[agent].play(observations[agent])
+            observations, *_ = env.step(actions)
+            game_step = env.game.time
+            game_states.append(deepcopy(env.game.channels))
+            game_states = game_states[:game_step + 1]
+            last_move_time = _t
+
+def run_from_map(map: np.ndarray, agents: List[Player]):
+    from generals.env import generals_v0
+    env = generals_v0(map)
+    _ = env.reset()
+    game_states = [deepcopy(env.game.channels)]
+
+    _run_game_loop(map, game_states, agents)
+
+def run_from_replay(replay: str = None, agents: List[Player] = []):
+    assert replay is not None, "Replay must be provided"
+
+    map, game_states = load_replay(replay)
+    _run_game_loop(map, game_states, agents)
+
