@@ -151,7 +151,7 @@ class Game:
         np.random.shuffle(agents)  # random action order
 
         for agent in agents:
-            source = actions[agent][:2]  # x,y
+            source = actions[agent][:2]  # x,y indices of a source cell
             direction = actions[agent][2]  # 0,1,2,3
 
             si, sj = source[0], source[1]  # source indices

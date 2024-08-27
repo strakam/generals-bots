@@ -191,7 +191,7 @@ def _run_game_loop(map, game_states, agents):
 
     while 1:
         _t = time.time()
-        if _t - last_input_time > 0.016:
+        if _t - last_input_time > 0.008:
             control_events = env.renderer.handle_events(env.game)
             last_input_time = _t
             env.render()
@@ -199,23 +199,22 @@ def _run_game_loop(map, game_states, agents):
             control_events = {"time_change": 0}
         
         game_step = max(0, min(len(game_states) - 1, game_step + control_events["time_change"]))
-        if env.renderer.paused and control_events["time_change"] != 0:
-            env.game.channels = game_states[game_step]
+        if env.renderer.paused and game_step != env.game.time:
+            env.game.channels = deepcopy(game_states[game_step])
             env.game.time = game_step
             last_move_time = _t
-            env.render()
         elif _t - last_move_time > env.renderer.game_speed * 0.512 and not env.renderer.paused:
             observations = env.game.get_all_observations()
             actions = {}
             for agent in env.agents:
                 actions[agent] = agents[agent].play(observations[agent])
-            observations, *_ = env.step(actions)
+            _ = env.step(actions)
             game_step = env.game.time
+            game_states = game_states[:game_step]
             game_states.append(deepcopy(env.game.channels))
-            game_states = game_states[:game_step + 1]
             last_move_time = _t
 
-def run_from_map(map: np.ndarray, agents: List[Player]):
+def run_from_map(map: np.ndarray, agents: List[Player] = []):
     from generals.env import generals_v0
     env = generals_v0(map)
     _ = env.reset()

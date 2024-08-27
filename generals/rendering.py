@@ -29,7 +29,6 @@ class Renderer:
             (self.window_width, self.window_height), pygame.HWSURFACE | pygame.DOUBLEBUF
         )
         self.clock = pygame.time.Clock()
-        self.clock.tick(60)
 
 
         self.agent_pov = {name: True for name in agents}
