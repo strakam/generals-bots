@@ -25,7 +25,9 @@ class Renderer:
             c.MINIMUM_WINDOW_SIZE, c.SQUARE_SIZE * grid_size + self.grid_offset
         )
 
-        self.screen = pygame.display.set_mode((self.window_width, self.window_height), pygame.HWSURFACE | pygame.DOUBLEBUF)
+        self.screen = pygame.display.set_mode(
+            (self.window_width, self.window_height), pygame.HWSURFACE | pygame.DOUBLEBUF
+        )
         self.clock = pygame.time.Clock()
         self.clock.tick(60)
 

@@ -75,7 +75,7 @@ def run(map: np.ndarray, replay: str = None):
             
 
 
-map = generals.utils.generate_map(
+map = generals.utils.map_from_generator(
     grid_size=16,
     mountain_density=0.2,
     town_density=0.05,

@@ -142,7 +142,7 @@ def parallel_api_test(par_env: ParallelEnv, num_cycles=1000):
 
 if __name__ == "__main__":
 
-    map = generals.utils.generate_map(10, 0.1, 0.1, 2)
+    map = generals.utils.map_from_generator(10, 0.1, 0.1, 2)
     env = generals_v0(map, render_mode="none")
     # test the environment with parallel_api_test
     import time

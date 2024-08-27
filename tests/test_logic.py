@@ -6,9 +6,9 @@ import itertools
 
 def get_game(map_name=None):
     if map_name:
-        map = generals.utils.load_map(map_name)
+        map = generals.utils.map_from_file(map_name)
     else:
-        map = generals.utils.generate_map(
+        map = generals.utils.map_from_generator(
             grid_size=10,
             mountain_density=0.1,
             town_density=0.1,

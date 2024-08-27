@@ -5,7 +5,7 @@ from .constants import PASSABLE, MOUNTAIN, CITY, GENERAL
 from typing import List, Dict, Tuple
 
 
-def generate_map(
+def map_from_generator(
     grid_size: int = 10,
     mountain_density: float = 0.2,
     town_density: float = 0.05,
@@ -38,7 +38,7 @@ def generate_map(
     return (
         map
         if validate_map(map)
-        else generate_map(grid_size, mountain_density, town_density, n_generals)
+        else map_from_generator(grid_size, mountain_density, town_density, n_generals)
     )
 
 
@@ -54,7 +54,7 @@ def map_from_string(map_str: str) -> np.ndarray:
     return map
 
 
-def load_map(map_name: str) -> np.ndarray:
+def map_from_file(map_name: str) -> np.ndarray:
     """
     Load map from file.
 
