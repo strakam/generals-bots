@@ -1,6 +1,7 @@
 import numpy as np
 from importlib.resources import files
 from .constants import PASSABLE, MOUNTAIN, CITY, GENERAL
+from copy import deepcopy
 
 from typing import List, Dict, Tuple
 
@@ -130,6 +131,7 @@ def store_replay(
 
 def load_replay(path: str):
     print(f"Loading replay {path}")
+    # Load map and actions
     with open(path, "r") as f:
         lines = f.readlines()
         # take rows until first empty line
@@ -137,9 +139,9 @@ def load_replay(path: str):
         map_string = "".join(rows)
         map = map_from_string(map_string)
         # after empty line, read actions
-        actions = []
+        action_sequence = []
         for line in lines[lines.index("\n") + 1 :]:
-            actions.append(
+            action_sequence.append(
                 {
                     player.split(":")[0]: np.array(
                         player.split(":")[1].split(" "), dtype=np.int32
@@ -147,5 +149,16 @@ def load_replay(path: str):
                     for player in line.strip().split(",")
                 }
             )
+    # Play actions to recreate states that happened
+    from generals.env import generals_v0
+    env = generals_v0(map)
+    _, _ = env.reset(seed=42)
+    game_states = [deepcopy(env.game.channels)]
+    for i in range(len(action_sequence)):
+        actions = {}
+        for agent in env.agents:
+            actions[agent] = action_sequence[i][agent]
+        _ = env.step(actions)
+        game_states.append(deepcopy(env.game.channels))
 
-    return map, actions
+    return map, game_states

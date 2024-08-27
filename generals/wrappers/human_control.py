@@ -2,7 +2,6 @@ import time
 import numpy as np
 from copy import deepcopy
 from generals.env import Generals, generals_v0
-import pygame
 import generals.utils
 
 class Player:
@@ -12,7 +11,6 @@ class Player:
     def play(self, observation):
         mask = observation['action_mask']
         valid_actions = np.argwhere(mask == 1)
-        # check if there are any valid actions
         action = np.random.choice(len(valid_actions))
         return valid_actions[action]
 
@@ -22,28 +20,15 @@ class Player:
 
 def run(map: np.ndarray, replay: str = None):
     if replay is not None:
-        map, action_sequence = generals.utils.load_replay(replay)
-    env = generals_v0(map) # created map
-
-    # Load frames from replays
-    index = 0
-    o, i = env.reset(seed=42, options={"replay": "test"})
-    game_states = [deepcopy(env.game.channels)]
-    while env.agents:
-        actions = {}
-        for agent in env.agents:
-            actions[agent] = action_sequence[index][agent]
-        o, r, te, tr, i = env.step(actions)
-        game_states.append(deepcopy(env.game.channels))
-        index += 1
-    # Give actions sequences to agents
+        map, game_states = generals.utils.load_replay(replay)
+    else:
+        game_states = [deepcopy(map)]
     env = generals_v0(map) # created map
     env.reset()
+
     agents = {agent: Player(agent) for agent in env.agents}
     ###
     t = 0
-    env.game.channels = game_states[t]
-    env.game.time = t
     input_time = 0
     env.render()
     last_time = 0
