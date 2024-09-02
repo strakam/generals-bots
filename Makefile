@@ -8,7 +8,7 @@ t_replay:
 	python3 -m tests.test_replay
 
 control:
-	python3 -m generals.wrappers.human_control
+	python3 -m tests.test_control
 
 scratch:
 	python3 -m tests.scratch
