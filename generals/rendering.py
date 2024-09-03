@@ -2,8 +2,7 @@ import numpy as np
 import pygame
 from . import game
 from . import constants as c
-
-from typing import Tuple, List
+from typing import Tuple
 
 
 class Renderer:
@@ -22,19 +21,16 @@ class Renderer:
         self.game = game
         self.agents = game.agents
         self.grid_size = game.grid_size
-        self.grid_offset = c.UI_ROW_HEIGHT * (len(self.agents) + 1)
+        self.grid_offset = c.UI_ROW_HEIGHT * (len(self.agents) + 1) # area for GUI
         self.window_width = max(c.MINIMUM_WINDOW_SIZE, c.SQUARE_SIZE * self.grid_size)
         self.window_height = max(
             c.MINIMUM_WINDOW_SIZE, c.SQUARE_SIZE * self.grid_size + self.grid_offset
         )
-
         self.screen = pygame.display.set_mode(
             (self.window_width, self.window_height), pygame.HWSURFACE | pygame.DOUBLEBUF
         )
-        self.clock = pygame.time.Clock()
 
-
-        self.agent_pov = {name: True for name in self.agents}
+        self.agent_fov = {name: True for name in self.agents}
         self.game_speed = 1
         self.paused = True
         self.changed = True
@@ -82,7 +78,7 @@ class Renderer:
                 _, y = pygame.mouse.get_pos()
                 for i, agent in enumerate(agents):
                     if y < c.UI_ROW_HEIGHT * (i + 2) and y > c.UI_ROW_HEIGHT * (i + 1):
-                        self.agent_pov[agent] = not self.agent_pov[agent]
+                        self.agent_fov[agent] = not self.agent_fov[agent]
         return control_events
 
     def render(self):
@@ -100,7 +96,7 @@ class Renderer:
         land_counts = ["Land"] + [
             str(player_stats[name]["land"]) for name in names
         ]
-        povs = ["POV"] + ["  X" if self.agent_pov[name] else " " for name in names]
+        fovs = ["FOV"] + ["  X" if self.agent_fov[name] else " " for name in names]
         names = ["Turn"] + [name for name in names]
 
         # white background for GUI
@@ -147,6 +143,8 @@ class Renderer:
         )
         text = self._font.render(f"Game speed: {speed}", True, c.BLACK)
         self.screen.blit(text, (150, 15))
+
+        # For each player print his name, army, land and FOV (Field of View)
         for i in range(len(ids) + 1):
             if i == 0:
                 turn = str(self.game.time // 2) + ("." if self.game.time % 2 == 1 else "")
@@ -164,7 +162,7 @@ class Renderer:
             self.screen.blit(
                 text, (self.window_width - c.GUI_CELL_WIDTH + x_offset, y_offset)
             )
-            text = self._font.render(povs[i], True, c.BLACK)
+            text = self._font.render(fovs[i], True, c.BLACK)
             self.screen.blit(
                 text, (self.window_width - 3 * c.GUI_CELL_WIDTH + x_offset, y_offset)
             )
@@ -188,7 +186,7 @@ class Renderer:
             )
         not_owned_map = np.logical_not(owned_map)
         for agent in agents:
-            if not self.agent_pov[agent]:
+            if not self.agent_fov[agent]:
                 continue
             ownership = self.game.channels["ownership_" + agent]
             visibility = self.game.visibility_channel(ownership)
@@ -242,8 +240,8 @@ class Renderer:
         self.draw_images(invisible_cities_indices, self._mountain_img)
 
         # draw general
-        for agent, pov in self.agent_pov.items():
-            if pov:
+        for agent, fov in self.agent_fov.items():
+            if fov:
                 visible_squares = self.game.visibility_channel(
                     self.game.channels["ownership_" + agent]
                 )
