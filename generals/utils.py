@@ -1,7 +1,7 @@
 import time
 import numpy as np
 from importlib.resources import files
-from .constants import PASSABLE, MOUNTAIN, CITY, GENERAL
+from .constants import PASSABLE, MOUNTAIN
 from copy import deepcopy
 
 from typing import List, Dict, Tuple
@@ -11,36 +11,41 @@ def map_from_generator(
     grid_size: int = 10,
     mountain_density: float = 0.2,
     town_density: float = 0.05,
-    n_generals: int = 2,
     general_positions: List[Tuple[int, int]] = None,
 ) -> np.ndarray:
+    """
+    Generate a map with the given parameters.
+
+    Args:
+        grid_size: int, size of the grid
+        mountain_density: float, probability of mountain in a cell
+        town_density: float, probability of town in a cell
+        general_positions: List[Tuple[int, int]], positions of generals
+    """
+
     spatial_dim = (grid_size, grid_size)
     p_neutral = 1 - mountain_density - town_density
     probs = [p_neutral, mountain_density] + [town_density / 10] * 10
+
+    # Place parts of the map
     map = np.random.choice(
         [PASSABLE, MOUNTAIN, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9], size=spatial_dim, p=probs
     )
-    # print(mountain_density, town_density, n_generals)
-    # print(f'Grid size is {grid_size**2}')
-    # print(f'Number of towns is {np.sum(map == CITY)} which is {np.sum(map == CITY) / grid_size**2 * 100}%')
-    # print(f'Number of mountains is {np.sum(map == MOUNTAIN)} which is {np.sum(map == MOUNTAIN) / grid_size**2 * 100}%')
-
 
     # place generals on random squares
     if general_positions is None:
         general_positions = np.random.choice(
-            grid_size, size=(n_generals, 2), replace=False
+            grid_size, size=(2, 2), replace=False
         )
 
     for i, idx in enumerate(general_positions):
-        # convert 'A'
         map[idx[0], idx[1]] = chr(ord('A') + i)
 
     # generate until valid map
     return (
         map
         if validate_map(map)
-        else map_from_generator(grid_size, mountain_density, town_density, n_generals)
+        else map_from_generator(grid_size, mountain_density, town_density)
     )
 
 
@@ -49,7 +54,7 @@ def map_from_string(map_str: str) -> np.ndarray:
     Convert map from string to np.ndarray.
 
     Args:
-        map_str: str
+        map_str: str, map layout as string
     """
     map_list = map_str.strip().split("\n")
     map = np.array([list(row) for row in map_list])
@@ -61,7 +66,7 @@ def map_from_file(map_name: str) -> np.ndarray:
     Load map from file.
 
     Args:
-        map_name: str
+        map_name: str, name of the map file
 
     Returns:
         np.ndarray: map layout
@@ -83,8 +88,6 @@ def map_from_file(map_name: str) -> np.ndarray:
 def validate_map(map: str) -> bool:
     """
     Validate map layout.
-    WORKS ONLY FOR 2 GENERALS (for now)
-
     Args:
         map: np.ndarray
 
@@ -191,18 +194,20 @@ def _run_game_loop(map, game_states, agents):
 
     while 1:
         _t = time.time()
-        if _t - last_input_time > 0.008:
+        if _t - last_input_time > 0.008: # check for input every 8ms
             control_events = env.renderer.handle_events()
             last_input_time = _t
             env.render()
         else:
             control_events = {"time_change": 0}
         
+        # if we control replay, change game state
         game_step = max(0, min(len(game_states) - 1, game_step + control_events["time_change"]))
         if env.renderer.paused and game_step != env.game.time:
             env.game.channels = deepcopy(game_states[game_step])
             env.game.time = game_step
             last_move_time = _t
+        # if we are not paused, play the game
         elif _t - last_move_time > env.renderer.game_speed * 0.512 and not env.renderer.paused:
             observations = env.game.get_all_observations()
             actions = {}

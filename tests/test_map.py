@@ -75,18 +75,14 @@ A#2#2
 
 
 def test_generate_map():
-    grid_size, mountain_density, town_density, n_generals = 16, 0.1, 0.1, 2
+    grid_size, mountain_density, town_density  = 16, 0.1, 0.1
     for _ in range(5):
-        map = map_from_generator(grid_size, mountain_density, town_density, n_generals)
+        map = map_from_generator(grid_size, mountain_density, town_density)
         assert validate_map(map)  # map has to be valid
         assert map.shape == (grid_size, grid_size)
-        generals = np.isin(map, ["A", "B"])
-        assert np.sum(generals) == n_generals
 
-    grid_size, mountain_density, town_density, n_generals = 10, 0.2, 0.2, 2
+    grid_size, mountain_density, town_density  = 10, 0.2, 0.2
     for _ in range(5):
-        map = map_from_generator(grid_size, mountain_density, town_density, n_generals)
+        map = map_from_generator(grid_size, mountain_density, town_density)
         assert validate_map(map)  # map has to be valid
         assert map.shape == (grid_size, grid_size)
-        generals = np.isin(map, ["A", "B"])
-        assert np.sum(generals) == n_generals

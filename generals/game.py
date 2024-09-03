@@ -31,8 +31,7 @@ class Game:
         # Passable - passable mask (1 if cell is passable, 0 otherwise)
         # Ownership_i - ownership mask for player i (1 if player i owns cell, 0 otherwise)
         # Ownerhsip_0 - ownership mask for neutral cells that are passable (1 if cell is neutral, 0 otherwise)
-        # np where to use if map is in 'A-Z' 
-        valid_generals = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+        valid_generals = ['A', 'B'] # because generals are represented as letters
         self.channels = {
             "army": np.where(np.isin(map, valid_generals), 1, 0).astype(np.float32),
             "general": np.where(np.isin(map, valid_generals), 1, 0).astype(bool),
@@ -48,7 +47,7 @@ class Game:
             },
         }
 
-        # initialize city costs (constant for now)
+        # City costs are 40 + digit in the cell
         base_cost = 40
         city_costs = np.where(np.char.isdigit(map), map, 0).astype(np.float32)
         self.channels["army"] += base_cost * self.channels["city"] + city_costs
@@ -85,8 +84,6 @@ class Game:
         """
 
         ownership_channel = self.channels[f"ownership_{agent}"]
-        # if np.sum(ownership_channel) == 0:
-        #     raise ValueError(f'Player {agent} has no cells')
 
         owned_cells_indices = self.channel_to_indices(ownership_channel)
         valid_action_mask = np.zeros(
@@ -145,7 +142,6 @@ class Game:
         Args:
             actions: dictionary of agent_id to action (this will be reworked)
         """
-        # this is intended for 1v1 for now and might not be bug free
         directions = np.array([UP, DOWN, LEFT, RIGHT])
         agents = list(actions.keys())
         np.random.shuffle(agents)  # random action order
@@ -220,8 +216,8 @@ class Game:
             for owner in owners:
                 self.channels["army"] += self.channels[f"ownership_{owner}"]
 
+        # Increment armies on general and city cells, but only if they are owned by player
         if self.time % 2 == 0 and self.time > 0:
-            # increment armies on general and city cells, but only if they are owned by player
             update_mask = self.channels["general"] + self.channels["city"]
             for owner in owners:
                 self.channels["army"] += (
@@ -253,8 +249,6 @@ class Game:
         - (visible) opponent ownership
         - (visible) neutral ownership
         - mountain
-
-        !!! Currently supports only 1v1 games !!!
 
         Args:
             agent: str

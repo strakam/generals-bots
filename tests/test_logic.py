@@ -12,7 +12,6 @@ def get_game(map_name=None):
             grid_size=10,
             mountain_density=0.1,
             town_density=0.1,
-            n_generals=2,
             general_positions=[[3, 3], [1, 3]]
         )
     return generals.game.Game(map, ['red', 'blue'])
