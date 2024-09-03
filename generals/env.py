@@ -1,13 +1,8 @@
 import numpy as np
 import functools
-from copy import copy
-import pygame
-
-
 import pettingzoo
-
 from typing import List
-
+from copy import copy
 from . import game, utils
 from .rendering import Renderer
 
@@ -21,8 +16,6 @@ def generals_v0(map: np.ndarray, render_mode="human"):
 
 
 class Generals(pettingzoo.ParallelEnv):
-    metadata = {"render.modes": ["human", "none"]}
-
     def __init__(
         self,
         map: np.ndarray,
@@ -35,11 +28,6 @@ class Generals(pettingzoo.ParallelEnv):
         self.agents = agent_names
         self.possible_agents = self.agents[:]
 
-        if render_mode == "human":
-            self.renderer = Renderer(
-                agents=self.agents,
-                grid_size=self.map.shape[0],
-            )
 
     @functools.lru_cache(maxsize=None)
     def observation_space(self, agent_name):
@@ -53,11 +41,14 @@ class Generals(pettingzoo.ParallelEnv):
 
     def render(self):
         if self.render_mode == "human":
-            self.renderer.render(self.game)
+            self.renderer.render()
 
     def reset(self, seed=None, options={}):
         self.agents = copy(self.possible_agents)
         self.game = game.Game(self.map, self.possible_agents)
+
+        if self.render_mode == "human":
+            self.renderer = Renderer(self.game)
 
         if "replay" in options:
             self.replay = options["replay"]
@@ -87,6 +78,3 @@ class Generals(pettingzoo.ParallelEnv):
                 utils.store_replay(self.game.map, self.action_history, self.replay)
 
         return observations, rewards, terminated, truncated, infos
-
-    def close(self):
-        pygame.quit()

@@ -192,7 +192,7 @@ def _run_game_loop(map, game_states, agents):
     while 1:
         _t = time.time()
         if _t - last_input_time > 0.008:
-            control_events = env.renderer.handle_events(env.game)
+            control_events = env.renderer.handle_events()
             last_input_time = _t
             env.render()
         else:
