@@ -1,12 +1,9 @@
 import generals.utils
+from generals.env import GameConfig
 
-map = generals.utils.map_from_generator(
-    grid_size=16,
-    mountain_density=0.2,
-    town_density=0.05,
-    general_positions=None,
-)
+
+testik = GameConfig(replay_file='test')
 agents = [generals.utils.Player("red"), generals.utils.Player("blue")]
 
-generals.utils.run_from_replay('test', agents)
-# generals.utils.run_from_map(map, agents)
+# generals.utils.run_from_replay('test', agents)
+generals.utils.run(testik, agents)

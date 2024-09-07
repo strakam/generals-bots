@@ -5,27 +5,33 @@ from typing import List
 from copy import copy
 from . import game, utils
 from .rendering import Renderer
+from pydantic import BaseModel
 
+class GameConfig(BaseModel):
+    grid_size: int = 16
+    mountain_density: float = 0.2
+    town_density: float = 0.05
+    general_positions: List[str] = None
+    map: str = None
+    replay_file: str = None
 
-def generals_v0(map: np.ndarray, render_mode="human"):
+def generals_v0(game_config: GameConfig, render_mode="human"):
     """
     Here we apply wrappers to the environment.
     """
-    env = Generals(map, render_mode=render_mode)
+    env = Generals(game_config, render_mode=render_mode)
     return env
 
 
 class Generals(pettingzoo.ParallelEnv):
     def __init__(
         self,
-        map: np.ndarray,
-        agent_names: List[str] = ["red", "blue"],
+        game_config = None,
         render_mode="human",
     ):
         self.render_mode = render_mode
-
-        self.map = map
-        self.agents = agent_names
+        self.game_config = game_config
+        self.agents = ["red", "blue"]
         self.possible_agents = self.agents[:]
 
 
@@ -43,9 +49,18 @@ class Generals(pettingzoo.ParallelEnv):
         if self.render_mode == "human":
             self.renderer.render()
 
-    def reset(self, seed=None, options={}):
+    def reset(self, map: np.ndarray = None, seed=None, options={}):
         self.agents = copy(self.possible_agents)
-        self.game = game.Game(self.map, self.possible_agents)
+
+        if map is None:
+            map = utils.map_from_generator(
+                grid_size=self.game_config.grid_size,
+                mountain_density=self.game_config.mountain_density,
+                town_density=self.game_config.town_density,
+                general_positions=self.game_config.general_positions,
+            )
+
+        self.game = game.Game(map, self.possible_agents)
 
         if self.render_mode == "human":
             self.renderer = Renderer(self.game)

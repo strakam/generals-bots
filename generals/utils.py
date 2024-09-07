@@ -3,6 +3,7 @@ import numpy as np
 from importlib.resources import files
 from .constants import PASSABLE, MOUNTAIN
 from copy import deepcopy
+from generals.env import GameConfig
 
 from typing import List, Dict, Tuple
 
@@ -155,8 +156,10 @@ def load_replay(path: str):
             )
     # Play actions to recreate states that happened
     from generals.env import generals_v0
-    env = generals_v0(map)
-    _ = env.reset(seed=42)
+    game_config = GameConfig(map=map_string)
+    env = generals_v0(game_config)
+    map = map_from_string(map_string)
+    _ = env.reset(map, seed=42)
     game_states = [deepcopy(env.game.channels)]
     for i in range(len(action_sequence)):
         actions = {}
@@ -180,14 +183,30 @@ class Player:
     def __str__(self):
         return self.name
 
-def _run_game_loop(map, game_states, agents):
+def run(game_config, agents: List[Player] = []):
+    from generals.env import generals_v0
+    if game_config.replay_file is not None:
+        map, game_states = load_replay(game_config.replay_file)
+    else:
+        if game_config.map is not None:
+            map = map_from_string(game_config.map)
+        else:
+            map = map_from_generator(
+                grid_size=game_config.grid_size,
+                mountain_density=game_config.mountain_density,
+                town_density=game_config.town_density,
+                general_positions=game_config.general_positions,
+            )
+        env = generals_v0(game_config)
+        _ = env.reset(map)
+        game_states = [deepcopy(env.game.channels)]
+
     assert validate_map(map), "Map is invalid"
     assert len(agents) == 2, "Exactly two agents must be provided"
+    env = generals_v0(map)
     agents = {agent.name: agent for agent in agents}
 
-    from generals.env import generals_v0
-    env = generals_v0(map)
-    env.reset()
+    env.reset(map)
     env.render()
 
     game_step, last_input_time, last_move_time = 0, 0, 0
@@ -218,18 +237,3 @@ def _run_game_loop(map, game_states, agents):
             game_states = game_states[:game_step]
             game_states.append(deepcopy(env.game.channels))
             last_move_time = _t
-
-def run_from_map(map: np.ndarray, agents: List[Player] = []):
-    from generals.env import generals_v0
-    env = generals_v0(map)
-    _ = env.reset()
-    game_states = [deepcopy(env.game.channels)]
-
-    _run_game_loop(map, game_states, agents)
-
-def run_from_replay(replay: str = None, agents: List[Player] = []):
-    assert replay is not None, "Replay must be provided"
-
-    map, game_states = load_replay(replay)
-    _run_game_loop(map, game_states, agents)
-
