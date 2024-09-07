@@ -8,5 +8,5 @@ map = generals.utils.map_from_generator(
 )
 agents = [generals.utils.Player("red"), generals.utils.Player("blue")]
 
-# generals.utils.run_from_replay('test', agents)
-generals.utils.run_from_map(map, agents)
+generals.utils.run_from_replay('test', agents)
+# generals.utils.run_from_map(map, agents)

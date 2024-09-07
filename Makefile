@@ -1,20 +1,12 @@
 run:
 	python3 -m tests.test_run
 
-human:
-	python3 -m tests.test_human
-
 t_replay:
 	python3 -m tests.test_replay
 
 control:
 	python3 -m tests.test_control
 
-scratch:
-	python3 -m tests.scratch
-	cat rb
-
-# t_something is short for test_something
 t_all:
 	pytest tests/test_logic.py
 	pytest tests/test_map.py
