@@ -223,6 +223,7 @@ def run(game_config, agents: List[Player] = []):
         # if we control replay, change game state
         game_step = max(0, min(len(game_states) - 1, game_step + control_events["time_change"]))
         if env.renderer.paused and game_step != env.game.time:
+            env.agents = deepcopy(env.possible_agents)
             env.game.channels = deepcopy(game_states[game_step])
             env.game.time = game_step
             last_move_time = _t
