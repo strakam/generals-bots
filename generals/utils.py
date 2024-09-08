@@ -229,6 +229,7 @@ def run(game_config, agents: List[Player] = []):
         # if we are not paused, play the game
         elif _t - last_move_time > env.renderer.game_speed * 0.512 and not env.renderer.paused:
             if env.game.is_done():
+                env.renderer.paused = True
                 continue
             observations = env.game.get_all_observations()
             actions = {}

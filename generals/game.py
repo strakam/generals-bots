@@ -145,6 +145,7 @@ class Game:
         Args:
             actions: dictionary of agent_id to action (this will be reworked)
         """
+        done_before_actions = self.is_done()
         directions = np.array([UP, DOWN, LEFT, RIGHT])
         agents = list(actions.keys())
         np.random.shuffle(agents)  # random action order
@@ -191,10 +192,17 @@ class Game:
                 if square_winner != target_square_owner:
                     self.channels[f"ownership_{target_square_owner}"][di, dj] = 0
 
-        if not self.is_done():
+        if not done_before_actions:
             self.time += 1
 
-        self._global_game_update()
+        if self.is_done():
+            winner = self.agents[0] if self.agent_won(self.agents[0]) else self.agents[1]
+            loser = self.agents[1] if winner == self.agents[0] else self.agents[0]
+            # give all cells of loser to winner
+            self.channels[f"ownership_{winner}"] += self.channels[f"ownership_{loser}"]
+            self.channels[f"ownership_{loser}"] = self.channels["passable"] * 0
+        else:
+            self._global_game_update()
 
         observations = {agent: self._agent_observation(agent) for agent in self.agents}
         infos = {agent: {"is_winner": self.agent_won(agent)} for agent in self.agents}
@@ -211,15 +219,6 @@ class Game:
         """
         Update game state globally.
         """
-
-        if self.is_done():
-            winner = self.agents[0] if self.agent_won(self.agents[0]) else self.agents[1]
-            loser = self.agents[1] if winner == self.agents[0] else self.agents[0]
-            # give all cells of loser to winner
-            self.channels[f"ownership_{winner}"] += self.channels[f"ownership_{loser}"]
-            self.channels[f"ownership_{loser}"] = self.channels["passable"] * 0
-            return
-
 
         owners = self.agents
         # every TICK_RATE steps, increase army size in each cell
