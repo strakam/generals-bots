@@ -79,17 +79,39 @@ class Generals(pettingzoo.ParallelEnv):
         return observations, infos
 
     def step(self, actions):
-        observations, rewards, terminated, truncated, infos = self.game.step(actions)
         if self.replay:
             self.action_history.append(actions)
+
+        observations, infos = self.game.step(actions)
+
+        game_ended = any(infos[agent]["is_winner"] for agent in self.agents)
+        truncated = {agent: False for agent in self.agents}
+        terminated = {agent: True if game_ended else False for agent in self.agents}
+        rewards = self.calculate_rewards(infos)
 
         # if any agent dies, all agents are terminated
         terminate = any(terminated.values())
         if terminate:
-            terminated = {agent: True for agent in self.agents}
             self.agents = []
             # if replay is on, store the game
             if self.replay:
                 utils.store_replay(self.game.map, self.action_history, self.replay)
-
+        print(rewards)
         return observations, rewards, terminated, truncated, infos
+    
+    def calculate_rewards(self, infos):
+        """
+        Calculate rewards for each agent.
+        Give 0 if game still running, otherwise 1 for winner and -1 for loser.
+        """
+        rewards = {agent: 0 for agent in self.agents}
+        game_ended = any(infos[agent]["is_winner"] for agent in self.agents)
+        if game_ended:
+            for agent in self.agents:
+                if infos[agent]["is_winner"]:
+                    rewards[agent] = 1
+                else:
+                    rewards[agent] = -1
+        return rewards
+
+        

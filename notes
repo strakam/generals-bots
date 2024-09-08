@@ -1,31 +1,11 @@
-- store game as a list of frames
-- game is stored as a list of dicts, where dicts have multiple channels
-- minimize storage by using cheap types
-- user interaction will have play/replay mode where in play mode we play, in replay mode we can move between timeframes
-and after moving we can switch to play mode
-
-
-
-- How are players loaded? 
-  - as List of players
-- Everybody has replay actions and queue actions
-- Actions decided based on info (timestep)
-- Replay actions independent
-
-- What happens when user goes 'backwards'?
-  - change timestep, go back in frames
-  - also decrease time by 1
-
-- this means we dont need wrapper? 
-- frame history needs to be held somewhere
-- so no need for wrapper but still some class that governs this
-
-
-
-- make saved map smaller, now int32
-
-
-- keybindings into dicts, have 2 functions for GUI/REPLAY keybinds and for user input
-
 - double drawing of stuff ? like general positions
 - super+q softer killing of stuff
+
+- implement end of game function/variable
+
+- in env.game.channels['army'], you can see armies of invisible castles - check if works
+
+- when env reset, there should be a new map probably - solved (?)
+- end the game
+- create special place for player class
+- test game winner

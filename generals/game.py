@@ -192,12 +192,9 @@ class Game:
         self._global_game_update()
 
         observations = {agent: self._agent_observation(agent) for agent in self.agents}
-        rewards = {agent: 0 for agent in self.agents}
-        terminated = {agent: self._agent_terminated(agent) for agent in self.agents}
-        truncated = {agent: False for agent in self.agents}
-        infos = {agent: {} for agent in self.agents}
+        infos = {agent: {"is_winner": self.agent_won(agent)} for agent in self.agents}
 
-        return observations, rewards, terminated, truncated, infos
+        return observations, infos
 
     def get_all_observations(self):
         """
@@ -270,9 +267,11 @@ class Game:
         }
         return observation
 
-    def _agent_terminated(self, agent: str) -> bool:
+    def agent_won(self, agent: str) -> bool:
         """
-        Returns True if the agent is terminated, False otherwise.
+        Returns True if the agent won the game, False otherwise.
         """
-        general = self.general_positions[agent]
-        return self.channels[f"ownership_{agent}"][general[0], general[1]] == 0
+        return all(
+            self.channels[f"ownership_{agent}"][general[0], general[1]] == 1
+            for general in self.general_positions.values()
+        )
