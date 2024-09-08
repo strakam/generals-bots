@@ -90,6 +90,9 @@ class Game:
             (self.grid_size, self.grid_size, 4), dtype=np.float32
         )
 
+        if self.is_done():
+            return valid_action_mask
+
         for channel_index, direction in enumerate([UP, DOWN, LEFT, RIGHT]):
             destinations = owned_cells_indices + direction
 
@@ -177,18 +180,20 @@ class Game:
             else:
                 # calculate resulting army, winner and update channels
                 remaining_army = np.abs(target_square_army - moved_army_size)
-                winner = (
+                square_winner = (
                     agent
                     if target_square_army < moved_army_size
                     else target_square_owner
                 )
                 self.channels["army"][di, dj] = remaining_army
                 self.channels["army"][si, sj] = 1
-                self.channels[f"ownership_{winner}"][di, dj] = 1
-                if winner != target_square_owner:
+                self.channels[f"ownership_{square_winner}"][di, dj] = 1
+                if square_winner != target_square_owner:
                     self.channels[f"ownership_{target_square_owner}"][di, dj] = 0
 
-        self.time += 1
+        if not self.is_done():
+            self.time += 1
+
         self._global_game_update()
 
         observations = {agent: self._agent_observation(agent) for agent in self.agents}
@@ -207,6 +212,15 @@ class Game:
         Update game state globally.
         """
 
+        if self.is_done():
+            winner = self.agents[0] if self.agent_won(self.agents[0]) else self.agents[1]
+            loser = self.agents[1] if winner == self.agents[0] else self.agents[0]
+            # give all cells of loser to winner
+            self.channels[f"ownership_{winner}"] += self.channels[f"ownership_{loser}"]
+            self.channels[f"ownership_{loser}"] = self.channels["passable"] * 0
+            return
+
+
         owners = self.agents
         # every TICK_RATE steps, increase army size in each cell
         if self.time % INCREMENT_RATE == 0:
@@ -220,6 +234,12 @@ class Game:
                 self.channels["army"] += (
                     update_mask * self.channels[f"ownership_{owner}"]
                 )
+    
+    def is_done(self):
+        """
+        Returns True if the game is over, False otherwise.
+        """
+        return any(self.agent_won(agent) for agent in self.agents)
 
     def get_players_stats(self):
         """
