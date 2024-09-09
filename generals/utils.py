@@ -230,6 +230,10 @@ def run(game_config, agents: Dict[str, Agent] = {}):
             observations = env.game.get_all_observations()
             actions = {}
             for agent in env.agents:
+                print(agent)
+                mask = observations[agent]['action_mask']
+                mask = np.transpose(mask, (2, 0, 1))
+                print(mask)
                 actions[agent] = agents[agent].play(observations[agent])
             _ = env.step(actions)
             game_step = env.game.time

@@ -4,6 +4,9 @@ from generals.config import GameConfig
 
 
 testik = GameConfig(grid_size=4)
-agents = [generals.agents.RandomAgent("red"), generals.agents.RandomAgent("blue")]
+agents = {
+    "red": generals.agents.RandomAgent("red"),
+    "blue": generals.agents.RandomAgent("blue")
+}
 
 generals.utils.run(testik, agents)
