@@ -79,7 +79,7 @@ class Game:
             agent_id: str
 
         Returns:
-            np.ndarray: an NxNx4 array, where for last channel is a boolean mask
+            np.ndarray: an NxNx4 array, where each channel is a boolean mask
             of valid actions (UP, DOWN, LEFT, RIGHT) for each cell in the grid.
         """
 
@@ -265,6 +265,7 @@ class Game:
         - (visible) opponent ownership
         - (visible) neutral ownership
         - mountain
+        - action mask
 
         Args:
             agent: str

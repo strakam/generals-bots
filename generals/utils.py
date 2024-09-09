@@ -178,7 +178,7 @@ def load_replay(path: str):
     return map, game_states
 
 
-def run(game_config, agents: List[Agent] = []):
+def run(game_config, agents: Dict[str, Agent] = {}):
     from generals.env import generals_v0
     if game_config.replay_file is not None:
         map, game_states = load_replay(game_config.replay_file)
@@ -192,14 +192,14 @@ def run(game_config, agents: List[Agent] = []):
                 town_density=game_config.town_density,
                 general_positions=game_config.general_positions,
             )
+        game_config.agent_names = list(agents.keys())
         env = generals_v0(game_config)
         _ = env.reset(map)
         game_states = [deepcopy(env.game.channels)]
 
     assert validate_map(map), "Map is invalid"
     assert len(agents) == 2, "Exactly two agents must be provided"
-    env = generals_v0(map)
-    agents = {agent.name: agent for agent in agents}
+    env = generals_v0(game_config, render_mode="human")
 
     env.reset(map)
     env.render()

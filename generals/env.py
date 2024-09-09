@@ -6,7 +6,7 @@ from . import game, utils, config
 from .rendering import Renderer
 
 
-def generals_v0(game_config: config.GameConfig, render_mode="human"):
+def generals_v0(game_config: config.GameConfig, render_mode="none"):
     """
     Here we apply wrappers to the environment.
     """
@@ -18,11 +18,11 @@ class Generals(pettingzoo.ParallelEnv):
     def __init__(
         self,
         game_config = None,
-        render_mode="human",
+        render_mode="none"
     ):
         self.render_mode = render_mode
         self.game_config = game_config
-        self.agents = ["red", "blue"]
+        self.agents = game_config.agent_names
         self.possible_agents = self.agents[:]
 
 
@@ -72,7 +72,6 @@ class Generals(pettingzoo.ParallelEnv):
     def step(self, actions):
         if self.replay:
             self.action_history.append(actions)
-
         observations, infos = self.game.step(actions)
 
         truncated = {agent: False for agent in self.agents}

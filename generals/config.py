@@ -9,6 +9,7 @@ class GameConfig(BaseModel):
     general_positions: List[str] = None
     map: str = None
     replay_file: str = None
+    agent_names: List[str] = None
 
 #################
 # Game Literals #
