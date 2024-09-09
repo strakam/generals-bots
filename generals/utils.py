@@ -4,6 +4,7 @@ from importlib.resources import files
 from .constants import PASSABLE, MOUNTAIN
 from copy import deepcopy
 from generals.env import GameConfig
+from generals.agents import Agent
 
 from typing import List, Dict, Tuple
 
@@ -176,20 +177,8 @@ def load_replay(path: str):
 
     return map, game_states
 
-class Player:
-    def __init__(self, name):
-        self.name = name
 
-    def play(self, observation):
-        mask = observation['action_mask']
-        valid_actions = np.argwhere(mask == 1)
-        action = np.random.choice(len(valid_actions))
-        return valid_actions[action]
-
-    def __str__(self):
-        return self.name
-
-def run(game_config, agents: List[Player] = []):
+def run(game_config, agents: List[Agent] = []):
     from generals.env import generals_v0
     if game_config.replay_file is not None:
         map, game_states = load_replay(game_config.replay_file)
