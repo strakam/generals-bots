@@ -56,6 +56,9 @@ def map_from_string(map_str: str) -> np.ndarray:
 
     Args:
         map_str: str, map layout as string
+
+    Returns:
+        np.ndarray: map layout
     """
     map_list = map_str.strip().split("\n")
     map = np.array([list(row) for row in map_list])
@@ -156,10 +159,13 @@ def load_replay(path: str):
             )
     # Play actions to recreate states that happened
     from generals.env import generals_v0
+
+    map = map_from_string(map_string)
+
     game_config = GameConfig(map=map_string)
     env = generals_v0(game_config)
-    map = map_from_string(map_string)
     _ = env.reset(map, seed=42)
+
     game_states = [deepcopy(env.game.channels)]
     for i in range(len(action_sequence)):
         actions = {}

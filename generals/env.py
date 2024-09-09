@@ -111,5 +111,3 @@ class Generals(pettingzoo.ParallelEnv):
                 else:
                     rewards[agent] = -1
         return rewards
-
-        
