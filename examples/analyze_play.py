@@ -1,6 +1,6 @@
 import generals.utils
 import generals.agents
-from generals.env import GameConfig
+from generals.config import GameConfig
 
 
 testik = GameConfig(grid_size=4)

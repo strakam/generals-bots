@@ -1,5 +1,14 @@
 from typing import List, Tuple, Literal, Dict
 from importlib.resources import files
+from pydantic import BaseModel
+
+class GameConfig(BaseModel):
+    grid_size: int = 16
+    mountain_density: float = 0.2
+    town_density: float = 0.05
+    general_positions: List[str] = None
+    map: str = None
+    replay_file: str = None
 
 #################
 # Game Literals #

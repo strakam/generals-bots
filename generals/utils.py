@@ -1,9 +1,9 @@
 import time
 import numpy as np
 from importlib.resources import files
-from .constants import PASSABLE, MOUNTAIN
+from generals.config import PASSABLE, MOUNTAIN
+from generals.config import GameConfig
 from copy import deepcopy
-from generals.env import GameConfig
 from generals.agents import Agent
 
 from typing import List, Dict, Tuple

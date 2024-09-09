@@ -1,7 +1,7 @@
 import numpy as np
 import pygame
-from . import game
-from . import constants as c
+import generals.game as game
+import generals.config as c
 from typing import Tuple
 
 

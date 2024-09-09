@@ -1,9 +1,9 @@
 import numpy as np
 import gymnasium as gym
 from typing import Dict, List  # type: ignore
-from .constants import PASSABLE, MOUNTAIN, GENERAL  # type: ignore
-from .constants import UP, DOWN, LEFT, RIGHT  # type: ignore
-from .constants import INCREMENT_RATE  # type: ignore
+from .config import PASSABLE, MOUNTAIN, GENERAL  # type: ignore
+from .config import UP, DOWN, LEFT, RIGHT  # type: ignore
+from .config import INCREMENT_RATE  # type: ignore
 
 from scipy.ndimage import maximum_filter
 

@@ -1,21 +1,12 @@
 import numpy as np
 import functools
 import pettingzoo
-from typing import List
 from copy import copy
-from . import game, utils
+from . import game, utils, config
 from .rendering import Renderer
-from pydantic import BaseModel
 
-class GameConfig(BaseModel):
-    grid_size: int = 16
-    mountain_density: float = 0.2
-    town_density: float = 0.05
-    general_positions: List[str] = None
-    map: str = None
-    replay_file: str = None
 
-def generals_v0(game_config: GameConfig, render_mode="human"):
+def generals_v0(game_config: config.GameConfig, render_mode="human"):
     """
     Here we apply wrappers to the environment.
     """
