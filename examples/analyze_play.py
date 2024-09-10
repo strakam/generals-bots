@@ -5,15 +5,14 @@ from generals.config import GameConfig
 
 # Create agents - their names are then called for actions
 agents = {
-    "red": generals.agents.RandomAgent("red"),
-    "blue": generals.agents.RandomAgent("blue")
+    "Red": generals.agents.RandomAgent("Red"),
+    "Blue": generals.agents.RandomAgent("Blue")
 }
 
 agent_names = list(agents.keys())
 
 testik = GameConfig(
-    grid_size=4,
-    replay_file="test",
+    grid_size=16,
     agent_names=agent_names
 )
 
