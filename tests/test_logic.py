@@ -381,8 +381,6 @@ def test_game_step():
         [1, 1, 0, 0],
         [0, 0, 5, 9],
     ], dtype=np.float32)
-    print(game.channels['army'])
-    print(reference_army)
     assert (game.channels['army'] == reference_army).all()
 
     reference_ownership_red = np.array([
@@ -449,7 +447,7 @@ def test_game_step():
     assert stats['blue']['land'] == reference_total_army_land
 
 
-def test_agent_terminated():
+def test_end_of_game():
     game = get_game(map_name='test_map')
     game.general_positions = {
         'red': [3, 3],
@@ -482,7 +480,7 @@ def test_agent_terminated():
         [0, 0, 0, 0],
         [1, 0, 0, 0],
     ], dtype=np.float32)
-    print(game.general_positions)
+
     moves = {
         'red': np.array([2, 1, 0]), # random move
         'blue': np.array([0, 1, 1]) # random move
@@ -492,6 +490,7 @@ def test_agent_terminated():
     # Neither should win
     assert not game.agent_won('red')
     assert not game.agent_won('blue')
+    assert not game.is_done()
 
 
     moves = {
@@ -505,4 +504,7 @@ def test_agent_terminated():
 
     # Blue should be dead
     assert not game.agent_won('blue')
+
+    # Game should be done
+    assert game.is_done()
 

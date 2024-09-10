@@ -1,11 +1,12 @@
-run:
-	python3 -m tests.test_run
-
 t_replay:
 	python3 -m tests.test_replay
 
-control:
-	python3 -m tests.test_control
+play:
+	python3 -m examples.analyze_play
+
+run:
+	python3 -m examples.run_environment
+
 
 t_all:
 	pytest tests/test_logic.py

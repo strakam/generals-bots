@@ -1,4 +1,3 @@
-import numpy as np
 from generals.utils import map_from_generator, validate_map, map_from_string
 
 
