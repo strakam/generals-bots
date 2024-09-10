@@ -6,12 +6,13 @@
  
 </div>
 
-The [generals.io](https://generals.io/) is a real-time strategy game based on conquest and tactical maneuvering where players
-are placed on a 2D grid with only one goal - to capture their opponents' general. Behind this simple goal is a lot of strategic planning, deception, micro and macro mechanics and more. The game has many interesting properties from the view of bot development.
-It is simple to control, partially observable, real-time, has long action sequences and the action space is large.
+[generals.io](https://generals.io/) is a real-time strategy game where players compete to conquer their opponents' generals on a 2D grid. While the goal is simple—capture the enemy general—the gameplay involves a lot of depth. Players need to employ strategic planning, deception, and manage both micro and macro mechanics throughout the game. The combination of these elements makes the game highly engaging and complex.
 
-Although [generals.io](https://generals.io/) enjoys an active player base that organizes tournaments, its bot landscape is significantly smaller. Currently there is only one, "rule-based" agent capable of consistently beating humans. But one question
-is still not answered. Can Machine Learning agents powered by recent advances in (Deep) Reinforcement Learning beat curretn State-of-the-Art? One barrier to answering this question is that it is very difficult to start implementing an agent with the official botting API, especially for Machine Learning agents, who want to be ML framework friendly. This project aims to remove this barrier by implementing the `numpy` powered environment, fully compatible with the [PettingZoo](https://pettingzoo.farama.org/) API standard, which makes agent development as easy as implementing one function. 
+From a bot development perspective, generals.io has some fascinating characteristics. It’s easy to control but challenging due to its partially observable environment, real-time dynamics, long sequences of actions, and a large action space.
+
+While the game has an active player base, with tournaments being held regularly, the bot landscape remains quite limited. Currently, there’s only one "rule-based" bot that can consistently beat human players. This raises an intriguing question: can Machine Learning (ML) agents, powered by recent advances in (Deep) Reinforcement Learning, outperform the current state-of-the-art bot?
+
+One challenge to answering this question is that the official botting API makes it tough to implement ML-based agents, particularly for developers who want to integrate modern ML frameworks. To solve this, our project aims to make bot development more accessible by creating a numpy-powered environment that is fully compatible with the [PettingZoo](https://pettingzoo.farama.org/) API standard. This simplifies the development process, making it as easy as implementing a single function.
 
 
 ## Installation/Setup
