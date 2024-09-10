@@ -1,7 +1,11 @@
 <div align="center">
-[![Generals-Zoo logo](https://raw.githubusercontent.com/strakam/Generals-Zoo/tree/master/generals/images/test.png)](https://github.com/strakam/Generals-Zoo)
-  **Machine Learning friendly implementation of the Generals.io game**
+
+[<img src="https://github.com/strakam/Generals-Zoo/blob/master/generals/images/test.png?raw=true" alt="Generals-Zoo logo" width="500"/>](https://github.com/strakam/Generals-Zoo)
+
+**Machine Learning Friendly Implementation of the Generals.io Game**
+ 
 </div>
+
 ## Installation/Setup
 
 Create python virtual environment:
