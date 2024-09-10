@@ -8,15 +8,13 @@ agents = {
     "blue": RandomAgent("blue")
 }
 
-agent_names = list(agents.keys())
-
 game_config = GameConfig(
     grid_size=4,
-    agent_names=agent_names
+    agent_names=list(agents.keys()),
 )
 
 # Create environment
-env = generals_v0(game_config, render_mode="none")
+env = generals_v0(game_config, render_mode="human")
 observations, info = env.reset()
 
 while not env.game.is_done():

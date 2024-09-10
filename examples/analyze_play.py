@@ -9,11 +9,9 @@ agents = {
     "Blue": generals.agents.RandomAgent("Blue")
 }
 
-agent_names = list(agents.keys())
-
 testik = GameConfig(
     grid_size=16,
-    agent_names=agent_names
+    agent_names=list(agents.keys())
 )
 
 # Run from replay - user can analyze the game and try different runs
