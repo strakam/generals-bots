@@ -43,12 +43,14 @@ class Generals(pettingzoo.ParallelEnv):
     def reset(self, map: np.ndarray = None, seed=None, options={}):
         self.agents = copy(self.possible_agents)
 
+        # If map is not provided, generate a new one
         if map is None:
             map = utils.map_from_generator(
                 grid_size=self.game_config.grid_size,
                 mountain_density=self.game_config.mountain_density,
                 town_density=self.game_config.town_density,
                 general_positions=self.game_config.general_positions,
+                seed=seed,
             )
 
         self.game = game.Game(map, self.possible_agents)
@@ -65,16 +67,17 @@ class Generals(pettingzoo.ParallelEnv):
         observations = {
             agent: self.game._agent_observation(agent) for agent in self.agents
         }
-
         infos = {agent: {} for agent in self.agents}
+
         return observations, infos
 
     def step(self, actions):
         if self.replay:
             self.action_history.append(actions)
+
         observations, infos = self.game.step(actions)
 
-        truncated = {agent: False for agent in self.agents}
+        truncated = {agent: False for agent in self.agents} # no truncation
         terminated = {agent: True if self.game.is_done() else False for agent in self.agents}
         rewards = self.calculate_rewards(infos)
 
@@ -85,6 +88,7 @@ class Generals(pettingzoo.ParallelEnv):
             # if replay is on, store the game
             if self.replay:
                 utils.store_replay(self.game.map, self.action_history, self.replay)
+
         return observations, rewards, terminated, truncated, infos
     
     def calculate_rewards(self, infos):

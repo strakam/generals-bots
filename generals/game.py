@@ -1,9 +1,9 @@
 import numpy as np
 import gymnasium as gym
-from typing import Dict, List  # type: ignore
-from .config import PASSABLE, MOUNTAIN, GENERAL  # type: ignore
-from .config import UP, DOWN, LEFT, RIGHT  # type: ignore
-from .config import INCREMENT_RATE  # type: ignore
+from typing import Dict, List
+from generals.config import PASSABLE, MOUNTAIN, GENERAL
+from generals.config import UP, DOWN, LEFT, RIGHT
+from generals.config import INCREMENT_RATE
 
 from scipy.ndimage import maximum_filter
 
@@ -16,7 +16,7 @@ class Game:
 
         spatial_dim = (map.shape[0], map.shape[1])
         self.map = map
-        self.grid_size = spatial_dim[0]  # works only for square maps now
+        self.grid_size = spatial_dim[0]  # Grid shape should be square
 
         self.general_positions = {
             agent: np.argwhere(map == chr(ord(GENERAL) + self.agent_id[agent]))[0]
@@ -32,6 +32,8 @@ class Game:
         # Ownership_i - ownership mask for player i (1 if player i owns cell, 0 otherwise)
         # Ownerhsip_0 - ownership mask for neutral cells that are passable (1 if cell is neutral, 0 otherwise)
         valid_generals = ['A', 'B'] # because generals are represented as letters
+
+        # Initialize channels
         self.channels = {
             "army": np.where(np.isin(map, valid_generals), 1, 0).astype(np.float32),
             "general": np.where(np.isin(map, valid_generals), 1, 0).astype(bool),
@@ -81,6 +83,8 @@ class Game:
         Returns:
             np.ndarray: an NxNx4 array, where each channel is a boolean mask
             of valid actions (UP, DOWN, LEFT, RIGHT) for each cell in the grid.
+
+            I.e. valid_action_mask[i, j, k] is 1 if action k is valid in cell (i, j).
         """
 
         ownership_channel = self.channels[f"ownership_{agent}"]
@@ -162,7 +166,7 @@ class Game:
 
             moved_army_size = self.channels["army"][si, sj] - 1
 
-            # check if the current player owns the source cell and has atleast 2 army size
+            # Check if the current player owns the source cell and has atleast 2 army size
             if moved_army_size < 1 or self.channels[f"ownership_{agent}"][si, sj] == 0:
                 continue
 
@@ -179,7 +183,7 @@ class Game:
                 self.channels["army"][di, dj] += moved_army_size
                 self.channels["army"][si, sj] = 1
             else:
-                # calculate resulting army, winner and update channels
+                # Calculate resulting army, winner and update channels
                 remaining_army = np.abs(target_square_army - moved_army_size)
                 square_winner = (
                     agent
@@ -196,9 +200,9 @@ class Game:
             self.time += 1
 
         if self.is_done():
+            # Give all cells of loser to winner
             winner = self.agents[0] if self.agent_won(self.agents[0]) else self.agents[1]
             loser = self.agents[1] if winner == self.agents[0] else self.agents[0]
-            # give all cells of loser to winner
             self.channels[f"ownership_{winner}"] += self.channels[f"ownership_{loser}"]
             self.channels[f"ownership_{loser}"] = self.channels["passable"] * 0
         else:
@@ -221,6 +225,7 @@ class Game:
         """
 
         owners = self.agents
+
         # every TICK_RATE steps, increase army size in each cell
         if self.time % INCREMENT_RATE == 0:
             for owner in owners:
@@ -264,7 +269,7 @@ class Game:
         - (visible) agent ownership
         - (visible) opponent ownership
         - (visible) neutral ownership
-        - mountain
+        - mountain or city
         - action mask
 
         Args:
@@ -282,7 +287,7 @@ class Game:
             "ownership": self.channels[f"ownership_{agent}"] * visibility,
             "ownership_opponent": self.channels[f"ownership_{opponent}"] * visibility,
             "ownership_neutral": self.channels["ownership_neutral"] * visibility,
-            "mountain": self.channels["mountain"],
+            "structure": self.channels["mountain"] + self.channels["city"],
             "action_mask": self.action_mask(agent),
         }
         return observation

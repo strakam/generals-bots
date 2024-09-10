@@ -2,14 +2,17 @@ from typing import List, Tuple, Literal, Dict
 from importlib.resources import files
 from pydantic import BaseModel
 
+################
+# Game Config  #
+################
 class GameConfig(BaseModel):
-    grid_size: int = 16
-    mountain_density: float = 0.2
-    town_density: float = 0.05
-    general_positions: List[str] = None
-    map: str = None
-    replay_file: str = None
-    agent_names: List[str] = None
+    grid_size: int = 16 # Edge length of the square grid
+    mountain_density: float = 0.2 # Probability of mountain in a cell
+    town_density: float = 0.05 # Probability of town in a cell
+    general_positions: List[str] = None # Positions of generals
+    map: str = None # Map layout as string
+    replay_file: str = None # File from which to replay the game
+    agent_names: List[str] = None # Names of the agents that will be called to play the game
 
 #################
 # Game Literals #

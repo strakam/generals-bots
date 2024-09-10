@@ -14,6 +14,7 @@ def map_from_generator(
     mountain_density: float = 0.2,
     town_density: float = 0.05,
     general_positions: List[Tuple[int, int]] = None,
+    seed: int = None,
 ) -> np.ndarray:
     """
     Generate a map with the given parameters.
@@ -26,15 +27,18 @@ def map_from_generator(
     """
 
     spatial_dim = (grid_size, grid_size)
+
+    # Probabilities of each cell type
     p_neutral = 1 - mountain_density - town_density
     probs = [p_neutral, mountain_density] + [town_density / 10] * 10
 
-    # Place parts of the map
-    map = np.random.choice(
+    # Place cells on the map
+    rng = np.random.default_rng(seed)
+    map = rng.choice(
         [PASSABLE, MOUNTAIN, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9], size=spatial_dim, p=probs
     )
 
-    # place generals on random squares
+    # Place generals on random squares
     if general_positions is None:
         general_positions = np.random.choice(
             grid_size, size=(2, 2), replace=False
@@ -43,7 +47,7 @@ def map_from_generator(
     for i, idx in enumerate(general_positions):
         map[idx[0], idx[1]] = chr(ord('A') + i)
 
-    # generate until valid map
+    # Generate until valid map
     return (
         map
         if validate_map(map)
@@ -162,8 +166,9 @@ def load_replay(path: str):
     from generals.env import generals_v0
 
     map = map_from_string(map_string)
-
-    game_config = GameConfig(map=map_string)
+    game_config = GameConfig(
+        agent_names=["red", "blue"],
+    )
     env = generals_v0(game_config)
     _ = env.reset(map, seed=42)
 
@@ -180,8 +185,11 @@ def load_replay(path: str):
 
 def run(game_config, agents: Dict[str, Agent] = {}):
     from generals.env import generals_v0
+
+    # If replay file is provided, load it
     if game_config.replay_file is not None:
         map, game_states = load_replay(game_config.replay_file)
+    # Otherwise load map or generate it
     else:
         if game_config.map is not None:
             map = map_from_string(game_config.map)
@@ -199,8 +207,8 @@ def run(game_config, agents: Dict[str, Agent] = {}):
 
     assert validate_map(map), "Map is invalid"
     assert len(agents) == 2, "Exactly two agents must be provided"
-    env = generals_v0(game_config, render_mode="human")
 
+    env = generals_v0(game_config, render_mode="human")
     env.reset(map)
     env.render()
 
@@ -208,6 +216,7 @@ def run(game_config, agents: Dict[str, Agent] = {}):
 
     while 1:
         _t = time.time()
+        # Check inputs
         if _t - last_input_time > 0.008: # check for input every 8ms
             control_events = env.renderer.handle_events()
             last_input_time = _t
@@ -215,14 +224,14 @@ def run(game_config, agents: Dict[str, Agent] = {}):
         else:
             control_events = {"time_change": 0}
         
-        # if we control replay, change game state
+        # If we control replay, change game state
         game_step = max(0, min(len(game_states) - 1, game_step + control_events["time_change"]))
         if env.renderer.paused and game_step != env.game.time:
             env.agents = deepcopy(env.possible_agents)
             env.game.channels = deepcopy(game_states[game_step])
             env.game.time = game_step
             last_move_time = _t
-        # if we are not paused, play the game
+        # If we are not paused, play the game
         elif _t - last_move_time > env.renderer.game_speed * 0.512 and not env.renderer.paused:
             if env.game.is_done():
                 env.renderer.paused = True
@@ -230,10 +239,6 @@ def run(game_config, agents: Dict[str, Agent] = {}):
             observations = env.game.get_all_observations()
             actions = {}
             for agent in env.agents:
-                print(agent)
-                mask = observations[agent]['action_mask']
-                mask = np.transpose(mask, (2, 0, 1))
-                print(mask)
                 actions[agent] = agents[agent].play(observations[agent])
             _ = env.step(actions)
             game_step = env.game.time

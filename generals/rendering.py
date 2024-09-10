@@ -56,24 +56,29 @@ class Renderer:
             if event.type == pygame.KEYDOWN:
                 self.changed = True
                 control_events['changed'] = True
-                # quit game if q is pressed
                 if event.key == pygame.K_q:
                     pygame.quit()
                     quit()
-                # speed up game right arrow is pressed
+
+                # Speed up game right arrow is pressed
                 if event.key == pygame.K_RIGHT and not self.paused:
                     self.game_speed = max(1/16, self.game_speed / 2)
-                # slow down game left arrow is pressed
+                # Slow down game left arrow is pressed
                 if event.key == pygame.K_LEFT and not self.paused:
                     self.game_speed = min(32, self.game_speed * 2)
+                # Pause game
                 if event.key == pygame.K_SPACE:
                     self.paused = not self.paused
+
+                # Control replay frames
                 if event.key == pygame.K_h:
                     control_events['time_change'] = -1
                     self.paused = True
                 if event.key == pygame.K_l:
                     control_events['time_change'] = 1
                     self.paused = True
+
+            # GUI clicks
             if event.type == pygame.MOUSEBUTTONDOWN:
                 _, y = pygame.mouse.get_pos()
                 for i, agent in enumerate(agents):
@@ -99,12 +104,12 @@ class Renderer:
         fovs = ["FOV"] + ["  X" if self.agent_fov[name] else " " for name in names]
         names = ["Turn"] + [name for name in names]
 
-        # white background for GUI
+        # White background for GUI
         pygame.draw.rect(
             self.screen, c.WHITE, (0, 0, self.window_width, self.grid_offset)
         )
 
-        # draw rows with player colors
+        # Draw rows with player colors
         for i, agent_id in enumerate(ids):
             pygame.draw.rect(
                 self.screen,
@@ -117,7 +122,7 @@ class Renderer:
                 ),
             )
 
-        # draw lines between rows
+        # Draw lines between rows
         for i in range(1, 3):
             pygame.draw.line(
                 self.screen,
