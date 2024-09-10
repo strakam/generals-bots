@@ -489,11 +489,9 @@ def test_agent_terminated():
     }
     game.step(moves)
 
-    # red should be alive
-    assert not game._agent_terminated('red')
-
-    # blue should be alive
-    assert not game._agent_terminated('blue')
+    # Neither should win
+    assert not game.agent_won('red')
+    assert not game.agent_won('blue')
 
 
     moves = {
@@ -502,9 +500,9 @@ def test_agent_terminated():
     }
     game.step(moves)
 
-    # red should be alive
-    assert not game._agent_terminated('red')
+    # Red should win
+    assert game.agent_won('red')
 
-    # blue should be dead
-    assert game._agent_terminated('blue')
+    # Blue should be dead
+    assert not game.agent_won('blue')
 
