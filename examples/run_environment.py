@@ -17,7 +17,7 @@ game_config = GameConfig(
 )
 
 # Create environment
-env = generals_v0(game_config, render_mode="human")
+env = generals_v0(game_config, render_mode="none")
 observations, info = env.reset(options={"replay_file": "test"})
 
 while not env.game.is_done():
