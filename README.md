@@ -6,7 +6,7 @@
  
 </div>
 
-[generals.io](https://generals.io/) is a real-time strategy game where players compete to conquer their opponents' generals on a 2D grid. While the goal is simple—capture the enemy general—the gameplay involves a lot of depth. Players need to employ strategic planning, deception, and manage both micro and macro mechanics throughout the game. The combination of these elements makes the game highly engaging and complex.
+[generals.io](https://generals.io/) is a real-time strategy game where players compete to conquer their opponents' generals on a 2D grid. While the goal is simple — capture the enemy general — the gameplay involves a lot of depth. Players need to employ strategic planning, deception, and manage both micro and macro mechanics throughout the game. The combination of these elements makes the game highly engaging and complex.
 
 From a bot development perspective, generals.io has interesting characteristics. It’s easy to control but challenging due to its partially observable environment, real-time dynamics, long sequences of actions, and a large action space.
 
@@ -100,6 +100,6 @@ TODO : map from string
 ## Controls
 - `q` — quit/close the game
 - `←/→` — increase/decrease the game speed
-- `h/l` - to control replay frames
-- `spacebar` - to pause
+- `h/l` — to control replay frames
+- `spacebar` — to pause
 - `Mouse` click on the player's row — toggle the FOV (Field Of View) of the given player
