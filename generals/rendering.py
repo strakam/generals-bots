@@ -185,8 +185,6 @@ class Renderer:
         # draw visibility squares
         visible_map = np.zeros((self.grid_size, self.grid_size), dtype=np.float32)
         owned_map = np.zeros((self.grid_size, self.grid_size), dtype=np.float32)
-        print(self.game.channels.keys())
-        print(self.game.agents)
         for agent in agents:
             owned_map = np.logical_or(
                 owned_map, self.game.channels["ownership_" + agent]

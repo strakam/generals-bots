@@ -12,7 +12,7 @@ from typing import List, Dict, Tuple
 def map_from_generator(
     grid_size: int = 10,
     mountain_density: float = 0.2,
-    town_density: float = 0.05,
+    city_density: float = 0.05,
     general_positions: List[Tuple[int, int]] = None,
     seed: int = None,
 ) -> np.ndarray:
@@ -22,15 +22,15 @@ def map_from_generator(
     Args:
         grid_size: int, size of the grid
         mountain_density: float, probability of mountain in a cell
-        town_density: float, probability of town in a cell
+        city_density: float, probability of city in a cell
         general_positions: List[Tuple[int, int]], positions of generals
     """
 
     spatial_dim = (grid_size, grid_size)
 
     # Probabilities of each cell type
-    p_neutral = 1 - mountain_density - town_density
-    probs = [p_neutral, mountain_density] + [town_density / 10] * 10
+    p_neutral = 1 - mountain_density - city_density
+    probs = [p_neutral, mountain_density] + [city_density / 10] * 10
 
     # Place cells on the map
     rng = np.random.default_rng(seed)
@@ -51,7 +51,7 @@ def map_from_generator(
     return (
         map
         if validate_map(map)
-        else map_from_generator(grid_size, mountain_density, town_density)
+        else map_from_generator(grid_size, mountain_density, city_density)
     )
 
 
@@ -129,6 +129,8 @@ def store_replay(
 ):
     print(f"Storing replay {name}")
     with open(name, "w") as f:
+        players = list(action_sequence[0].keys())
+        f.write(f"{players[0]} vs {players[1]}\n")
         map = "\n".join(["".join([cell for cell in row]) for row in map])
         f.write(f"{map}\n\n")
         for player_action in action_sequence:
@@ -147,10 +149,13 @@ def load_replay(path: str):
     # Load map and actions
     with open(path, "r") as f:
         lines = f.readlines()
+        players = lines[0].strip().split(" vs ")
+
         # take rows until first empty line
-        rows = lines[: lines.index("\n")]
+        rows = lines[1 : lines.index("\n")]
         map_string = "".join(rows)
         map = map_from_string(map_string)
+
         # after empty line, read actions
         action_sequence = []
         for line in lines[lines.index("\n") + 1 :]:
@@ -167,7 +172,7 @@ def load_replay(path: str):
 
     map = map_from_string(map_string)
     game_config = GameConfig(
-        agent_names=["Red", "Blue"],
+        agent_names=players,
     )
     env = generals_v0(game_config)
     _ = env.reset(map, seed=42)
@@ -180,34 +185,15 @@ def load_replay(path: str):
         _ = env.step(actions)
         game_states.append(deepcopy(env.game.channels))
 
-    return map, game_states
+    return players, map, game_states
 
+def run_replay(replay_file: str):
+    agents, map, game_states = load_replay(replay_file)
 
-def run(game_config, agents: Dict[str, Agent] = {}):
     from generals.env import generals_v0
-
-    # If replay file is provided, load it
-    if game_config.replay_file is not None:
-        map, game_states = load_replay(game_config.replay_file)
-    # Otherwise load map or generate it
-    else:
-        if game_config.map is not None:
-            map = map_from_string(game_config.map)
-        else:
-            map = map_from_generator(
-                grid_size=game_config.grid_size,
-                mountain_density=game_config.mountain_density,
-                town_density=game_config.town_density,
-                general_positions=game_config.general_positions,
-            )
-        game_config.agent_names = list(agents.keys())
-        env = generals_v0(game_config)
-        _ = env.reset(map)
-        game_states = [deepcopy(env.game.channels)]
-
-    assert validate_map(map), "Map is invalid"
-    assert len(agents) == 2, "Exactly two agents must be provided"
-
+    game_config = GameConfig(
+        agent_names=agents,
+    )
     env = generals_v0(game_config, render_mode="human")
     env.reset(map)
     env.render()
@@ -223,7 +209,6 @@ def run(game_config, agents: Dict[str, Agent] = {}):
             env.render()
         else:
             control_events = {"time_change": 0}
-        
         # If we control replay, change game state
         game_step = max(0, min(len(game_states) - 1, game_step + control_events["time_change"]))
         if env.renderer.paused and game_step != env.game.time:
@@ -235,13 +220,8 @@ def run(game_config, agents: Dict[str, Agent] = {}):
         elif _t - last_move_time > env.renderer.game_speed * 0.512 and not env.renderer.paused:
             if env.game.is_done():
                 env.renderer.paused = True
-                continue
-            observations = env.game.get_all_observations()
-            actions = {}
-            for agent in env.agents:
-                actions[agent] = agents[agent].play(observations[agent])
-            _ = env.step(actions)
-            game_step = env.game.time
-            game_states = game_states[:game_step]
-            game_states.append(deepcopy(env.game.channels))
+            game_step = min(len(game_states) - 1, game_step + 1)
+            env.agents = deepcopy(env.possible_agents)
+            env.game.channels = deepcopy(game_states[game_step])
+            env.game.time = game_step
             last_move_time = _t

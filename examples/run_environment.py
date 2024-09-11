@@ -10,12 +10,15 @@ agents = {
 
 game_config = GameConfig(
     grid_size=4,
+    mountain_density=0.2,
+    city_density=0.05,
+    general_positions=[(0, 0), (3, 3)],
     agent_names=list(agents.keys()),
 )
 
 # Create environment
 env = generals_v0(game_config, render_mode="human")
-observations, info = env.reset()
+observations, info = env.reset(options={"replay_file": "test"})
 
 while not env.game.is_done():
     actions = {}

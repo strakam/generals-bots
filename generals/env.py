@@ -48,7 +48,7 @@ class Generals(pettingzoo.ParallelEnv):
             map = utils.map_from_generator(
                 grid_size=self.game_config.grid_size,
                 mountain_density=self.game_config.mountain_density,
-                town_density=self.game_config.town_density,
+                city_density=self.game_config.city_density,
                 general_positions=self.game_config.general_positions,
                 seed=seed,
             )

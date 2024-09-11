@@ -281,6 +281,7 @@ class Game:
         opponent = self.agents[0] if agent == self.agents[1] else self.agents[1]
         visibility = self.visibility_channel(self.channels[f"ownership_{agent}"])
         observation = {
+            "visibility": visibility,
             "army": self.channels["army"] * visibility,
             "general": self.channels["general"] * visibility,
             "city": self.channels["city"] * visibility,

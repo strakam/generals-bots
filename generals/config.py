@@ -8,7 +8,7 @@ from pydantic import BaseModel
 class GameConfig(BaseModel):
     grid_size: int = 16 # Edge length of the square grid
     mountain_density: float = 0.2 # Probability of mountain in a cell
-    town_density: float = 0.05 # Probability of town in a cell
+    city_density: float = 0.05 # Probability of city in a cell
     general_positions: List[Tuple[int, int]] = None # Positions of generals
     map: str = None # Map layout as string
     replay_file: str = None # File from which to replay the game
