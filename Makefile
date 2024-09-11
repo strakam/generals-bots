@@ -1,8 +1,5 @@
-t_replay:
-	python3 -m tests.test_replay
-
-play:
-	python3 -m examples.analyze_play
+replay:
+	python3 -m examples.replay
 
 run:
 	python3 -m examples.run_environment

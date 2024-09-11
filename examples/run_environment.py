@@ -4,8 +4,8 @@ from generals.config import GameConfig
 
 # Initialize agents - their names are then called for actions
 agents = {
-    "red": RandomAgent("red"),
-    "blue": RandomAgent("blue")
+    "monkas": RandomAgent("monkas"),
+    "topkek": RandomAgent("topkek")
 }
 
 game_config = GameConfig(
