@@ -11,25 +11,24 @@
 This repository aims to make bot development more accessible, especially for Machine Learning based agents.
 
 Highlights:
-* ⚡ Fast & Lightweight simulator powered by numpy (thousands of steps per second)
+* 🚀 Fast & Lightweight simulator powered by numpy (thousands of steps per second)
 * 🦁 Compatibility with Reinforcement-Learning API standard [PettingZoo](https://pettingzoo.farama.org/)
-* ⚙️ Easy customization of environments
-* 🔎 Analysis tools such as replays
+* 🔧 Easy customization of environments
+* 🔬 Analysis tools such as replays
 
 <br>
 
 Generals.io has interesting properties:
 * 👀 Partial observability
-* ▶️ Long action sequences and large action spaces
+* 🏃‍♂️ Long action sequences and large action spaces
 * 🧠 Requires strategical planning
 * ⏱️ Real-time gameplay 
 
 
-## Installation/Setup
+## 📦 Installation/Setup
 TODO
 
 ## Usage example
-TODO : map from string
 ```python
 from generals.env import generals_v0
 from generals.agents import RandomAgent
@@ -41,11 +40,9 @@ agents = {
     "blue": RandomAgent("blue")
 }
 
-agent_names = list(agents.keys())
-
 game_config = GameConfig(
     grid_size=4,
-    agent_names=agent_names
+    agent_names=list(agents.keys())
 )
 
 # Create environment
@@ -61,10 +58,10 @@ while not env.game.is_done():
     observations, rewards, terminated, truncated, info = env.step(actions)
 ```
 
-## Customization
+## 🎨 Customization
 The environment can be customized via `GridConfig` class or by creating a custom map.
 
-### Random maps
+### 🗺️ Random maps
 ```python
 from generals.env import generals_v0
 from generals.config import GameConfig
@@ -82,7 +79,7 @@ env = generals_v0(game_config, render_mode="none")
 observations, info = env.reset()
 ```
 
-### Custom maps
+### 🗺️ Custom maps
 Maps can be described by strings. We can either load them directly from a string or from a file.
 
 ```python
@@ -93,7 +90,7 @@ game_config = GameConfig(
     agent_names=['Human.exe','Agent007']  # Names of the agents that will be called to play the game
 )
 map = """
-...#
+.3.#
 #..A
 #..#
 .#.B
@@ -105,9 +102,9 @@ Maps are encoded using these symbols:
 - `.` for passable terrain
 - `#` for non-passable terrain
 - `A,B` are positions of generals
-- digits `0-9` represent cost of cities calculated as 40 + digit
+- digits `0-9` represent cost of cities calculated as `(40 + digit)`
 
-## Replay analysis
+## 🔬 Replay analysis
 We can store replays and then analyze them.
 ### Storing a replay
 ```python
@@ -122,33 +119,17 @@ env.reset(options=options) # encodes the next game into a "replay_001" file
 ### Loading a replay
 ```python
 import generals.utils
-import generals.agents
-from generals.config import GameConfig
 
-
-# Create agents - their names are then called for actions
-agents = {
-    "Red": generals.agents.RandomAgent("Red"),
-    "Blue": generals.agents.RandomAgent("Blue")
-}
-
-testik = GameConfig(
-    grid_size=16,
-    agent_names=list(agents.keys()),
-    replay_file="replay_001"
-)
-
-# Run from replay - user can analyze the game and try different runs
-generals.utils.run(testik, agents) # Pass whole agents as second parameter
+generals.utils.run_teplay("replay_001")
 ```
-### Replay Controls
-- `q` — quit/close the game
-- `←/→` — increase/decrease the game speed
+### 🕹️ Replay Controls
+- `q` — quit/close the replay
+- `←/→` — increase/decrease the replay speed
 - `h/l` — to control replay frames
 - `spacebar` — to pause
 - `Mouse` click on the player's row — toggle the FOV (Field Of View) of the given player
-## POMDP - Observations, Actions and Rewards
-### Observation
+## POMDP - 🔭 Observations, ⚡ Actions and 🎁 Rewards
+### 🔭 Observation
 An observation for one player is a dictionary of 8 key/value pairs. Each value is a 2D `np.array` containing information for each cell.
 Values are (binary) masked so that only information about cells that an agent can see can be non-zero.
 |Key|Shape|Description|
@@ -162,12 +143,12 @@ Values are (binary) masked so that only information about cells that an agent ca
 |`structure`| `(N,N,1)` | Mask indicating whether cells contain cities or mountains, even out of FoV|
 |`action_mask`| `(N,N,4)` | Mask where `[i,j,k]` indicates whether you can move from a cell `[i,j]` to direction `k` where directions are in order (UP, DOWN, LEFT, RIGHT)|
    
-### Action
+### ⚡ Action
 Actions are `np.array` with shape `(3,)` which indicate that you want to move units from cell `[i,j]` in a direction `k`.
 
-### Reward
+### 🎁 Reward
 TODO
-## TODOs:
+## 🔨 TODOs:
 - Replays need improvements
 - Extend action space to sending half of units to another square
 - Add human control to play against
