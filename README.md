@@ -51,8 +51,6 @@ while not env.game.is_done():
     observations, rewards, terminated, truncated, info = env.step(actions)
 ```
 
-## Replay analysis
-
 ## Customization
 The environment can be customized via `GridConfig` class or by creating a custom map.
 
@@ -94,12 +92,70 @@ map = """
 
 env.reset(map=map) # Here map related settings from game_config are overridden
 ```
+Maps are encoded using these symbols:
+- `.` for passable terrain
+- `#` for non-passable terrain
+- `A,B` are positions of generals
+- digits `0-9` represent cost of cities calculated as 40 + digit
 
-TODO : map from string
+## Replay analysis
+We can store replays and then analyze them.
+### Storing a replay
+```python
+from generals.env import generals_v0
+from generals.config import GameConfig
 
-## Controls
+game_config = GameConfig()
+options = {"replay_file": "replay_001"}
+env.reset(options=options) # encodes the next game into a "replay_001" file
+```
+
+### Loading a replay
+```python
+import generals.utils
+import generals.agents
+from generals.config import GameConfig
+
+
+# Create agents - their names are then called for actions
+agents = {
+    "Red": generals.agents.RandomAgent("Red"),
+    "Blue": generals.agents.RandomAgent("Blue")
+}
+
+testik = GameConfig(
+    grid_size=16,
+    agent_names=list(agents.keys()),
+    replay_file="replay_001"
+)
+
+# Run from replay - user can analyze the game and try different runs
+generals.utils.run(testik, agents) # Pass whole agents as second parameter
+```
+### Replay Controls
 - `q` — quit/close the game
 - `←/→` — increase/decrease the game speed
 - `h/l` — to control replay frames
 - `spacebar` — to pause
 - `Mouse` click on the player's row — toggle the FOV (Field Of View) of the given player
+
+## Observation Space
+An observation for one player is a dictionary of 8 key/value pairs. Each value is a 2D `np.array` containing quantities of certain units.
+Values are masked so that only information about cells that an agent can see can be non-zero.
+- `army` - shows a number of units in a cell regardless of owner.
+- `visibility` - a binary mask of cells that are visible to the agent.
+- `general` - a binary mask indicating whether a general is in a cell regardless of owner.
+- `city` - a binary mask saying whether a city is in a cell.
+- `ownership` - a binary mask indicating whether cells are yours or of your opponent.
+- `ownership_opponent` - a binary mask indicating whether cells are owned by the opponent.
+- `ownership_neutral` - a binary mask indicating whether cells are unnocupied by either player.
+- `structure` - a binary mask indicating whether there is a mountain or a city, even in a fog of war.
+- `action_mask` - a `NxNx4` binary mask where `[i,j,k]` indicates whether you can move from a cell `[i,j]` to direction `k` where directions are in order (UP, DOWN, LEFT, RIGHT)
+   
+## Action Space
+Actions are `np.array` of 3 values `[i,j,k]` which indicate that you want to move units from cell `[i,j]` in a direction `k`
+
+## TODOs:
+- Replays need improvements
+- Extend action space to sending half of units to another square
+- Add human control to play against
