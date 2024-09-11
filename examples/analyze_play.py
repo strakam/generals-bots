@@ -11,7 +11,8 @@ agents = {
 
 testik = GameConfig(
     grid_size=16,
-    agent_names=list(agents.keys())
+    agent_names=list(agents.keys()),
+    replay_file="test"
 )
 
 # Run from replay - user can analyze the game and try different runs

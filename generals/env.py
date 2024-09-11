@@ -58,8 +58,8 @@ class Generals(pettingzoo.ParallelEnv):
         if self.render_mode == "human":
             self.renderer = Renderer(self.game)
 
-        if "replay" in options:
-            self.replay = options["replay"]
+        if "replay_file" in options:
+            self.replay = options["replay_file"]
             self.action_history = []
         else:
             self.replay = False

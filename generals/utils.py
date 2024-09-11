@@ -167,7 +167,7 @@ def load_replay(path: str):
 
     map = map_from_string(map_string)
     game_config = GameConfig(
-        agent_names=["red", "blue"],
+        agent_names=["Red", "Blue"],
     )
     env = generals_v0(game_config)
     _ = env.reset(map, seed=42)

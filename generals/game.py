@@ -23,6 +23,8 @@ class Game:
             for agent in self.agents
         }
 
+        valid_generals = ['A', 'B'] # because generals are represented as letters
+
         # Initialize channels
         # Army - army size in each cell
         # General - general mask (1 if general is in cell, 0 otherwise)
@@ -31,8 +33,6 @@ class Game:
         # Passable - passable mask (1 if cell is passable, 0 otherwise)
         # Ownership_i - ownership mask for player i (1 if player i owns cell, 0 otherwise)
         # Ownerhsip_0 - ownership mask for neutral cells that are passable (1 if cell is neutral, 0 otherwise)
-        valid_generals = ['A', 'B'] # because generals are represented as letters
-
         # Initialize channels
         self.channels = {
             "army": np.where(np.isin(map, valid_generals), 1, 0).astype(np.float32),
