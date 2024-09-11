@@ -1,16 +1,10 @@
+Pre 1.0
+- better placing of custom reward function
+- finetune readme
+
+Other:
 - double drawing of stuff ? like general positions
 - super+q softer killing of stuff
 - possible improvement - prerender GUI and then just blit it
-
-TODO (9.9)
-- refactor stuff (minimize bloat in code) this will probably go well through examples
-- improve comments in code
-- fix tests and test:
-  - 
-- create examples (for train and for analyze)
-- start documentation for github
 - fix agent_id in game
-
-
-  
-
+- replays maybe need check
