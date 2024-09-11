@@ -189,7 +189,6 @@ def load_replay(path: str):
 
 def run_replay(replay_file: str):
     agents, map, game_states = load_replay(replay_file)
-
     from generals.env import generals_v0
     game_config = GameConfig(
         agent_names=agents,
@@ -199,7 +198,6 @@ def run_replay(replay_file: str):
     env.render()
 
     game_step, last_input_time, last_move_time = 0, 0, 0
-
     while 1:
         _t = time.time()
         # Check inputs
@@ -221,7 +219,6 @@ def run_replay(replay_file: str):
             if env.game.is_done():
                 env.renderer.paused = True
             game_step = min(len(game_states) - 1, game_step + 1)
-            env.agents = deepcopy(env.possible_agents)
             env.game.channels = deepcopy(game_states[game_step])
             env.game.time = game_step
             last_move_time = _t

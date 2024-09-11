@@ -23,7 +23,7 @@ class Game:
             for agent in self.agents
         }
 
-        valid_generals = ['A', 'B'] # because generals are represented as letters
+        valid_generals = ["A", "B"]  # because generals are represented as letters
 
         # Initialize channels
         # Army - army size in each cell
@@ -40,11 +40,13 @@ class Game:
             "mountain": np.where(map == MOUNTAIN, 1, 0).astype(bool),
             "city": np.where(np.char.isdigit(map), 1, 0).astype(bool),
             "passable": (map != MOUNTAIN).astype(bool),
-            "ownership_neutral": ((map == PASSABLE) | (np.char.isdigit(map))).astype(bool),
+            "ownership_neutral": ((map == PASSABLE) | (np.char.isdigit(map))).astype(
+                bool
+            ),
             **{
-                f"ownership_{agent}": np.where(map == chr(ord(GENERAL) + id), 1, 0).astype(
-                    bool
-                )
+                f"ownership_{agent}": np.where(
+                    map == chr(ord(GENERAL) + id), 1, 0
+                ).astype(bool)
                 for id, agent in enumerate(self.agents)
             },
         }
@@ -151,8 +153,13 @@ class Game:
         """
         done_before_actions = self.is_done()
         directions = np.array([UP, DOWN, LEFT, RIGHT])
-        agents = list(actions.keys())
-        np.random.shuffle(agents)  # random action order
+
+        # Agent with smaller army to move is prioritized
+        armies = [
+            (self.channels["army"][actions[agent][0]][actions[agent][1]], agent)
+            for agent in list(actions.keys())
+        ]
+        agents = [agent for _, agent in sorted(armies)]
 
         for agent in agents:
             source = actions[agent][:2]  # x,y indices of a source cell
@@ -201,7 +208,9 @@ class Game:
 
         if self.is_done():
             # Give all cells of loser to winner
-            winner = self.agents[0] if self.agent_won(self.agents[0]) else self.agents[1]
+            winner = (
+                self.agents[0] if self.agent_won(self.agents[0]) else self.agents[1]
+            )
             loser = self.agents[1] if winner == self.agents[0] else self.agents[0]
             self.channels[f"ownership_{winner}"] += self.channels[f"ownership_{loser}"]
             self.channels[f"ownership_{loser}"] = self.channels["passable"] * 0
@@ -238,7 +247,7 @@ class Game:
                 self.channels["army"] += (
                     update_mask * self.channels[f"ownership_{owner}"]
                 )
-    
+
     def is_done(self):
         """
         Returns True if the game is over, False otherwise.
@@ -257,7 +266,6 @@ class Game:
             land_size = np.sum(self.channels[f"ownership_{agent}"]).astype(np.int32)
             players_stats[agent] = {"army": army_size, "land": land_size}
         return players_stats
-
 
     def _agent_observation(self, agent: str) -> Dict[str, np.ndarray]:
         """
