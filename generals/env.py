@@ -6,11 +6,11 @@ from . import game, utils, config
 from .rendering import Renderer
 
 
-def generals_v0(game_config: config.GameConfig, render_mode="none"):
+def generals_v0(game_config: config.GameConfig, reward_fn=None, render_mode="none"):
     """
     Here we apply wrappers to the environment.
     """
-    env = Generals(game_config, render_mode=render_mode)
+    env = Generals(game_config, reward_fn=reward_fn, render_mode=render_mode)
     return env
 
 
@@ -18,12 +18,15 @@ class Generals(pettingzoo.ParallelEnv):
     def __init__(
         self,
         game_config = None,
+        reward_fn=None,
         render_mode="none"
     ):
         self.render_mode = render_mode
         self.game_config = game_config
         self.agents = game_config.agent_names
         self.possible_agents = self.agents[:]
+
+        self.reward_fn = self.default_rewards if reward_fn is None else reward_fn
 
 
     @functools.lru_cache(maxsize=None)
@@ -79,7 +82,7 @@ class Generals(pettingzoo.ParallelEnv):
 
         truncated = {agent: False for agent in self.agents} # no truncation
         terminated = {agent: True if self.game.is_done() else False for agent in self.agents}
-        rewards = self.calculate_rewards(infos)
+        rewards = self.reward_fn(observations, infos)
 
         # if any agent dies, all agents are terminated
         terminate = any(terminated.values())
@@ -91,7 +94,7 @@ class Generals(pettingzoo.ParallelEnv):
 
         return observations, rewards, terminated, truncated, infos
     
-    def calculate_rewards(self, infos):
+    def default_rewards(self, observations, infos):
         """
         Calculate rewards for each agent.
         Give 0 if game still running, otherwise 1 for winner and -1 for loser.
