@@ -353,7 +353,7 @@ def test_game_step():
     assert (game.channels['ownership_neutral'] == reference_ownership_neutral).all()
 
     reference_total_army_red = 20
-    stats = game.get_players_stats()
+    stats = game.get_infos()
     assert stats['red']['army'] == reference_total_army_red
 
     reference_total_army_blue = 6
@@ -408,7 +408,7 @@ def test_game_step():
     assert (game.channels['ownership_neutral'] == reference_ownership_neutral).all()
 
     reference_total_army_red = 21
-    stats = game.get_players_stats()
+    stats = game.get_infos()
     assert stats['red']['army'] == reference_total_army_red
 
     reference_total_army_blue = 7
@@ -434,7 +434,7 @@ def test_game_step():
     assert (game.channels['army'] == reference_army).all()
 
     reference_total_army_red = 28
-    stats = game.get_players_stats()
+    stats = game.get_infos()
     assert stats['red']['army'] == reference_total_army_red
 
     reference_total_army_blue = 12

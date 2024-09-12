@@ -70,8 +70,8 @@ class Generals(pettingzoo.ParallelEnv):
         observations = {
             agent: self.game._agent_observation(agent) for agent in self.agents
         }
-        infos = {agent: {} for agent in self.agents}
 
+        infos = self.game.get_infos()
         return observations, infos
 
     def step(self, actions):

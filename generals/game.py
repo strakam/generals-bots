@@ -218,8 +218,7 @@ class Game:
             self._global_game_update()
 
         observations = {agent: self._agent_observation(agent) for agent in self.agents}
-        infos = {agent: {"is_winner": self.agent_won(agent)} for agent in self.agents}
-
+        infos = self.get_infos()
         return observations, infos
 
     def get_all_observations(self):
@@ -254,9 +253,12 @@ class Game:
         """
         return any(self.agent_won(agent) for agent in self.agents)
 
-    def get_players_stats(self):
+    def get_infos(self):
         """
         Returns a dictionary of player statistics.
+        Keys and values are as follows:
+        - army: total army size
+        - land: total land size
         """
         players_stats = {}
         for agent in self.agents:
@@ -264,7 +266,11 @@ class Game:
                 self.channels["army"] * self.channels[f"ownership_{agent}"]
             ).astype(np.int32)
             land_size = np.sum(self.channels[f"ownership_{agent}"]).astype(np.int32)
-            players_stats[agent] = {"army": army_size, "land": land_size}
+            players_stats[agent] = {
+                "army": army_size,
+                "land": land_size,
+                "is_winner": self.agent_won(agent),
+            }
         return players_stats
 
     def _agent_observation(self, agent: str) -> Dict[str, np.ndarray]:

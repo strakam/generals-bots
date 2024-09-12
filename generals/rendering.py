@@ -94,7 +94,7 @@ class Renderer:
     def render_gui(self):
         names = self.game.agents
         ids = [self.game.agent_id[name] for name in names]
-        player_stats = self.game.get_players_stats()
+        player_stats = self.game.get_infos()
         army_counts = ["Army"] + [
             str(player_stats[name]["army"]) for name in names
         ]

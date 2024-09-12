@@ -15,11 +15,9 @@ game_config = GameConfig(
     general_positions=[(0, 0), (3, 3)],
     agent_names=list(agents.keys()),
 )
-
 # Create environment
 env = generals_v0(game_config, render_mode="none")
 observations, info = env.reset(options={"replay_file": "test"})
-
 while not env.game.is_done():
     actions = {}
     for agent in env.agents:
