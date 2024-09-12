@@ -147,8 +147,22 @@ Values are (binary) masked so that only information about cells that an agent ca
 Actions are `np.array` with shape `(3,)` which indicate that you want to move units from cell `[i,j]` in a direction `k`.
 
 ### 🎁 Reward
-TODO
-## 🔨 TODOs:
-- Replays need improvements
+It is possible to implement custom reward function. The default is `1` for winner and `-1` for loser, otherwise `0`.
+```python
+def custom_reward_fn(observation, info):
+    # Give agent a reward based on the number of cells they own
+    return {
+        agent: info[agent]["land"]
+        for agent in observation.keys()
+    }
+
+env = generals_v0(reward_fn=custom_reward_fn)
+observations, info = env.reset()
+```
+## 🔨 Coming soon:
 - Extend action space to sending half of units to another square
+- Examples and baselines using RL
 - Add human control to play against
+- New analysis tools
+  
+Requests for useful features and additions are welcome 🤗.
