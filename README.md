@@ -25,8 +25,17 @@ Generals.io has interesting properties:
 * ⏱️ Real-time gameplay 
 
 
-## 📦 Installation/Setup
-TODO
+## 📦 Installation
+Stable release version is available through pip:
+```bash
+pip install generals (not working now)
+```
+Alternatively, you can install latest version via git
+```bash
+git clone https://github.com/strakam/Generals-RL
+cd Generals-RL
+pip install -e .
+```
 
 ## Usage example
 ```python
