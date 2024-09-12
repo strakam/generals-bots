@@ -6,7 +6,7 @@ from . import game, utils, config
 from .rendering import Renderer
 
 
-def generals_v0(game_config: config.GameConfig, reward_fn=None, render_mode="none"):
+def generals_v0(game_config: config.GameConfig=config.GameConfig(), reward_fn=None, render_mode="none"):
     """
     Here we apply wrappers to the environment.
     """
