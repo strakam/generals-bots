@@ -2,7 +2,6 @@ pydantic
 pytest
 pettingzoo
 gymnasium
-torch
 numpy
 pygame
 scipy
