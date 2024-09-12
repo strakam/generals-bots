@@ -144,7 +144,7 @@ Values are (binary) masked so that only information about cells that an agent ca
 |`action_mask`| `(N,N,4)` | Mask where `[i,j,k]` indicates whether you can move from a cell `[i,j]` to direction `k` where directions are in order (UP, DOWN, LEFT, RIGHT)|
    
 ### ⚡ Action
-Actions are `np.array` with shape `(3,)` which indicate that you want to move units from cell `[i,j]` in a direction `k`.
+Action is an `np.array([i,j,k])` indicating that you want to move units from cell `[i,j]` in a direction `k`.
 
 ### 🎁 Reward
 It is possible to implement custom reward function. The default is `1` for winner and `-1` for loser, otherwise `0`.
