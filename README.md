@@ -142,6 +142,19 @@ Values are (binary) masked so that only information about cells that an agent ca
 |`ownership_neutral`| `(N,N,1)` | Mask indicating cells that are not owned by agents|
 |`structure`| `(N,N,1)` | Mask indicating whether cells contain cities or mountains, even out of FoV|
 |`action_mask`| `(N,N,4)` | Mask where `[i,j,k]` indicates whether you can move from a cell `[i,j]` to direction `k` where directions are in order (UP, DOWN, LEFT, RIGHT)|
+
+### ℹ️ Information
+The environment also returns information dictionary for each agent, but it is the same for everyone.
+|Key|Type|Description|
+|---|---|---|
+|`army`|Int|Total number of units that the agent controls|
+|`land`|Int|Total number of cells that the agent controls|
+|`is_winner`|Bool|Boolean indicator saying whether agent won|
+
+#### Example:
+```python
+print(info['red_agent']['army'])
+```
    
 ### ⚡ Action
 Action is an `np.array([i,j,k])` indicating that you want to move units from cell `[i,j]` in a direction `k`.
