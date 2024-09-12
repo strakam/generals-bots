@@ -11,7 +11,7 @@ def get_game(map_name=None):
         map = generals.utils.map_from_generator(
             grid_size=10,
             mountain_density=0.1,
-            town_density=0.1,
+            city_density=0.1,
             general_positions=[[3, 3], [1, 3]]
         )
     return generals.game.Game(map, ['red', 'blue'])
