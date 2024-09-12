@@ -1,20 +1,20 @@
 import numpy as np
 
-import generals.game
-import generals.utils
+import generals.game as game
+import generals.utils as utils
 import itertools
 
 def get_game(map_name=None):
     if map_name:
-        map = generals.utils.map_from_file(map_name)
+        map = utils.map_from_file(map_name)
     else:
-        map = generals.utils.map_from_generator(
+        map = utils.map_from_generator(
             grid_size=10,
             mountain_density=0.1,
             city_density=0.1,
             general_positions=[[3, 3], [1, 3]]
         )
-    return generals.game.Game(map, ['red', 'blue'])
+    return game.Game(map, ['red', 'blue'])
 
 def test_grid_creation():
     """
