@@ -7,7 +7,7 @@
 
 </div>
 
-[generals.io](https://generals.io/) is a real-time strategy game where players compete to conquer their opponents' generals on a 2D grid. While the goal is simple — capture the enemy general — the gameplay involves a lot of depth. Players need to employ strategic planning, deception, and manage both micro and macro mechanics throughout the game. The combination of these elements makes the game highly engaging and complex.
+[Generals.io](https://generals.io/) is a real-time strategy game where players compete to conquer their opponents' generals on a 2D grid. While the goal is simple — capture the enemy general — the gameplay involves a lot of depth. Players need to employ strategic planning, deception, and manage both micro and macro mechanics throughout the game. The combination of these elements makes the game highly engaging and complex.
 
 This repository aims to make bot development more accessible, especially for Machine Learning based agents.
 
@@ -19,7 +19,7 @@ Highlights:
 
 <br>
 
-Generals.io has interesting properties:
+Generals.io has several interesting properties:
 * 👀 Partial observability
 * 🏃‍♂️ Long action sequences and large action spaces
 * 🧠 Requires strategical planning
@@ -38,7 +38,7 @@ cd Generals-RL
 pip install -e .
 ```
 
-## Usage example
+## Usage Example
 ```python
 from generals.env import generals_v0
 from generals.agents import RandomAgent
@@ -121,7 +121,7 @@ Maps are encoded using these symbols:
 - `A,B` are positions of generals
 - digits `0-9` represent cost of cities calculated as `(40 + digit)`
 
-## 🔬 Replay analysis
+## 🔬 Replay Analysis
 We can store replays and then analyze them.
 ### Storing a replay
 ```python
@@ -139,7 +139,7 @@ import generals.utils
 
 generals.utils.run_replay("replay_001")
 ```
-### 🕹️ Replay Controls
+### 🕹️ Replay controls
 - `q` — quit/close the replay
 - `←/→` — increase/decrease the replay speed
 - `h/l` — to control replay frames
@@ -199,7 +199,7 @@ Creating your first agent is very simple. Start by subclassing an `Agent` class 
      - `none` that omits rendering and is suitable for training,
      - `human` where you can see the game roll out.
 
-## 🛠️ Coming soon:
+## 🛠️ Coming Soon
 - Extend action space to sending half of units to another square
 - Examples and baselines using RL
 - Add human control to play against
