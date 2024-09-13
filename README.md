@@ -28,7 +28,7 @@ Generals.io has interesting properties:
 ## 📦 Installation
 Stable release version is available through pip:
 ```bash
-pip install generals (not working now)
+pip install generals
 ```
 Alternatively, you can install latest version via git
 ```bash
