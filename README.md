@@ -5,6 +5,9 @@
 ## **Generals.io RL**
 
 [![CodeFactor](https://www.codefactor.io/repository/github/strakam/generals-rl/badge)](https://www.codefactor.io/repository/github/strakam/generals-rl)
+[![CodeQL](https://github.com/strakam/Generals-RL/actions/workflows/codeql.yml/badge.svg)](https://github.com/strakam/Generals-RL/actions/workflows/codeql.yml)
+
+
 
 [Installation](#-installation) • [Customization](#-customization) • [Environment](#-environment) • [Getting Started](#-getting-started) 
 
