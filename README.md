@@ -45,18 +45,24 @@ from generals.config import GameConfig
 
 # Initialize agents - their names are then called for actions
 agents = {
-    "red": RandomAgent("red"),
-    "blue": RandomAgent("blue")
+    "Red": RandomAgent("Red"),
+    "Blue": RandomAgent("Blue")
 }
 
 game_config = GameConfig(
-    grid_size=4,
-    agent_names=list(agents.keys())
+    grid_size=16,
+    mountain_density=0.2,
+    city_density=0.05,
+    general_positions=[(2, 12), (8, 9)],
+    agent_names=list(agents.keys()),
 )
 
 # Create environment
-env = generals_v0(game_config, render_mode="none")
-observations, info = env.reset()
+env = generals_v0(game_config, render_mode="none") # render_mode {"none", "human"}
+observations, info = env.reset(options={"replay_file": "test"})
+
+# How fast we want rendering to be
+actions_per_second = 2
 
 while not env.game.is_done():
     actions = {}
@@ -65,6 +71,7 @@ while not env.game.is_done():
         actions[agent] = agents[agent].play(observations[agent])
     # All agents perform their actions
     observations, rewards, terminated, truncated, info = env.step(actions)
+    env.render(tick_rate=actions_per_second)
 ```
 
 ## 🎨 Customization
