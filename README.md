@@ -3,6 +3,9 @@
 [<img src="https://github.com/strakam/Generals-RL/blob/master/generals/images/test.png?raw=true" alt="Generals-RL logo" width="500"/>](https://github.com/strakam/Generals-RL)
 
 ## **Generals.io RL**
+
+[![CodeFactor](https://www.codefactor.io/repository/github/strakam/generals-rl/badge)](https://www.codefactor.io/repository/github/strakam/generals-rl)
+
 [Installation](#-installation) • [Customization](#-customization) • [Environment](#-environment) • [Getting Started](#-getting-started) 
 
 </div>
@@ -84,11 +87,11 @@ from generals.env import generals_v0
 from generals.config import GameConfig
 
 game_config = GameConfig(
-    grid_size=16,                         # Edge length of the square grid
-    mountain_density=0.2                  # Probability of a mountain in a cell
-    city_density=0.05                     # Probability of a city in a cell
-    general_positions=[(0,3),(5,7)]       # Positions of generals (i, j)
-    agent_names=['Human.exe','Agent007']  # Names of the agents that will be called to play the game
+    grid_size=16,                          # Edge length of the square grid
+    mountain_density=0.2,                  # Probability of a mountain in a cell
+    city_density=0.05,                     # Probability of a city in a cell
+    general_positions=[(0,3),(5,7)],       # Positions of generals (i, j)
+    agent_names=['Human.exe','Agent007']   # Names of the agents that will be called to play the game
 )
 
 # Create environment
