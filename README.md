@@ -3,7 +3,7 @@
 [<img src="https://github.com/strakam/Generals-RL/blob/master/generals/images/test.png?raw=true" alt="Generals-RL logo" width="500"/>](https://github.com/strakam/Generals-RL)
 
 ## **Generals.io RL**
-[Installation](#-installation) · [Usage](-customization)
+[Installation](#-installation) • [Customization](#-customization) • [Environment](#-environment) • [Getting Started](#-getting-started) 
 
 </div>
 
@@ -146,7 +146,7 @@ generals.utils.run_replay("replay_001")
 - `spacebar` — to pause
 - `mouse` click on the player's row — toggle the FOV (Field Of View) of the given player
 
-## 🔭 Observations, ℹ️ Information, ⚡ Actions, and 🎁 Rewards
+## 🌍 Environment
 ### 🔭 Observation
 An observation for one player is a dictionary of 8 key/value pairs. Each value is a 2D `np.array` containing information for each cell.
 Values are (binary) masked so that only information about cells that an agent can see can be non-zero.
@@ -190,8 +190,16 @@ def custom_reward_fn(observation, info):
 env = generals_v0(reward_fn=custom_reward_fn)
 observations, info = env.reset()
 ```
+## 🚀 Getting Started
+Creating your first agent is very simple. Start by subclassing an `Agent` class just like `RandomAgent` [here](./generals/agents.py).
+- Every agent must have a name as it is his ID by which he is called for actions.
+- Every agent must implement `play(observation, info)` function that takes in `observation` and `info` and returns an action as described above.
+- You can simply follow [Usage Example](#usage-example) to make your bot running.
+- When creating an environment, you can choose out of two `render_modes`:
+     - `none` that omits rendering and is suitable for training,
+     - `human` where you can see the game roll out.
 
-## 🔨 Coming soon:
+## 🛠️ Coming soon:
 - Extend action space to sending half of units to another square
 - Examples and baselines using RL
 - Add human control to play against
