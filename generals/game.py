@@ -53,7 +53,7 @@ class Game:
 
         # City costs are 40 + digit in the cell
         base_cost = 40
-        city_costs = np.where(np.char.isdigit(map), map, 0).astype(np.float32)
+        city_costs = np.where(np.char.isdigit(map), map, '0').astype(np.float32)
         self.channels["army"] += base_cost * self.channels["city"] + city_costs
 
         box = gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.float32)
