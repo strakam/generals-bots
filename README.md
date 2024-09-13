@@ -77,8 +77,8 @@ from generals.config import GameConfig
 
 game_config = GameConfig(
     grid_size=16,                         # Edge length of the square grid
-    mountain_density=0.2                  # Probability of mountain in a cell
-    town_density=0.05                     # Probability of town in a cell
+    mountain_density=0.2                  # Probability of a mountain in a cell
+    city_density=0.05                     # Probability of a city in a cell
     general_positions=[(0,3),(5,7)]       # Positions of generals (i, j)
     agent_names=['Human.exe','Agent007']  # Names of the agents that will be called to play the game
 )
@@ -129,7 +129,7 @@ env.reset(options=options) # encodes the next game into a "replay_001" file
 ```python
 import generals.utils
 
-generals.utils.run_teplay("replay_001")
+generals.utils.run_replay("replay_001")
 ```
 ### 🕹️ Replay Controls
 - `q` — quit/close the replay
