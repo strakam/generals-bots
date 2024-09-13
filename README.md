@@ -136,9 +136,9 @@ generals.utils.run_replay("replay_001")
 - `←/→` — increase/decrease the replay speed
 - `h/l` — to control replay frames
 - `spacebar` — to pause
-- `Mouse` click on the player's row — toggle the FOV (Field Of View) of the given player
+- `mouse` click on the player's row — toggle the FOV (Field Of View) of the given player
 
-## POMDP - 🔭 Observations, ℹ️ Information, ⚡ Actions, and 🎁 Rewards
+## 🔭 Observations, ℹ️ Information, ⚡ Actions, and 🎁 Rewards
 ### 🔭 Observation
 An observation for one player is a dictionary of 8 key/value pairs. Each value is a 2D `np.array` containing information for each cell.
 Values are (binary) masked so that only information about cells that an agent can see can be non-zero.
