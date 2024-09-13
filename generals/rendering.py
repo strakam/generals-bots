@@ -1,5 +1,5 @@
 import numpy as np
-import pygame
+import pygame, time
 import generals.game as game
 import generals.config as c
 from typing import Tuple
@@ -34,6 +34,8 @@ class Renderer:
         self.game_speed = 1
         self.paused = True
         self.changed = True
+        self.clock = pygame.time.Clock()
+        self.last_render_time = time.time()
 
         self._mountain_img = pygame.image.load(str(c.MOUNTAIN_PATH), "png").convert_alpha()
         self._general_img = pygame.image.load(str(c.GENERAL_PATH), "png").convert_alpha()
@@ -86,12 +88,14 @@ class Renderer:
                         self.agent_fov[agent] = not self.agent_fov[agent]
         return control_events
 
-    def render(self):
+    def render(self, from_replay=False):
+        control_events = self.handle_events()
         self.render_grid()
-        self.render_gui()
+        self.render_gui(from_replay)
         pygame.display.flip()
+        return control_events
 
-    def render_gui(self):
+    def render_gui(self, from_replay=False):
         names = self.game.agents
         ids = [self.game.agent_id[name] for name in names]
         player_stats = self.game.get_infos()
@@ -142,12 +146,12 @@ class Renderer:
                 c.LINE_WIDTH,
             )
 
-        # write live statistics
-        speed = (
-            "Paused" if self.paused else str(1 /  self.game_speed) + "x"
-        )
-        text = self._font.render(f"Game speed: {speed}", True, c.BLACK)
-        self.screen.blit(text, (150, 15))
+        if from_replay:
+            speed = (
+                "Paused" if self.paused else str(1 /  self.game_speed) + "x"
+            )
+            text = self._font.render(f"Game speed: {speed}", True, c.BLACK)
+            self.screen.blit(text, (150, 15))
 
         # For each player print his name, army, land and FOV (Field of View)
         for i in range(len(ids) + 1):

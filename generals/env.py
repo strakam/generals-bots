@@ -39,9 +39,12 @@ class Generals(pettingzoo.ParallelEnv):
         assert agent_name in self.agents, f"{agent_name} is not a valid agent"
         return self.game.action_space
 
-    def render(self):
+    def render(self, tick_rate=None):
         if self.render_mode == "human":
             self.renderer.render()
+            if tick_rate is not None:
+                self.renderer.clock.tick(tick_rate)
+
 
     def reset(self, map: np.ndarray = None, seed=None, options={}):
         self.agents = copy(self.possible_agents)

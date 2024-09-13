@@ -195,16 +195,15 @@ def run_replay(replay_file: str):
     )
     env = generals_v0(game_config, render_mode="human")
     env.reset(map)
-    env.render()
+    env.renderer.render(from_replay=True)
 
     game_step, last_input_time, last_move_time = 0, 0, 0
     while 1:
         _t = time.time()
         # Check inputs
         if _t - last_input_time > 0.008: # check for input every 8ms
-            control_events = env.renderer.handle_events()
+            control_events = env.renderer.render(from_replay=True)
             last_input_time = _t
-            env.render()
         else:
             control_events = {"time_change": 0}
         # If we control replay, change game state
@@ -222,3 +221,4 @@ def run_replay(replay_file: str):
             env.game.channels = deepcopy(game_states[game_step])
             env.game.time = game_step
             last_move_time = _t
+        env.renderer.clock.tick(60)
