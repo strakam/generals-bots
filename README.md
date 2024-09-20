@@ -140,6 +140,7 @@ env.reset(options=options) # encodes the next game into a "replay_001" file
 ```
 
 ### Loading a replay
+The following code loads and executes replay named `replay_001`:
 ```python
 import generals.utils
 
