@@ -1,5 +1,9 @@
 from setuptools import setup, find_packages
 
+def load_requirements():
+    with open('requirements.txt') as f:
+        return f.read().splitlines()
+
 setup(
     name='generals',
     version='1.0',
@@ -15,5 +19,5 @@ setup(
         'License :: OSI Approved :: MIT License',
     ],
     python_requires='>=3.6',
-    install_requires=[],
+    install_requires=load_requirements(),
 )
