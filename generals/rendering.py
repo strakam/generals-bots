@@ -1,5 +1,6 @@
+import time
+import pygame
 import numpy as np
-import pygame, time
 import generals.game as game
 import generals.config as c
 from typing import Tuple
@@ -26,8 +27,18 @@ class Renderer:
         self.window_height = max(
             c.MINIMUM_WINDOW_SIZE, c.SQUARE_SIZE * self.grid_size + self.grid_offset
         )
+
+        # Surfaces
         self.screen = pygame.display.set_mode(
             (self.window_width, self.window_height), pygame.HWSURFACE | pygame.DOUBLEBUF
+        )
+        # Scoreboard
+        self.scoreboard = pygame.Surface(
+            (self.window_width, c.UI_ROW_HEIGHT * (len(self.agents) + 1))
+        )
+        # Game area
+        self.game_area = pygame.Surface(
+            (self.window_width, self.window_height - c.UI_ROW_HEIGHT * (len(self.agents) + 1))
         )
 
         self.agent_fov = {name: True for name in self.agents}
@@ -92,10 +103,16 @@ class Renderer:
         control_events = self.handle_events()
         self.render_grid()
         self.render_gui(from_replay)
+        self.game_area.fill(c.WHITE)
+        self.screen.blit(self.scoreboard, (0, 0))
+        self.screen.blit(self.game_area, (0, self.grid_offset))
         pygame.display.flip()
         return control_events
 
     def render_gui(self, from_replay=False):
+        """
+        Draw player stats on the scoreboard surface
+        """
         names = self.game.agents
         ids = [self.game.agent_id[name] for name in names]
         player_stats = self.game.get_infos()
@@ -109,19 +126,17 @@ class Renderer:
         names = ["Turn"] + [name for name in names]
 
         # White background for GUI
-        pygame.draw.rect(
-            self.screen, c.WHITE, (0, 0, self.window_width, self.grid_offset)
-        )
+        self.scoreboard.fill(c.WHITE)
 
         # Draw rows with player colors
         for i, agent_id in enumerate(ids):
             pygame.draw.rect(
-                self.screen,
+                self.scoreboard,
                 c.PLAYER_COLORS[agent_id],
                 (
                     0,
                     (i + 1) * c.UI_ROW_HEIGHT,
-                    self.window_width - 3 * c.GUI_CELL_WIDTH,
+                    self.scoreboard.get_width() - 3 * c.GUI_CELL_WIDTH,
                     c.UI_ROW_HEIGHT,
                 ),
             )
@@ -129,14 +144,14 @@ class Renderer:
         # Draw lines between rows
         for i in range(1, 3):
             pygame.draw.line(
-                self.screen,
+                self.scoreboard,
                 c.BLACK,
                 (0, i * c.UI_ROW_HEIGHT),
-                (self.window_width, i * c.UI_ROW_HEIGHT),
+                (self.scoreboard.get_width(), i * c.UI_ROW_HEIGHT),
                 c.LINE_WIDTH,
             )
 
-        # draw vertical lines cell_width from the end and 2*cell_width from the end
+        # Draw vertical lines cell_width from the end and 2*cell_width from the end
         for i in range(1, 4):
             pygame.draw.line(
                 self.screen,
@@ -151,7 +166,7 @@ class Renderer:
                 "Paused" if self.paused else str(1 /  self.game_speed) + "x"
             )
             text = self._font.render(f"Game speed: {speed}", True, c.BLACK)
-            self.screen.blit(text, (150, 15))
+            self.scoreboard.blit(text, (150, 15))
 
         # For each player print his name, army, land and FOV (Field of View)
         for i in range(len(ids) + 1):
@@ -162,17 +177,17 @@ class Renderer:
                 text = self._font.render(f"{names[i]}", True, c.BLACK)
             y_offset = i * c.UI_ROW_HEIGHT + 15
             x_offset = 27
-            self.screen.blit(text, (10, y_offset))
+            self.scoreboard.blit(text, (10, y_offset))
             text = self._font.render(army_counts[i], True, c.BLACK)
-            self.screen.blit(
+            self.scoreboard.blit(
                 text, (self.window_width - 2 * c.GUI_CELL_WIDTH + x_offset, y_offset)
             )
             text = self._font.render(land_counts[i], True, c.BLACK)
-            self.screen.blit(
+            self.scoreboard.blit(
                 text, (self.window_width - c.GUI_CELL_WIDTH + x_offset, y_offset)
             )
             text = self._font.render(fovs[i], True, c.BLACK)
-            self.screen.blit(
+            self.scoreboard.blit(
                 text, (self.window_width - 3 * c.GUI_CELL_WIDTH + x_offset, y_offset)
             )
         self.changed = False
