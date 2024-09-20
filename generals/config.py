@@ -63,7 +63,6 @@ PLAYER_COLORS: Dict[int, Tuple[int, int, int]] = {0: PLAYER_1_COLOR, 1: PLAYER_2
 # Fonts #
 #########
 FONT_TYPE = "Quicksand-Medium.ttf"  # Font options are Quicksand-SemiBold.ttf, Quicksand-Medium.ttf, Quicksand-Light.ttf
-FONT_OFFSETS = [20, 16, 12, 8, 4]  # text position for different number of digits
 FONT_SIZE = 18
 try:
     file_ref = files("generals.fonts") / FONT_TYPE
