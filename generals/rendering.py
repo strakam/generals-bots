@@ -280,7 +280,6 @@ class Renderer:
         # draw army counts on visibility mask
         army = self.game.channels["army"] * visible_map
         visible_army_indices = self.game.channel_to_indices(army)
-        y_offset = 15
         for i, j in visible_army_indices:
             text = self._font.render(str(int(army[i, j])), True, c.WHITE)
             text_rect = text.get_rect(center=(c.SQUARE_SIZE / 2, c.SQUARE_SIZE / 2))
