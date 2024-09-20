@@ -85,7 +85,7 @@ class Generals(pettingzoo.ParallelEnv):
 
         truncated = {agent: False for agent in self.agents} # no truncation
         terminated = {agent: True if self.game.is_done() else False for agent in self.agents}
-        rewards = self.reward_fn(observations, infos)
+        rewards = self.reward_fn(observations)
 
         # if any agent dies, all agents are terminated
         terminate = any(terminated.values())
@@ -97,16 +97,16 @@ class Generals(pettingzoo.ParallelEnv):
 
         return observations, rewards, terminated, truncated, infos
     
-    def default_rewards(self, observations, infos):
+    def default_rewards(self, observations):
         """
         Calculate rewards for each agent.
         Give 0 if game still running, otherwise 1 for winner and -1 for loser.
         """
         rewards = {agent: 0 for agent in self.agents}
-        game_ended = any(infos[agent]["is_winner"] for agent in self.agents)
+        game_ended = any(observations[agent]["is_winner"] for agent in self.agents)
         if game_ended:
             for agent in self.agents:
-                if infos[agent]["is_winner"]:
+                if observations[agent]["is_winner"]:
                     rewards[agent] = 1
                 else:
                     rewards[agent] = -1

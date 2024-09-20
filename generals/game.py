@@ -276,22 +276,13 @@ class Game:
     def _agent_observation(self, agent: str) -> Dict[str, np.ndarray]:
         """
         Returns an observation for a given agent.
-        The order of channels is as follows:
-        - (visible) army
-        - (visible) general
-        - (visible) city
-        - (visible) agent ownership
-        - (visible) opponent ownership
-        - (visible) neutral ownership
-        - mountain or city
-        - action mask
-
         Args:
             agent: str
 
         Returns:
             np.ndarray: observation for the given agent
         """
+        info = self.get_infos()
         opponent = self.agents[0] if agent == self.agents[1] else self.agents[1]
         visibility = self.visibility_channel(self.channels[f"ownership_{agent}"])
         observation = {
@@ -304,6 +295,10 @@ class Game:
             "ownership_neutral": self.channels["ownership_neutral"] * visibility,
             "structure": self.channels["mountain"] + self.channels["city"],
             "action_mask": self.action_mask(agent),
+            "n_land": info[agent]["land"],
+            "n_army": info[agent]["army"],
+            "is_winner": info[agent]["is_winner"],
+            "timestep": self.time
         }
         return observation
 

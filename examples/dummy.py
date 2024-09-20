@@ -9,25 +9,22 @@ agents = {
 }
 
 game_config = GameConfig(
-    grid_size=16,
+    grid_size=4,
     mountain_density=0.2,
     city_density=0.05,
-    general_positions=[(2, 12), (8, 9)],
     agent_names=list(agents.keys()),
 )
 
 # Create environment
-env = generals_v0(game_config, render_mode="human") # render_mode {"none", "human"}
+env = generals_v0(game_config, render_mode="none") # render_mode {"none", "human"}
 observations, info = env.reset(options={"replay_file": "test"})
+done = False
 
-# How fast we want rendering to be
-actions_per_second = 2
-
-while not env.game.is_done():
+while not done:
     actions = {}
     for agent in env.agents:
         # Ask agent for action
         actions[agent] = agents[agent].play(observations[agent])
     # All agents perform their actions
     observations, rewards, terminated, truncated, info = env.step(actions)
-    env.render(tick_rate=actions_per_second)
+    done = any(terminated.values())

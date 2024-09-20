@@ -3,8 +3,12 @@
 replay:
 	python3 -m examples.replay
 
-run:
-	python3 -m examples.run_environment
+example:
+	python3 -m examples.example
+
+make n_replay:
+	python3 -m examples.dummy
+	python3 -m examples.replay
 
 t:
 	pytest tests/test_game.py

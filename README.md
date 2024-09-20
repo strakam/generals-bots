@@ -166,9 +166,15 @@ Values are (binary) masked so that only information about cells that an agent ca
 | `ownership_neutral`  | `(N,N,1)` | Mask indicating cells that are not owned by agents                                                                                             |
 | `structure`          | `(N,N,1)` | Mask indicating whether cells contain cities or mountains, even out of FoV                                                                     |
 | `action_mask`        | `(N,N,4)` | Mask where `[i,j,k]` indicates whether you can move from a cell `[i,j]` to direction `k` where directions are in order (UP, DOWN, LEFT, RIGHT) |
+| `n_land`             | `(1,)`    | Int representing number of cells an agent owns                                                                                                 |
+| `n_army`             | `(1,)`    | Int representing total number of units of an agent over all cells                                                                              |
+| `is_winner`          | `(1,)`    | Bool representing whether an agent won                                                                                                         |
+| `timestep`           | `(1,)`    | Timestep                                                                                                                                       |
+
 
 ### ℹ️ Information
 The environment also returns information dictionary for each agent, but it is the same for everyone.
+This might potentially contain debug information.
 | Key         | Type | Description                                   |
 | ---         | ---  | ---                                           |
 | `army`      | Int  | Total number of units that the agent controls |
