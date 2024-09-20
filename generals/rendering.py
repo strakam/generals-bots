@@ -160,12 +160,13 @@ class Renderer:
         # Draw vertical lines cell_width from the end and 2*cell_width from the end
         for i in range(1, 4):
             pygame.draw.line(
-                self.screen,
+                self.scoreboard,
                 c.BLACK,
                 (self.window_width - i * c.GUI_CELL_WIDTH, 0),
                 (self.window_width - i * c.GUI_CELL_WIDTH, self.grid_offset),
                 c.LINE_WIDTH,
             )
+
 
         if from_replay:
             speed = "Paused" if self.paused else str(1 / self.game_speed) + "x"
