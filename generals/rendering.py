@@ -84,7 +84,7 @@ class Renderer:
                 quit()
             if event.type == pygame.KEYDOWN:
                 self.changed = True
-                control_events["changed"] = Tr
+                control_events["changed"] = True
 
                 # Speed up game right arrow is pressed
                 if event.key == pygame.K_RIGHT and not self.paused:
