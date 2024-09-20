@@ -283,10 +283,8 @@ class Renderer:
         y_offset = 15
         for i, j in visible_army_indices:
             text = self._font.render(str(int(army[i, j])), True, c.WHITE)
-            x_offset = c.FONT_OFFSETS[
-                min(len(c.FONT_OFFSETS) - 1, len(str(int(army[i, j]))) - 1)
-            ]
-            self.tiles[i][j].blit(text, (x_offset, y_offset))
+            text_rect = text.get_rect(center=(c.SQUARE_SIZE / 2, c.SQUARE_SIZE / 2))
+            self.tiles[i][j].blit(text, text_rect)
 
         # Blit tiles to the self.game_area
         for i in range(self.grid_size):
