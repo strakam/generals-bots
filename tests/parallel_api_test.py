@@ -1,7 +1,6 @@
 from __future__ import annotations
 from generals.env import generals_v0
 from generals.config import GameConfig
-import generals.utils
 import warnings
 
 import numpy as np
@@ -26,15 +25,12 @@ def sample_action(
     if isinstance(agent_obs, dict) and "action_mask" in agent_obs:
         mask = agent_obs["action_mask"]
         if not np.any(mask):
-            print(mask)
-            print(mask.shape)
-            print(agent_obs["ownership"])
-            print(agent_obs["mountain"])
             raise ValueError(f"Agent {agent} has no valid actions")
         # pick random index of the mask with a 1, it should be 3 numbers
         valid_actions = np.argwhere(mask == 1)
         action_index = np.random.choice(len(valid_actions))
         action = valid_actions[action_index]
+        action = np.append(action, np.random.choice([0, 1]))
         return action
     return env.action_space(agent).sample()
 

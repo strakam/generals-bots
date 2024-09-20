@@ -28,5 +28,7 @@ class RandomAgent(Agent):
         """
         mask = observation['action_mask']
         valid_actions = np.argwhere(mask == 1)
-        action = np.random.choice(len(valid_actions))
-        return valid_actions[action]
+        action_index = np.random.choice(len(valid_actions))
+        # append 1 or 0 randomly to the action (to say whether to send half of troops or all troops)
+        action = np.append(valid_actions[action_index], np.random.choice([0, 1]))
+        return action

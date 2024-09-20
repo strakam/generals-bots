@@ -159,6 +159,10 @@ class Game:
             (self.channels["army"][actions[agent][0]][actions[agent][1]], agent)
             for agent in list(actions.keys())
         ]
+        # If only half of the army is sent, update the army size
+        armies = [
+            (army, agent) if actions[agent][3] == 0 else (army // 2, agent) for army, agent in armies
+        ]
         agents = [agent for _, agent in sorted(armies)]
 
         for agent in agents:
@@ -171,10 +175,16 @@ class Game:
                 source[1] + directions[direction][1],
             )  # destination indices
 
-            moved_army_size = self.channels["army"][si, sj] - 1
+            send_half = actions[agent][3]
+            if send_half:
+                army_to_move = self.channels["army"][si, sj] // 2
+                army_to_stay = self.channels["army"][si, sj] - army_to_move
+            else:
+                army_to_move = self.channels["army"][si, sj] - 1 # Send all but one army
+                army_to_stay = 1
 
             # Check if the current player owns the source cell and has atleast 2 army size
-            if moved_army_size < 1 or self.channels[f"ownership_{agent}"][si, sj] == 0:
+            if army_to_move < 1 or self.channels[f"ownership_{agent}"][si, sj] == 0:
                 continue
 
             target_square_army = self.channels["army"][di, dj]
@@ -187,18 +197,18 @@ class Game:
             target_square_owner = (["neutral"] + self.agents)[target_square_owner_idx]
 
             if target_square_owner == agent:
-                self.channels["army"][di, dj] += moved_army_size
-                self.channels["army"][si, sj] = 1
+                self.channels["army"][di, dj] += army_to_move
+                self.channels["army"][si, sj] = army_to_stay
             else:
                 # Calculate resulting army, winner and update channels
-                remaining_army = np.abs(target_square_army - moved_army_size)
+                remaining_army = np.abs(target_square_army - army_to_move)
                 square_winner = (
                     agent
-                    if target_square_army < moved_army_size
+                    if target_square_army < army_to_move
                     else target_square_owner
                 )
                 self.channels["army"][di, dj] = remaining_army
-                self.channels["army"][si, sj] = 1
+                self.channels["army"][si, sj] = army_to_stay
                 self.channels[f"ownership_{square_winner}"][di, dj] = 1
                 if square_winner != target_square_owner:
                     self.channels[f"ownership_{target_square_owner}"][di, dj] = 0
