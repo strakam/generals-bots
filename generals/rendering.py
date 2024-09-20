@@ -77,14 +77,14 @@ class Renderer:
             "time_change": 0,
         }
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+            if event.type == pygame.QUIT or (
+                event.type == pygame.KEYDOWN and event.key == pygame.K_q
+            ):
                 pygame.quit()
+                quit()
             if event.type == pygame.KEYDOWN:
                 self.changed = True
-                control_events["changed"] = True
-                if event.key == pygame.K_q:
-                    pygame.quit()
-                    quit()
+                control_events["changed"] = Tr
 
                 # Speed up game right arrow is pressed
                 if event.key == pygame.K_RIGHT and not self.paused:

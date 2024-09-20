@@ -3,10 +3,17 @@
 [<img src="https://github.com/strakam/Generals-RL/blob/master/generals/images/test.png?raw=true" alt="Generals-RL logo" width="500"/>](https://github.com/strakam/Generals-RL)
 
 ## **Generals.io RL**
- 
+
+[![CodeFactor](https://www.codefactor.io/repository/github/strakam/generals-rl/badge)](https://www.codefactor.io/repository/github/strakam/generals-rl)
+[![CodeQL](https://github.com/strakam/Generals-RL/actions/workflows/codeql.yml/badge.svg)](https://github.com/strakam/Generals-RL/actions/workflows/codeql.yml)
+
+
+
+[Installation](#-installation) • [Customization](#-customization) • [Environment](#-environment) • [Getting Started](#-getting-started) 
+
 </div>
 
-[generals.io](https://generals.io/) is a real-time strategy game where players compete to conquer their opponents' generals on a 2D grid. While the goal is simple — capture the enemy general — the gameplay involves a lot of depth. Players need to employ strategic planning, deception, and manage both micro and macro mechanics throughout the game. The combination of these elements makes the game highly engaging and complex.
+[Generals.io](https://generals.io/) is a real-time strategy game where players compete to conquer their opponents' generals on a 2D grid. While the goal is simple — capture the enemy general — the gameplay involves a lot of depth. Players need to employ strategic planning, deception, and manage both micro and macro mechanics throughout the game. The combination of these elements makes the game highly engaging and complex.
 
 This repository aims to make bot development more accessible, especially for Machine Learning based agents.
 
@@ -18,7 +25,7 @@ Highlights:
 
 <br>
 
-Generals.io has interesting properties:
+Generals.io has several interesting properties:
 * 👀 Partial observability
 * 🏃‍♂️ Long action sequences and large action spaces
 * 🧠 Requires strategical planning
@@ -37,7 +44,7 @@ cd Generals-RL
 pip install -e .
 ```
 
-## Usage example
+## Usage Example
 ```python
 from generals.env import generals_v0
 from generals.agents import RandomAgent
@@ -45,18 +52,24 @@ from generals.config import GameConfig
 
 # Initialize agents - their names are then called for actions
 agents = {
-    "red": RandomAgent("red"),
-    "blue": RandomAgent("blue")
+    "Red": RandomAgent("Red"),
+    "Blue": RandomAgent("Blue")
 }
 
 game_config = GameConfig(
-    grid_size=4,
-    agent_names=list(agents.keys())
+    grid_size=16,
+    mountain_density=0.2,
+    city_density=0.05,
+    general_positions=[(2, 12), (8, 9)],
+    agent_names=list(agents.keys()),
 )
 
 # Create environment
-env = generals_v0(game_config, render_mode="none")
-observations, info = env.reset()
+env = generals_v0(game_config, render_mode="none") # render_mode {"none", "human"}
+observations, info = env.reset(options={"replay_file": "test"})
+
+# How fast we want rendering to be
+actions_per_second = 2
 
 while not env.game.is_done():
     actions = {}
@@ -65,6 +78,7 @@ while not env.game.is_done():
         actions[agent] = agents[agent].play(observations[agent])
     # All agents perform their actions
     observations, rewards, terminated, truncated, info = env.step(actions)
+    env.render(tick_rate=actions_per_second)
 ```
 
 ## 🎨 Customization
@@ -76,11 +90,11 @@ from generals.env import generals_v0
 from generals.config import GameConfig
 
 game_config = GameConfig(
-    grid_size=16,                         # Edge length of the square grid
-    mountain_density=0.2                  # Probability of a mountain in a cell
-    city_density=0.05                     # Probability of a city in a cell
-    general_positions=[(0,3),(5,7)]       # Positions of generals (i, j)
-    agent_names=['Human.exe','Agent007']  # Names of the agents that will be called to play the game
+    grid_size=16,                          # Edge length of the square grid
+    mountain_density=0.2,                  # Probability of a mountain in a cell
+    city_density=0.05,                     # Probability of a city in a cell
+    general_positions=[(0,3),(5,7)],       # Positions of generals (i, j)
+    agent_names=['Human.exe','Agent007']   # Names of the agents that will be called to play the game
 )
 
 # Create environment
@@ -113,7 +127,7 @@ Maps are encoded using these symbols:
 - `A,B` are positions of generals
 - digits `0-9` represent cost of cities calculated as `(40 + digit)`
 
-## 🔬 Replay analysis
+## 🔬 Replay Analysis
 We can store replays and then analyze them.
 ### Storing a replay
 ```python
@@ -131,14 +145,14 @@ import generals.utils
 
 generals.utils.run_replay("replay_001")
 ```
-### 🕹️ Replay Controls
+### 🕹️ Replay controls
 - `q` — quit/close the replay
 - `←/→` — increase/decrease the replay speed
 - `h/l` — to control replay frames
 - `spacebar` — to pause
 - `mouse` click on the player's row — toggle the FOV (Field Of View) of the given player
 
-## 🔭 Observations, ℹ️ Information, ⚡ Actions, and 🎁 Rewards
+## 🌍 Environment
 ### 🔭 Observation
 An observation for one player is a dictionary of 8 key/value pairs. Each value is a 2D `np.array` containing information for each cell.
 Values are (binary) masked so that only information about cells that an agent can see can be non-zero.
@@ -182,8 +196,16 @@ def custom_reward_fn(observation, info):
 env = generals_v0(reward_fn=custom_reward_fn)
 observations, info = env.reset()
 ```
+## 🚀 Getting Started
+Creating your first agent is very simple. Start by subclassing an `Agent` class just like `RandomAgent` [here](./generals/agents.py).
+- Every agent must have a name as it is his ID by which he is called for actions.
+- Every agent must implement `play(observation, info)` function that takes in `observation` and `info` and returns an action as described above.
+- You can simply follow [Usage Example](#usage-example) to make your bot running.
+- When creating an environment, you can choose out of two `render_modes`:
+     - `none` that omits rendering and is suitable for training,
+     - `human` where you can see the game roll out.
 
-## 🔨 Coming soon:
+## 🛠️ Coming Soon
 - Extend action space to sending half of units to another square
 - Examples and baselines using RL
 - Add human control to play against
