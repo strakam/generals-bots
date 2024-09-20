@@ -4,7 +4,6 @@ from importlib.resources import files
 from generals.config import PASSABLE, MOUNTAIN
 from generals.config import GameConfig
 from copy import deepcopy
-from generals.agents import Agent
 
 from typing import List, Dict, Tuple
 

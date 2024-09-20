@@ -54,7 +54,6 @@ class Renderer:
         self.agent_fov = {name: True for name in self.agents}
         self.game_speed = 1
         self.paused = True
-        self.changed = True
         self.clock = pygame.time.Clock()
         self.last_render_time = time.time()
 
@@ -83,9 +82,6 @@ class Renderer:
                 pygame.quit()
                 quit()
             if event.type == pygame.KEYDOWN:
-                self.changed = True
-                control_events["changed"] = True
-
                 # Speed up game right arrow is pressed
                 if event.key == pygame.K_RIGHT and not self.paused:
                     self.game_speed = max(1 / 16, self.game_speed / 2)
@@ -197,7 +193,6 @@ class Renderer:
             self.scoreboard.blit(
                 text, (self.window_width - 3 * c.GUI_CELL_WIDTH + x_offset, y_offset)
             )
-        self.changed = False
         self.screen.blit(self.scoreboard, (0, 0))
 
     def render_grid(self):
