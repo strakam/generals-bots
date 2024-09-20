@@ -188,7 +188,9 @@ print(info['red_agent']['army'])
 ```
    
 ### ⚡ Action
-Action is an `np.array([i,j,k])` indicating that you want to move units from cell `[i,j]` in a direction `k`.
+Action is an `np.array([i,j,k,h])` indicating that you want to move units from cell `[i,j]` in a direction `k`.
+
+The last value `h` signals whether to send `1 (half)` of units or `0 (all)` units to the neighboring cell.
 
 ### 🎁 Reward
 It is possible to implement custom reward function. The default is `1` for winner and `-1` for loser, otherwise `0`.
