@@ -65,7 +65,7 @@ game_config = GameConfig(
 )
 
 # Create environment
-env = generals_v0(game_config, render_mode="none") # render_mode {"none", "human"}
+env = generals_v0(game_config, render_mode="human") # render_mode {"none", "human"}
 observations, info = env.reset(options={"replay_file": "test"})
 
 # How fast we want rendering to be
