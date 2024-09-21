@@ -11,7 +11,6 @@ from scipy.ndimage import maximum_filter
 class Game:
     def __init__(self, map: np.ndarray, agents: List[str]):
         self.agents = agents
-        self.agent_id = {agent: i for i, agent in enumerate(agents)}
         self.time = 0
 
         spatial_dim = (map.shape[0], map.shape[1])
@@ -19,8 +18,8 @@ class Game:
         self.grid_size = spatial_dim[0]  # Grid shape should be square
 
         self.general_positions = {
-            agent: np.argwhere(map == chr(ord(GENERAL) + self.agent_id[agent]))[0]
-            for agent in self.agents
+            agent: np.argwhere(map == chr(ord(GENERAL) + i))[0]
+            for i, agent in enumerate(self.agents)
         }
 
         valid_generals = ["A", "B"]  # because generals are represented as letters
@@ -80,7 +79,7 @@ class Game:
         Function to compute valid actions from a given ownership mask.
 
         Args:
-            agent_id: str
+            agent: str
 
         Returns:
             np.ndarray: an NxNx4 array, where each channel is a boolean mask
@@ -138,9 +137,6 @@ class Game:
     def visibility_channel(self, ownership_channel: np.ndarray) -> np.ndarray:
         """
         Returns a binary channel of visible cells from the perspective of the given player.
-
-        Args:
-            agent_id: int
         """
         return maximum_filter(ownership_channel, size=3)
 
@@ -149,7 +145,7 @@ class Game:
         Perform one step of the game
 
         Args:
-            actions: dictionary of agent_id to action (this will be reworked)
+            actions: dictionary of agent name to action
         """
         done_before_actions = self.is_done()
         directions = np.array([UP, DOWN, LEFT, RIGHT])
