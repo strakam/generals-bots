@@ -26,8 +26,13 @@ class Renderer:
         self.window_height = max(
             c.MINIMUM_WINDOW_SIZE, c.SQUARE_SIZE * self.grid_size + self.grid_offset
         )
+        self.player_colors = {agent: c.PLAYER_COLORS[i] for i, agent in enumerate(self.agents)}
 
-        # Surfaces
+        ############
+        # Surfaces #
+        ############
+
+        # Main window
         self.screen = pygame.display.set_mode(
             (self.window_width, self.window_height), pygame.HWSURFACE | pygame.DOUBLEBUF
         )
@@ -120,7 +125,6 @@ class Renderer:
         Draw player stats on the scoreboard surface
         """
         names = self.game.agents
-        ids = [self.game.agent_id[name] for name in names]
         player_stats = self.game.get_infos()
         army_counts = ["Army"] + [str(player_stats[name]["army"]) for name in names]
         land_counts = ["Land"] + [str(player_stats[name]["land"]) for name in names]
@@ -131,10 +135,10 @@ class Renderer:
         self.scoreboard.fill(c.WHITE)
 
         # Draw rows with player colors
-        for i, agent_id in enumerate(ids):
+        for i, agent in enumerate(self.agents):
             pygame.draw.rect(
                 self.scoreboard,
-                c.PLAYER_COLORS[agent_id],
+                self.player_colors[agent],
                 (
                     0,
                     (i + 1) * c.UI_ROW_HEIGHT,
@@ -163,14 +167,13 @@ class Renderer:
                 c.LINE_WIDTH,
             )
 
-
         if from_replay:
             speed = "Paused" if self.paused else str(1 / self.game_speed) + "x"
             text = self._font.render(f"Game speed: {speed}", True, c.BLACK)
             self.scoreboard.blit(text, (150, 15))
 
         # For each player print his name, army, land and FOV (Field of View)
-        for i in range(len(ids) + 1):
+        for i in range(len(self.agents) + 1):
             if i == 0:
                 turn = str(self.game.time // 2) + (
                     "." if self.game.time % 2 == 1 else ""
@@ -198,10 +201,6 @@ class Renderer:
     def render_grid(self):
         """
         Render grid part of the game on
-
-        Args:
-            game: Game object
-            agent_ids: list of agent ids from which perspective the game is rendered
         """
         agents = self.game.agents
         # draw visibility squares
@@ -229,7 +228,7 @@ class Renderer:
             ownership = self.game.channels["ownership_" + agent]
             ownership_indices = self.game.channel_to_indices(ownership)
             self.draw_channel(
-                ownership_indices, c.PLAYER_COLORS[self.game.agent_id[agent]]
+                ownership_indices, self.player_colors[agent]
             )
 
         # draw background as squares

@@ -167,13 +167,13 @@ def load_replay(path: str):
                 }
             )
     # Play actions to recreate states that happened
-    from generals.env import generals_v0
+    from generals.env import pz_generals
 
     map = map_from_string(map_string)
     game_config = GameConfig(
         agent_names=players,
     )
-    env = generals_v0(game_config)
+    env = pz_generals(game_config)
     _ = env.reset(map, seed=42)
 
     game_states = [deepcopy(env.game.channels)]
@@ -188,11 +188,11 @@ def load_replay(path: str):
 
 def run_replay(replay_file: str):
     agents, map, game_states = load_replay(replay_file)
-    from generals.env import generals_v0
+    from generals.env import pz_generals
     game_config = GameConfig(
         agent_names=agents,
     )
-    env = generals_v0(game_config, render_mode="human")
+    env = pz_generals(game_config, render_mode="human")
     env.reset(map)
     env.renderer.render(from_replay=True)
 

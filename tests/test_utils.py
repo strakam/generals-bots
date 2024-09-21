@@ -1,5 +1,5 @@
 from generals.utils import map_from_generator, validate_map, map_from_string, load_replay
-from generals.env import generals_v0
+from generals.env import pz_generals
 from generals.config import GameConfig
 from generals.agents import RandomAgent
 from copy import deepcopy
@@ -107,7 +107,7 @@ def test_replays():
             city_density=0.05,
             agent_names=["A", "B"],
         )
-        env = generals_v0(game_config, render_mode=None)
+        env = pz_generals(game_config, render_mode=None)
         observations, info = env.reset(options={"replay_file": "test"})
 
         game_states_before.append(deepcopy(env.game.channels))

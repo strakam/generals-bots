@@ -1,4 +1,4 @@
-from typing import List, Tuple, Literal, Dict
+from typing import List, Tuple, Literal
 from importlib.resources import files
 from pydantic import BaseModel
 
@@ -57,7 +57,7 @@ BLACK: Tuple[int, int, int] = (0, 0, 0)
 WHITE: Tuple[int, int, int] = (230, 230, 230)
 PLAYER_1_COLOR: Tuple[int, int, int] = (255, 0, 0)
 PLAYER_2_COLOR: Tuple[int, int, int] = (67, 99, 216)
-PLAYER_COLORS: Dict[int, Tuple[int, int, int]] = {0: PLAYER_1_COLOR, 1: PLAYER_2_COLOR}
+PLAYER_COLORS: List[Tuple[int, int, int]] = [PLAYER_1_COLOR, PLAYER_2_COLOR]
 
 #########
 # Fonts #
