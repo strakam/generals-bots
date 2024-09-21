@@ -1,5 +1,5 @@
 from __future__ import annotations
-from generals.env import generals_v0
+from generals.env import pz_generals
 from generals.config import GameConfig
 import warnings
 
@@ -144,7 +144,7 @@ if __name__ == "__main__":
         town_density=0.1,
         agent_names=["red", "blue"]
     )
-    env = generals_v0(game_config, render_mode="none")
+    env = pz_generals(game_config, render_mode="none")
     # test the environment with parallel_api_test
     import time
     start = time.time()

@@ -7,14 +7,14 @@ from . import game, utils, config, agents
 from .rendering import Renderer
 
 
-def pz_generals_v0(game_config: config.GameConfig=config.GameConfig(), reward_fn=None, render_mode="none"):
+def pz_generals(game_config: config.GameConfig=config.GameConfig(), reward_fn=None, render_mode="none"):
     """
     Here we apply wrappers to the environment.
     """
     env = PZ_Generals(game_config, reward_fn=reward_fn, render_mode=render_mode)
     return env
 
-def gym_generals_v0(game_config: config.GameConfig=config.GameConfig(), reward_fn=None, render_mode="none"):
+def gym_generals(game_config: config.GameConfig=config.GameConfig(), reward_fn=None, render_mode="none"):
     """
     Here we apply wrappers to the environment.
     """

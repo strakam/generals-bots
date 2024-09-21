@@ -1,4 +1,4 @@
-from generals.env import gym_generals_v0
+from generals.env import gym_generals
 from generals.agents import RandomAgent
 from generals.config import GameConfig
 
@@ -13,7 +13,7 @@ game_config = GameConfig(
 )
 
 # Create environment
-env = gym_generals_v0(game_config, render_mode="none") # render_mode {"none", "human"}
+env = gym_generals(game_config, render_mode="none") # render_mode {"none", "human"}
 observation, info = env.reset()
 
 for i in range(50):
