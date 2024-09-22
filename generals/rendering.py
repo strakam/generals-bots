@@ -112,10 +112,12 @@ class Renderer:
 
             # GUI clicks
             if event.type == pygame.MOUSEBUTTONDOWN:
-                _, y = pygame.mouse.get_pos()
+                x, y = pygame.mouse.get_pos()
                 for i, agent in enumerate(agents):
-                    if y < c.GUI_ROW_HEIGHT * (i + 2) and y > c.GUI_ROW_HEIGHT * (i + 1):
+                    # if clicked agents row in the right panel
+                    if x >= self.grid_width and y >= (i + 1) * c.GUI_ROW_HEIGHT and y < (i + 2) * c.GUI_ROW_HEIGHT:
                         self.agent_fov[agent] = not self.agent_fov[agent]
+                        break
         return control_events
 
     def render(self, from_replay=False):
@@ -150,16 +152,23 @@ class Renderer:
         # Write names
         for i, name in enumerate(["Agent"] + names):
             color = self.player_colors[name] if name in self.player_colors else c.WHITE
+            # add opacity to the color, where color is a tuple (r,g,b)
+            if name in self.agent_fov and not self.agent_fov[name]:
+                color = tuple([int(0.5 * c) for c in color])
             self.render_gui_cell(self.score_cols["Agent"][i], name, color)
 
         # Write other columns
         for i, col in enumerate(["Army", "Land"]):
             self.render_gui_cell(self.score_cols[col][0], col, c.WHITE)
             for j, name in enumerate(names):
+                # Give darkish color if agents FoV is off
+                color = c.WHITE
+                if name in self.agent_fov and not self.agent_fov[name]:
+                    color = (128, 128, 128)
                 self.render_gui_cell(
                     self.score_cols[col][j + 1],
                     str(player_stats[name][col.lower()]),
-                    c.WHITE,
+                    color,
                 )
 
         # Blit each right_panel cell to the right_panel surface
@@ -178,6 +187,7 @@ class Renderer:
             "speed": "Paused" if self.paused and from_replay else f"Speed: {str(1 / self.game_speed)}x",
         }
 
+        # Write additional info
         for i, key in enumerate(["time", "speed"]):
             self.render_gui_cell(
                 self.info_panel[key],
@@ -191,6 +201,7 @@ class Renderer:
             self.right_panel.blit(
                 self.info_panel[key], (i*2*c.GUI_CELL_WIDTH, 3 * c.GUI_ROW_HEIGHT)
             )
+        # Render right_panel on the screen
         self.screen.blit(self.right_panel, (self.grid_width, 0))
 
     def render_grid(self):
