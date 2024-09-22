@@ -118,7 +118,7 @@ class Renderer:
             if event.type == pygame.MOUSEBUTTONDOWN:
                 _, y = pygame.mouse.get_pos()
                 for i, agent in enumerate(agents):
-                    if y < c.UI_ROW_HEIGHT * (i + 2) and y > c.UI_ROW_HEIGHT * (i + 1):
+                    if y < c.GUI_ROW_HEIGHT * (i + 2) and y > c.GUI_ROW_HEIGHT * (i + 1):
                         self.agent_fov[agent] = not self.agent_fov[agent]
         return control_events
 
