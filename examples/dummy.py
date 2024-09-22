@@ -1,4 +1,4 @@
-from generals.env import generals_v0
+from generals.env import pz_generals
 from generals.agents import RandomAgent
 from generals.config import GameConfig
 
@@ -16,7 +16,7 @@ game_config = GameConfig(
 )
 
 # Create environment
-env = generals_v0(game_config, render_mode="none") # render_mode {"none", "human"}
+env = pz_generals(game_config, render_mode="none") # render_mode {"none", "human"}
 observations, info = env.reset(options={"replay_file": "test"})
 done = False
 
