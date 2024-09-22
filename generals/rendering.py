@@ -21,9 +21,9 @@ class Renderer:
         self.game = game
         self.agents = game.agents
         self.grid_size = game.grid_size
-        self.grid_offset = c.GUI_ROW_HEIGHT * (len(self.agents) + 1)  # area for GUI
         self.grid_width = c.SQUARE_SIZE * self.grid_size
         self.grid_height = c.SQUARE_SIZE * self.grid_size
+        self.right_panel_width = 4 * c.GUI_CELL_WIDTH
         self.player_colors = {
             agent: c.PLAYER_COLORS[i] for i, agent in enumerate(self.agents)
         }
@@ -31,7 +31,7 @@ class Renderer:
         ############
         # Surfaces #
         ############
-        window_width = self.grid_width + 4 * c.GUI_CELL_WIDTH
+        window_width = self.grid_width + self.right_panel_width
         window_height = self.grid_height
 
         # Main window
@@ -39,21 +39,17 @@ class Renderer:
             (window_width, window_height), pygame.HWSURFACE | pygame.DOUBLEBUF
         )
         # Scoreboard
-        self.right_panel = pygame.Surface(
-            (4*c.GUI_CELL_WIDTH, window_height)
-        )
+        self.right_panel = pygame.Surface((self.right_panel_width, window_height))
         self.score_cols = {}
         for col in ["Agent", "Army", "Land"]:
             size = (c.GUI_CELL_WIDTH, c.GUI_ROW_HEIGHT)
             if col == "Agent":
-                size = (2*c.GUI_CELL_WIDTH, c.GUI_ROW_HEIGHT)
-            self.score_cols[col] = [
-                pygame.Surface(size) for _ in range(3)
-            ]
+                size = (2 * c.GUI_CELL_WIDTH, c.GUI_ROW_HEIGHT)
+            self.score_cols[col] = [pygame.Surface(size) for _ in range(3)]
 
         self.info_panel = {
-            "time": pygame.Surface((2*c.GUI_CELL_WIDTH, c.GUI_ROW_HEIGHT)),
-            "speed": pygame.Surface((2*c.GUI_CELL_WIDTH, c.GUI_ROW_HEIGHT)),
+            "time": pygame.Surface((self.right_panel_width / 2, c.GUI_ROW_HEIGHT)),
+            "speed": pygame.Surface((self.right_panel_width / 2, c.GUI_ROW_HEIGHT)),
         }
         # Game area and tiles
         self.game_area = pygame.Surface((self.grid_width, self.grid_height))
@@ -199,67 +195,54 @@ class Renderer:
 
     def render_grid(self):
         """
-        Render grid part of the game on
+        Render the game grid
         """
         agents = self.game.agents
-        # draw visibility squares
-        visible_map = np.zeros((self.grid_size, self.grid_size), dtype=np.float32)
+        # Maps of all owned and visible cells
         owned_map = np.zeros((self.grid_size, self.grid_size), dtype=np.float32)
+        visible_map = np.zeros((self.grid_size, self.grid_size), dtype=np.float32)
         for agent in agents:
-            owned_map = np.logical_or(
-                owned_map, self.game.channels["ownership_" + agent]
-            )
+            ownership = self.game.channels["ownership_" + agent]
+            owned_map = np.logical_or(owned_map, ownership)
+            if self.agent_fov[agent]:
+                visibility = self.game.visibility_channel(ownership)
+                visible_map = np.logical_or(visible_map, visibility)
+
+        # Helper maps for not owned and invisible cells
         not_owned_map = np.logical_not(owned_map)
-        for agent in agents:
-            if not self.agent_fov[agent]:
-                continue
-            ownership = self.game.channels["ownership_" + agent]
-            visibility = self.game.visibility_channel(ownership)
-            _rendered_visibility = np.logical_and(visibility, not_owned_map)
-            visibility_indices = self.game.channel_to_indices(_rendered_visibility)
-            self.draw_channel(visibility_indices, c.WHITE)
-            visible_map = np.logical_or(
-                visible_map, visibility
-            )  # get all visible cells
-
-        # draw ownership squares
-        for agent in agents:
-            ownership = self.game.channels["ownership_" + agent]
-            ownership_indices = self.game.channel_to_indices(ownership)
-            self.draw_channel(ownership_indices, self.player_colors[agent])
-
-        # draw background as squares
         invisible_map = np.logical_not(visible_map)
-        invisible_indices = self.game.channel_to_indices(invisible_map)
-        self.draw_channel(invisible_indices, c.FOG_OF_WAR)
 
-        # Draw different color for visible mountains
+        # Draw background of visible owned squares
+        for agent in agents:
+            ownership = self.game.channels["ownership_" + agent]
+            visible_ownership = np.logical_and(ownership, visible_map)
+            visible_ownership_indices = self.game.channel_to_indices(visible_ownership)
+            self.draw_channel(visible_ownership_indices, self.player_colors[agent])
+
+        # Draw visible generals
+        visible_generals = np.logical_and(self.game.channels["general"], visible_map)
+        visible_generals_indices = self.game.channel_to_indices(visible_generals)
+        self.draw_images(visible_generals_indices, self._general_img)
+
+        # Draw background of visible but not owned squares
+        visible_not_owned = np.logical_and(visible_map, not_owned_map)
+        visible_not_owned_indices = self.game.channel_to_indices(visible_not_owned)
+        self.draw_channel(visible_not_owned_indices, c.WHITE)
+
+        # Draw background of squares in fog of war
+        invisible_map_indices = self.game.channel_to_indices(invisible_map)
+        self.draw_channel(invisible_map_indices, c.FOG_OF_WAR)
+
+        # Draw background of visible mountains
         visible_mountain = np.logical_and(self.game.channels["mountain"], visible_map)
         visible_mountain_indices = self.game.channel_to_indices(visible_mountain)
         self.draw_channel(visible_mountain_indices, c.VISIBLE_MOUNTAIN)
 
-        # Draw mountain image everywhere it is
+        # Draw mountains (even if they are not visible)
         mountain_indices = self.game.channel_to_indices(self.game.channels["mountain"])
         self.draw_images(mountain_indices, self._mountain_img)
 
-        # Draw invisible cities as mountains
-        invisible_cities = np.logical_and(self.game.channels["city"], invisible_map)
-        invisible_cities_indices = self.game.channel_to_indices(invisible_cities)
-        self.draw_images(invisible_cities_indices, self._mountain_img)
-
-        # draw general
-        for agent, fov in self.agent_fov.items():
-            if fov:
-                visible_squares = self.game.visibility_channel(
-                    self.game.channels["ownership_" + agent]
-                )
-                agent_general = np.logical_and(
-                    visible_squares, self.game.channels["general"]
-                )
-                general_indices = self.game.channel_to_indices(agent_general)
-                self.draw_images(general_indices, self._general_img)
-
-        # draw neutral visible city color
+        # Draw background of visible neutral cities
         visible_cities = np.logical_and(self.game.channels["city"], visible_map)
         visible_cities_neutral = np.logical_and(
             visible_cities, self.game.channels["ownership_neutral"]
@@ -269,15 +252,20 @@ class Renderer:
         )
         self.draw_channel(visible_cities_neutral_indices, c.NEUTRAL_CASTLE)
 
-        # draw visible city images
+        # Draw invisible cities as mountains
+        invisible_cities = np.logical_and(self.game.channels["city"], invisible_map)
+        invisible_cities_indices = self.game.channel_to_indices(invisible_cities)
+        self.draw_images(invisible_cities_indices, self._mountain_img)
+
+        # Draw visible cities
         visible_cities_indices = self.game.channel_to_indices(visible_cities)
         self.draw_images(visible_cities_indices, self._city_img)
 
-        # draw army counts on visibility mask
-        army = self.game.channels["army"] * visible_map
-        visible_army_indices = self.game.channel_to_indices(army)
+        # Draw army counts on visible squares
+        visible_army = self.game.channels["army"] * visible_map
+        visible_army_indices = self.game.channel_to_indices(visible_army)
         for i, j in visible_army_indices:
-            text = self._font.render(str(int(army[i, j])), True, c.WHITE)
+            text = self._font.render(str(int(visible_army[i, j])), True, c.WHITE)
             text_rect = text.get_rect(center=(c.SQUARE_SIZE / 2, c.SQUARE_SIZE / 2))
             self.tiles[i][j].blit(text, text_rect)
 
