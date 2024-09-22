@@ -32,7 +32,7 @@ class Renderer:
         # Surfaces #
         ############
         window_width = self.grid_width + self.right_panel_width
-        window_height = self.grid_height
+        window_height = self.grid_height + 1
 
         # Main window
         self.screen = pygame.display.set_mode(
