@@ -21,9 +21,9 @@ class Renderer:
         self.game = game
         self.agents = game.agents
         self.grid_size = game.grid_size
-        self.grid_offset = c.GUI_ROW_HEIGHT * (len(self.agents) + 1)  # area for GUI
         self.grid_width = c.SQUARE_SIZE * self.grid_size
         self.grid_height = c.SQUARE_SIZE * self.grid_size
+        self.right_panel_width = 4 * c.GUI_CELL_WIDTH
         self.player_colors = {
             agent: c.PLAYER_COLORS[i] for i, agent in enumerate(self.agents)
         }
@@ -31,7 +31,7 @@ class Renderer:
         ############
         # Surfaces #
         ############
-        window_width = self.grid_width + 4 * c.GUI_CELL_WIDTH
+        window_width = self.grid_width + self.right_panel_width
         window_height = self.grid_height
 
         # Main window
@@ -39,21 +39,17 @@ class Renderer:
             (window_width, window_height), pygame.HWSURFACE | pygame.DOUBLEBUF
         )
         # Scoreboard
-        self.right_panel = pygame.Surface(
-            (4*c.GUI_CELL_WIDTH, window_height)
-        )
+        self.right_panel = pygame.Surface((self.right_panel_width, window_height))
         self.score_cols = {}
         for col in ["Agent", "Army", "Land"]:
             size = (c.GUI_CELL_WIDTH, c.GUI_ROW_HEIGHT)
             if col == "Agent":
-                size = (2*c.GUI_CELL_WIDTH, c.GUI_ROW_HEIGHT)
-            self.score_cols[col] = [
-                pygame.Surface(size) for _ in range(3)
-            ]
+                size = (2 * c.GUI_CELL_WIDTH, c.GUI_ROW_HEIGHT)
+            self.score_cols[col] = [pygame.Surface(size) for _ in range(3)]
 
         self.info_panel = {
-            "time": pygame.Surface((2*c.GUI_CELL_WIDTH, c.GUI_ROW_HEIGHT)),
-            "speed": pygame.Surface((2*c.GUI_CELL_WIDTH, c.GUI_ROW_HEIGHT)),
+            "time": pygame.Surface((self.right_panel_width / 2, c.GUI_ROW_HEIGHT)),
+            "speed": pygame.Surface((self.right_panel_width / 2, c.GUI_ROW_HEIGHT)),
         }
         # Game area and tiles
         self.game_area = pygame.Surface((self.grid_width, self.grid_height))
