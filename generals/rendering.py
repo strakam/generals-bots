@@ -21,33 +21,42 @@ class Renderer:
         self.game = game
         self.agents = game.agents
         self.grid_size = game.grid_size
-        self.grid_offset = c.UI_ROW_HEIGHT * (len(self.agents) + 1)  # area for GUI
-        self.window_width = max(c.MINIMUM_WINDOW_SIZE, c.SQUARE_SIZE * self.grid_size)
-        self.window_height = max(
-            c.MINIMUM_WINDOW_SIZE, c.SQUARE_SIZE * self.grid_size + self.grid_offset
-        )
-        self.player_colors = {agent: c.PLAYER_COLORS[i] for i, agent in enumerate(self.agents)}
+        self.grid_offset = c.GUI_ROW_HEIGHT * (len(self.agents) + 1)  # area for GUI
+        self.grid_width = c.SQUARE_SIZE * self.grid_size
+        self.grid_height = c.SQUARE_SIZE * self.grid_size
+        self.player_colors = {
+            agent: c.PLAYER_COLORS[i] for i, agent in enumerate(self.agents)
+        }
 
         ############
         # Surfaces #
         ############
+        window_width = self.grid_width + 4 * c.GUI_CELL_WIDTH
+        window_height = self.grid_height
 
         # Main window
         self.screen = pygame.display.set_mode(
-            (self.window_width, self.window_height), pygame.HWSURFACE | pygame.DOUBLEBUF
+            (window_width, window_height), pygame.HWSURFACE | pygame.DOUBLEBUF
         )
         # Scoreboard
-        self.scoreboard = pygame.Surface(
-            (self.window_width, c.UI_ROW_HEIGHT * (len(self.agents) + 1))
+        self.right_panel = pygame.Surface(
+            (4*c.GUI_CELL_WIDTH, window_height)
         )
-        # Game area
-        self.game_area = pygame.Surface(
-            (
-                self.window_width,
-                self.window_height - c.UI_ROW_HEIGHT * (len(self.agents) + 1),
-            )
-        )
-        # Tiles
+        self.score_cols = {}
+        for col in ["Agent", "Army", "Land"]:
+            size = (c.GUI_CELL_WIDTH, c.GUI_ROW_HEIGHT)
+            if col == "Agent":
+                size = (2*c.GUI_CELL_WIDTH, c.GUI_ROW_HEIGHT)
+            self.score_cols[col] = [
+                pygame.Surface(size) for _ in range(3)
+            ]
+
+        self.info_panel = {
+            "time": pygame.Surface((2*c.GUI_CELL_WIDTH, c.GUI_ROW_HEIGHT)),
+            "speed": pygame.Surface((2*c.GUI_CELL_WIDTH, c.GUI_ROW_HEIGHT)),
+        }
+        # Game area and tiles
+        self.game_area = pygame.Surface((self.grid_width, self.grid_height))
         self.tiles = [
             [
                 pygame.Surface((c.SQUARE_SIZE, c.SQUARE_SIZE))
@@ -120,83 +129,73 @@ class Renderer:
         pygame.display.flip()
         return control_events
 
+    def render_gui_cell(self, cell, text, color):
+        """
+        Draw a text in the middle of the cell with the given background color
+
+        Args:
+            cell: cell to draw
+            text: text to write on the cell
+            color: color of the cell
+        """
+        center = (cell.get_width() // 2, cell.get_height() // 2)
+
+        text = self._font.render(text, True, c.BLACK)
+        cell.fill(color)
+        cell.blit(text, text.get_rect(center=center))
+
     def render_gui(self, from_replay=False):
         """
-        Draw player stats on the scoreboard surface
+        Draw player stats on the right_panel surface
         """
         names = self.game.agents
         player_stats = self.game.get_infos()
-        army_counts = ["Army"] + [str(player_stats[name]["army"]) for name in names]
-        land_counts = ["Land"] + [str(player_stats[name]["land"]) for name in names]
-        fovs = ["FOV"] + ["  X" if self.agent_fov[name] else " " for name in names]
-        names = ["Turn"] + [name for name in names]
 
-        # White background for GUI
-        self.scoreboard.fill(c.WHITE)
+        # Write names
+        for i, name in enumerate(["Agent"] + names):
+            color = self.player_colors[name] if name in self.player_colors else c.WHITE
+            self.render_gui_cell(self.score_cols["Agent"][i], name, color)
 
-        # Draw rows with player colors
-        for i, agent in enumerate(self.agents):
-            pygame.draw.rect(
-                self.scoreboard,
-                self.player_colors[agent],
-                (
-                    0,
-                    (i + 1) * c.UI_ROW_HEIGHT,
-                    self.scoreboard.get_width() - 3 * c.GUI_CELL_WIDTH,
-                    c.UI_ROW_HEIGHT,
-                ),
-            )
-
-        # Draw lines between rows
-        for i in range(1, 3):
-            pygame.draw.line(
-                self.scoreboard,
-                c.BLACK,
-                (0, i * c.UI_ROW_HEIGHT),
-                (self.scoreboard.get_width(), i * c.UI_ROW_HEIGHT),
-                c.LINE_WIDTH,
-            )
-
-        # Draw vertical lines cell_width from the end and 2*cell_width from the end
-        for i in range(1, 4):
-            pygame.draw.line(
-                self.scoreboard,
-                c.BLACK,
-                (self.window_width - i * c.GUI_CELL_WIDTH, 0),
-                (self.window_width - i * c.GUI_CELL_WIDTH, self.grid_offset),
-                c.LINE_WIDTH,
-            )
-
-        if from_replay:
-            speed = "Paused" if self.paused else str(1 / self.game_speed) + "x"
-            text = self._font.render(f"Game speed: {speed}", True, c.BLACK)
-            self.scoreboard.blit(text, (150, 15))
-
-        # For each player print his name, army, land and FOV (Field of View)
-        for i in range(len(self.agents) + 1):
-            if i == 0:
-                turn = str(self.game.time // 2) + (
-                    "." if self.game.time % 2 == 1 else ""
+        # Write other columns
+        for i, col in enumerate(["Army", "Land"]):
+            self.render_gui_cell(self.score_cols[col][0], col, c.WHITE)
+            for j, name in enumerate(names):
+                self.render_gui_cell(
+                    self.score_cols[col][j + 1],
+                    str(player_stats[name][col.lower()]),
+                    c.WHITE,
                 )
-                text = self._font.render(f"{names[i]}: {turn}", True, c.BLACK)
-            else:
-                text = self._font.render(f"{names[i]}", True, c.BLACK)
-            y_offset = i * c.UI_ROW_HEIGHT + 15
-            x_offset = 27
-            self.scoreboard.blit(text, (10, y_offset))
-            text = self._font.render(army_counts[i], True, c.BLACK)
-            self.scoreboard.blit(
-                text, (self.window_width - 2 * c.GUI_CELL_WIDTH + x_offset, y_offset)
+
+        # Blit each right_panel cell to the right_panel surface
+        for i, col in enumerate(["Agent", "Army", "Land"]):
+            for j, cell in enumerate(self.score_cols[col]):
+                rect_dim = (0,0,cell.get_width(),cell.get_height())
+                pygame.draw.rect(cell,c.BLACK,rect_dim,1)
+
+                position = ((i+1) * c.GUI_CELL_WIDTH, j * c.GUI_ROW_HEIGHT)
+                if col == "Agent":
+                    position = (0, j * c.GUI_ROW_HEIGHT)
+                self.right_panel.blit(cell, position)
+
+        info_text = {
+            "time": f"Time: {str(self.game.time // 2) + ('.' if self.game.time % 2 == 1 else '')}",
+            "speed": "Paused" if self.paused and from_replay else f"Speed: {str(1 / self.game_speed)}x",
+        }
+
+        for i, key in enumerate(["time", "speed"]):
+            self.render_gui_cell(
+                self.info_panel[key],
+                info_text[key],
+                c.WHITE,
             )
-            text = self._font.render(land_counts[i], True, c.BLACK)
-            self.scoreboard.blit(
-                text, (self.window_width - c.GUI_CELL_WIDTH + x_offset, y_offset)
+
+            rect_dim = (0,0,self.info_panel[key].get_width(),self.info_panel[key].get_height())
+            pygame.draw.rect(self.info_panel[key],c.BLACK,rect_dim,1)
+
+            self.right_panel.blit(
+                self.info_panel[key], (i*2*c.GUI_CELL_WIDTH, 3 * c.GUI_ROW_HEIGHT)
             )
-            text = self._font.render(fovs[i], True, c.BLACK)
-            self.scoreboard.blit(
-                text, (self.window_width - 3 * c.GUI_CELL_WIDTH + x_offset, y_offset)
-            )
-        self.screen.blit(self.scoreboard, (0, 0))
+        self.screen.blit(self.right_panel, (self.grid_width, 0))
 
     def render_grid(self):
         """
@@ -227,9 +226,7 @@ class Renderer:
         for agent in agents:
             ownership = self.game.channels["ownership_" + agent]
             ownership_indices = self.game.channel_to_indices(ownership)
-            self.draw_channel(
-                ownership_indices, self.player_colors[agent]
-            )
+            self.draw_channel(ownership_indices, self.player_colors[agent])
 
         # draw background as squares
         invisible_map = np.logical_not(visible_map)
@@ -290,7 +287,7 @@ class Renderer:
                 self.game_area.blit(
                     self.tiles[i][j], (j * c.SQUARE_SIZE, i * c.SQUARE_SIZE)
                 )
-        self.screen.blit(self.game_area, (0, self.grid_offset))
+        self.screen.blit(self.game_area, (0, 0))
 
     def draw_channel(self, channel: list[Tuple[int, int]], color: Tuple[int, int, int]):
         """
