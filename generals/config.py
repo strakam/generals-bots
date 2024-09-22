@@ -41,9 +41,9 @@ GAME_SPEED: float = 8 # by default, every 8 ticks, actions are processed
 # Grid visual settings #
 ########################
 SQUARE_SIZE: int = 50
-UI_ROW_HEIGHT: int = 50
 LINE_WIDTH: int = 1
-GUI_CELL_WIDTH: int = 100
+GUI_ROW_HEIGHT: int = 30
+GUI_CELL_WIDTH: int = 70
 MINIMUM_WINDOW_SIZE: int = 700
 
 ##########
