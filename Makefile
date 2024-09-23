@@ -13,8 +13,8 @@ make n_replay:
 t:
 	pytest tests/test_game.py
 	pytest tests/test_utils.py
+	python3 tests/sb3_check.py
 	python3 -m tests.parallel_api_test
-	python3 -m tests.gym_longruntest
 
 build:
 	python setup.py sdist bdist_wheel
