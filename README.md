@@ -189,8 +189,7 @@ generals.utils.run_replay("replay_001")
 
 ## 🌍 Environment
 ### 🔭 Observation
-An observation for one player is a dictionary of 8 key/value pairs. Each value is a 2D `np.array` containing information for each cell.
-Values are (binary) masked so that only information about cells that an agent can see can be non-zero.
+An observation for one agent is a dictionary of 13 key/value pairs. Each key/value pair contains information about part of the game that is accessible to the agent.
 | Key                  | Shape     | Description                                                                                                                                    |
 | ---                  | ---       | ---                                                                                                                                            |
 | `army`               | `(N,N,1)` | Number of units in a cell regardless of owner                                                                                                  |
