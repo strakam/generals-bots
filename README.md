@@ -243,7 +243,7 @@ observations, info = env.reset()
 Creating your first agent is very simple. Start by subclassing an `Agent` class just like `RandomAgent` [here](./generals/agents.py).
 - Every agent must have a name as it is his ID by which he is called for actions.
 - Every agent must implement `play(observation, info)` function that takes in `observation` and `info` and returns an action as described above.
-- You can simply follow [Usage Example](#usage-example) to make your bot running.
+- You can simply follow [Usage Example](#usage-example-pettingzoo) to make your bot running.
 - When creating an environment, you can choose out of two `render_modes`:
      - `none` that omits rendering and is suitable for training,
      - `human` where you can see the game roll out.
