@@ -9,7 +9,7 @@ from typing import Tuple
 class Renderer:
     def __init__(self, game: game.Game, from_replay=False):
         """
-        Initialize pygame window
+        Initialize the pygame GUI
 
         Args:
             game: game object
@@ -102,7 +102,7 @@ class Renderer:
                 # Slow down game left arrow is pressed
                 if event.key == pygame.K_LEFT and not self.paused:
                     self.game_speed = min(32, self.game_speed * 2)
-                # Pause game
+                # Toggle play/pause
                 if event.key == pygame.K_SPACE:
                     self.paused = not self.paused
 
@@ -150,7 +150,7 @@ class Renderer:
 
     def render_stats(self):
         """
-        Draw player stats on the right_panel surface
+        Draw player stats and additional info on the right panel
         """
         names = self.game.agents
         player_stats = self.game.get_infos()
@@ -274,7 +274,7 @@ class Renderer:
         visible_cities_indices = self.game.channel_to_indices(visible_cities)
         self.draw_images(visible_cities_indices, self._city_img)
 
-        # Draw army counts on visible squares
+        # Draw nonzero army counts on visible squares
         visible_army = self.game.channels["army"] * visible_map
         visible_army_indices = self.game.channel_to_indices(visible_army)
         for i, j in visible_army_indices:
@@ -282,7 +282,7 @@ class Renderer:
                 self.tiles[i][j],
                 str(int(visible_army[i, j])),
                 fg_color=c.WHITE,
-                bg_color=None,
+                bg_color=None,  # Transparent background
             )
 
         # Blit tiles to the self.game_area
@@ -295,11 +295,11 @@ class Renderer:
 
     def draw_channel(self, channel: list[Tuple[int, int]], color: Tuple[int, int, int]):
         """
-        Draw channel squares on the self.screen
+        Draw background and borders (left and top) for grid tiles of a given channel
 
         Args:
-            channel: list of tuples with indices of the channel
-            color: color of the squares
+            channel: list of tuples with indices of grid tiles
+            color: background color of the squares
         """
         for i, j in channel:
             self.tiles[i][j].fill(color)
@@ -308,11 +308,10 @@ class Renderer:
 
     def draw_images(self, channel: list[Tuple[int, int]], image):
         """
-        Draw images on the self.screen
+        Draw images on grid tiles of a given channel
 
         Args:
-            self.screen: pygame self.screen object
-            channel: list of tuples with indices of the channel
+            channel: list of tuples with indices of grid tiles
             image: pygame image object
         """
         for i, j in channel:
