@@ -11,13 +11,21 @@ agents = {
 game_config = GameConfig(
     grid_size=4,
     mountain_density=0.2,
-    city_density=0.05,
+    city_density=0.1,
     agent_names=list(agents.keys()),
+    general_positions=[(0, 0), (3, 3)]
 )
+
+map = """
+A..#
+.#3#
+...#
+##B#
+"""
 
 # Create environment
 env = pz_generals(game_config, render_mode="none") # render_mode {"none", "human"}
-observations, info = env.reset(options={"replay_file": "test"})
+observations, info = env.reset(map=map, options={"replay_file": "test"})
 done = False
 
 while not done:
