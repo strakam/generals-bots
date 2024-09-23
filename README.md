@@ -1,6 +1,6 @@
 <div align="center">
 
-[<img src="https://github.com/strakam/Generals-RL/blob/master/generals/images/test.png?raw=true" alt="Generals-RL logo" width="500"/>](https://github.com/strakam/Generals-RL)
+![Gameplay GIF](https://raw.githubusercontent.com/strakam/Generals-RL/master/generals/images/gameplay.gif)
 
 ## **Generals.io RL**
 
