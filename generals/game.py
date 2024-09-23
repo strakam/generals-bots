@@ -52,26 +52,37 @@ class Game:
 
         # City costs are 40 + digit in the cell
         base_cost = 40
-        city_costs = np.where(np.char.isdigit(map), map, '0').astype(np.float32)
+        city_costs = np.where(np.char.isdigit(map), map, "0").astype(np.float32)
         self.channels["army"] += base_cost * self.channels["city"] + city_costs
 
         box = gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.float32)
         self.observation_space = gym.spaces.Dict(
             {
                 "army": gym.spaces.Box(
-                    low=0, high=np.inf, shape=spatial_dim, dtype=np.int32
+                    low=0, high=np.inf, shape=spatial_dim, dtype=np.float32
                 ),
                 "general": box,
                 "city": box,
                 "ownership": box,
                 "ownership_opponent": box,
                 "ownership_neutral": box,
-                "mountain": box,
+                "visibility": box,
+                "structure": box,
+                "action_mask": gym.spaces.Box(
+                    low=0,
+                    high=1,
+                    shape=(spatial_dim[0], spatial_dim[1], 4),
+                    dtype=np.float32,
+                ),
+                "n_land": gym.spaces.Discrete(np.iinfo(np.int32).max),
+                "n_army": gym.spaces.Discrete(np.iinfo(np.int32).max),
+                "is_winner": gym.spaces.MultiBinary(1),
+                "timestep": gym.spaces.Discrete(np.iinfo(np.int32).max),
             }
         )
 
         self.action_space = gym.spaces.MultiDiscrete(
-            [self.grid_size, self.grid_size, 4]
+            [self.grid_size, self.grid_size, 4, 2]
         )
 
     def action_mask(self, agent: str) -> np.ndarray:
@@ -117,7 +128,6 @@ class Game:
             valid_action_mask[
                 valid_source_indices[:, 0], valid_source_indices[:, 1], channel_index
             ] = 1.0
-
         return valid_action_mask
 
     def channel_to_indices(self, channel: np.ndarray) -> np.ndarray:
@@ -157,7 +167,8 @@ class Game:
         ]
         # If only half of the army is sent, update the army size
         armies = [
-            (army, agent) if actions[agent][3] == 0 else (army // 2, agent) for army, agent in armies
+            (army, agent) if actions[agent][3] == 0 else (army // 2, agent)
+            for army, agent in armies
         ]
         agents = [agent for _, agent in sorted(armies)]
 
@@ -176,7 +187,9 @@ class Game:
                 army_to_move = self.channels["army"][si, sj] // 2
                 army_to_stay = self.channels["army"][si, sj] - army_to_move
             else:
-                army_to_move = self.channels["army"][si, sj] - 1 # Send all but one army
+                army_to_move = (
+                    self.channels["army"][si, sj] - 1
+                )  # Send all but one army
                 army_to_stay = 1
 
             # Check if the current player owns the source cell and has atleast 2 army size
@@ -199,9 +212,7 @@ class Game:
                 # Calculate resulting army, winner and update channels
                 remaining_army = np.abs(target_square_army - army_to_move)
                 square_winner = (
-                    agent
-                    if target_square_army < army_to_move
-                    else target_square_owner
+                    agent if target_square_army < army_to_move else target_square_owner
                 )
                 self.channels["army"][di, dj] = remaining_army
                 self.channels["army"][si, sj] = army_to_stay
@@ -284,27 +295,24 @@ class Game:
         Returns an observation for a given agent.
         Args:
             agent: str
-
-        Returns:
-            np.ndarray: observation for the given agent
         """
         info = self.get_infos()
         opponent = self.agents[0] if agent == self.agents[1] else self.agents[1]
         visibility = self.visibility_channel(self.channels[f"ownership_{agent}"])
         observation = {
-            "visibility": visibility,
             "army": self.channels["army"] * visibility,
             "general": self.channels["general"] * visibility,
             "city": self.channels["city"] * visibility,
             "ownership": self.channels[f"ownership_{agent}"] * visibility,
             "ownership_opponent": self.channels[f"ownership_{opponent}"] * visibility,
             "ownership_neutral": self.channels["ownership_neutral"] * visibility,
+            "visibility": visibility,
             "structure": self.channels["mountain"] + self.channels["city"],
             "action_mask": self.action_mask(agent),
             "n_land": info[agent]["land"],
             "n_army": info[agent]["army"],
-            "is_winner": info[agent]["is_winner"],
-            "timestep": self.time
+            "is_winner": np.array([info[agent]["is_winner"]], dtype=np.bool),
+            "timestep": self.time,
         }
         return observation
 

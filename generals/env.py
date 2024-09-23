@@ -5,6 +5,7 @@ import gymnasium
 from copy import copy
 from . import game, utils, config, agents
 from .rendering import Renderer
+from collections import OrderedDict
 
 
 def pz_generals(game_config: config.GameConfig=config.GameConfig(), reward_fn=None, render_mode="none"):
@@ -78,9 +79,9 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         else:
             self.replay = False
 
-        observations = {
+        observations = OrderedDict({
             agent: self.game._agent_observation(agent) for agent in self.agents
-        }
+        })
 
         infos = self.game.get_infos()
         return observations, infos
@@ -103,7 +104,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
             if self.replay:
                 utils.store_replay(self.game.map, self.action_history, self.replay)
 
-        return observations, rewards, terminated, truncated, infos
+        return OrderedDict(observations), rewards, terminated, truncated, infos
     
     def default_rewards(self, observations):
         """
@@ -125,7 +126,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
 class Gym_Generals(gymnasium.Env):
     def __init__(
         self,
-        game_config = None,
+        game_config=None,
         reward_fn=None,
         render_mode="none"
     ):
@@ -133,12 +134,23 @@ class Gym_Generals(gymnasium.Env):
         self.game_config = game_config
         self.reward_fn = self.default_rewards if reward_fn is None else reward_fn
 
+
         if game_config.agent_names is None:
             self.agent_name = "Player"
         else:
             self.agent_name = game_config.agent_names[0]
 
         self.opponent = agents.RandomAgent("Opponent")
+        
+        _map = utils.map_from_generator(
+            grid_size=self.game_config.grid_size,
+            mountain_density=self.game_config.mountain_density,
+            city_density=self.game_config.city_density,
+            general_positions=self.game_config.general_positions,
+        )
+        _game = game.Game(_map, [self.agent_name, "Opponent"])
+        self.observation_space = _game.observation_space
+        self.action_space = _game.action_space
 
 
     @functools.lru_cache(maxsize=None)
@@ -169,6 +181,9 @@ class Gym_Generals(gymnasium.Env):
 
         self.game = game.Game(map, [self.agent_name, "Opponent"])
 
+        self.observation_space = self.game.observation_space
+        self.action_space = self.game.action_space
+
         if self.render_mode == "human":
             self.renderer = Renderer(self.game)
 
@@ -178,7 +193,7 @@ class Gym_Generals(gymnasium.Env):
         else:
             self.replay = False
 
-        observation = self.game._agent_observation(self.agent_name)
+        observation = OrderedDict(self.game._agent_observation(self.agent_name))
         info = self.game.get_infos()[self.agent_name]
         return observation, info
 
@@ -206,7 +221,7 @@ class Gym_Generals(gymnasium.Env):
             if self.replay:
                 utils.store_replay(self.game.map, self.action_history, self.replay)
 
-        return observation, reward, terminated, truncated, info
+        return OrderedDict(observation), reward, terminated, truncated, info
     
     def default_rewards(self, observations):
         """
