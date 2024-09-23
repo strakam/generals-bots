@@ -7,18 +7,20 @@ from typing import Tuple
 
 
 class Renderer:
-    def __init__(self, game: game.Game):
+    def __init__(self, game: game.Game, from_replay=False):
         """
         Initialize pygame window
 
         Args:
-            config: game config object
+            game: game object
+            from_replay: bool, whether the game is from a replay
         """
         pygame.init()
         pygame.display.set_caption("Generals")
         pygame.key.set_repeat(500, 64)
 
         self.game = game
+        self.from_replay = from_replay
         self.agents = game.agents
         self.grid_size = game.grid_size
         self.grid_width = c.SQUARE_SIZE * self.grid_size
@@ -63,7 +65,7 @@ class Renderer:
 
         self.agent_fov = {name: True for name in self.agents}
         self.game_speed = 1
-        self.paused = True
+        self.paused = False
         self.clock = pygame.time.Clock()
         self.last_render_time = time.time()
 
@@ -91,7 +93,9 @@ class Renderer:
             ):
                 pygame.quit()
                 quit()
-            if event.type == pygame.KEYDOWN:
+
+            # Control game speed, pause, and replay frames if the game is from a replay
+            if event.type == pygame.KEYDOWN and self.from_replay:
                 # Speed up game right arrow is pressed
                 if event.key == pygame.K_RIGHT and not self.paused:
                     self.game_speed = max(1 / 16, self.game_speed / 2)
@@ -120,7 +124,7 @@ class Renderer:
                         break
         return control_events
 
-    def render(self, from_replay=False):
+    def render(self):
         control_events = self.handle_events()
         self.render_grid()
         self.render_stats()

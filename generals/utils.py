@@ -193,15 +193,15 @@ def run_replay(replay_file: str):
         agent_names=agents,
     )
     env = pz_generals(game_config, render_mode="human")
-    env.reset(map)
-    env.renderer.render(from_replay=True)
+    env.reset(map, options={"from_replay": True})
+    env.renderer.render()
 
     game_step, last_input_time, last_move_time = 0, 0, 0
     while 1:
         _t = time.time()
         # Check inputs
         if _t - last_input_time > 0.008: # check for input every 8ms
-            control_events = env.renderer.render(from_replay=True)
+            control_events = env.renderer.render()
             last_input_time = _t
         else:
             control_events = {"time_change": 0}
