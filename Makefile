@@ -3,8 +3,12 @@
 replay:
 	python3 -m examples.replay
 
-example:
-	python3 -m examples.example
+pz:
+	python3 -m examples.pettingzoo_example
+
+gym:
+	python3 -m examples.gymnasium_example
+
 
 make n_replay:
 	python3 -m examples.dummy
