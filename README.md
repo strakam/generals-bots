@@ -1,6 +1,6 @@
 <div align="center">
 
-[<img src="https://github.com/strakam/Generals-RL/blob/master/generals/images/test.png?raw=true" alt="Generals-RL logo" width="500"/>](https://github.com/strakam/Generals-RL)
+![Gameplay GIF](https://raw.githubusercontent.com/strakam/Generals-RL/master/generals/images/gameplay.gif)
 
 ## **Generals.io RL**
 
@@ -19,7 +19,7 @@ This repository aims to make bot development more accessible, especially for Mac
 
 Highlights:
 * 🚀 Fast & Lightweight simulator powered by `numpy` (thousands of steps per second)
-* 🦁 Compatibility with Reinforcement-Learning API standard [PettingZoo](https://pettingzoo.farama.org/)
+* 🦁 Compatibility with Reinforcement-Learning API standards [Gymnasium](https://gymnasium.farama.org/) and [PettingZoo](https://pettingzoo.farama.org/)
 * 🔧 Easy customization of environments
 * 🔬 Analysis tools such as replays
 
@@ -44,7 +44,7 @@ cd Generals-RL
 pip install -e .
 ```
 
-## Usage Example
+## Usage Example (🦁 PettingZoo)
 ```python
 from generals.env import pz_generals
 from generals.agents import RandomAgent
@@ -81,12 +81,44 @@ while not env.game.is_done():
     env.render(tick_rate=actions_per_second)
 ```
 
+## Usage example (🤸 Gymnasium)
+```python
+from generals.env import gym_generals
+from generals.agents import RandomAgent
+from generals.config import GameConfig
+
+# Initialize agent
+agent = RandomAgent("Red")
+
+game_config = GameConfig(
+    grid_size=16,
+    mountain_density=0.2,
+    city_density=0.05,
+    general_positions=[(2, 12), (8, 9)],
+    agent_names=[agent.name]
+)
+
+# Create environment
+env = gym_generals(game_config, render_mode="human") # render_mode {"none", "human"}
+observation, info = env.reset(options={"replay_file": "test"})
+
+# How fast we want rendering to be
+actions_per_second = 2
+done = False
+
+while not done:
+    action = agent.play(observation)
+    observation, reward, terminated, truncated, info = env.step(action)
+    done = terminated or truncated
+    env.render(tick_rate=actions_per_second)
+```
+
 ## 🎨 Customization
 The environment can be customized via `GridConfig` class or by creating a custom map.
 
 ### 🗺️ Random maps
 ```python
-from generals.env import generals_v0
+from generals.env import pz_generals
 from generals.config import GameConfig
 
 game_config = GameConfig(
@@ -98,7 +130,7 @@ game_config = GameConfig(
 )
 
 # Create environment
-env = generals_v0(game_config, render_mode="none")
+env = pz_generals(game_config, render_mode="none")
 observations, info = env.reset()
 ```
 
@@ -106,7 +138,7 @@ observations, info = env.reset()
 Maps can be described by strings. We can either load them directly from a string or from a file.
 
 ```python
-from generals.env import generals_v0
+from generals.env import pz_generals
 from generals.config import GameConfig
 
 game_config = GameConfig(
@@ -119,6 +151,7 @@ map = """
 .#.B
 """
 
+env = pz_generals(game_config, render_mode="none")
 env.reset(map=map) # Here map related settings from game_config are overridden
 ```
 Maps are encoded using these symbols:
@@ -131,11 +164,12 @@ Maps are encoded using these symbols:
 We can store replays and then analyze them.
 ### Storing a replay
 ```python
-from generals.env import generals_v0
+from generals.env import pz_generals
 from generals.config import GameConfig
 
 game_config = GameConfig()
 options = {"replay_file": "replay_001"}
+env = pz_generals(game_config, render_mode="none")
 env.reset(options=options) # encodes the next game into a "replay_001" file
 ```
 
