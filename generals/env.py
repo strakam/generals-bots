@@ -55,7 +55,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
                 self.renderer.clock.tick(tick_rate)
 
 
-    def reset(self, map: np.ndarray = None, seed=None, options={}):
+    def reset(self, map: str = None, seed=None, options={}):
         self.agents = copy(self.possible_agents)
 
         # If map is not provided, generate a new one
@@ -67,6 +67,8 @@ class PZ_Generals(pettingzoo.ParallelEnv):
                 general_positions=self.game_config.general_positions,
                 seed=seed,
             )
+        else:
+            map = utils.map_from_string(map)
 
         self.game = game.Game(map, self.possible_agents)
 

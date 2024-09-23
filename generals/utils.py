@@ -152,8 +152,7 @@ def load_replay(path: str):
 
         # take rows until first empty line
         rows = lines[1 : lines.index("\n")]
-        map_string = "".join(rows)
-        map = map_from_string(map_string)
+        map = "".join(rows)
 
         # after empty line, read actions
         action_sequence = []
@@ -169,7 +168,6 @@ def load_replay(path: str):
     # Play actions to recreate states that happened
     from generals.env import pz_generals
 
-    map = map_from_string(map_string)
     game_config = GameConfig(
         agent_names=players,
     )
