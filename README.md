@@ -44,7 +44,7 @@ cd Generals-RL
 pip install -e .
 ```
 
-## Usage Example
+## Usage Example (🦁 PettingZoo)
 ```python
 from generals.env import pz_generals
 from generals.agents import RandomAgent
@@ -78,6 +78,38 @@ while not env.game.is_done():
         actions[agent] = agents[agent].play(observations[agent])
     # All agents perform their actions
     observations, rewards, terminated, truncated, info = env.step(actions)
+    env.render(tick_rate=actions_per_second)
+```
+
+## Usage example (🤸 Gymnasium)
+```python
+from generals.env import gym_generals
+from generals.agents import RandomAgent
+from generals.config import GameConfig
+
+# Initialize agent
+agent = RandomAgent("Red")
+
+game_config = GameConfig(
+    grid_size=16,
+    mountain_density=0.2,
+    city_density=0.05,
+    general_positions=[(2, 12), (8, 9)],
+    agent_names=[agent.name]
+)
+
+# Create environment
+env = gym_generals(game_config, render_mode="human") # render_mode {"none", "human"}
+observation, info = env.reset(options={"replay_file": "test"})
+
+# How fast we want rendering to be
+actions_per_second = 2
+done = False
+
+while not done:
+    action = agent.play(observation)
+    observation, reward, terminated, truncated, info = env.step(action)
+    done = terminated or truncated
     env.render(tick_rate=actions_per_second)
 ```
 
