@@ -249,9 +249,7 @@ Creating your first agent is very simple. Start by subclassing an `Agent` class 
      - `human` where you can see the game roll out.
 
 ## 🛠️ Coming Soon
-- Extend action space to sending half of units to another square
 - Examples and baselines using RL
 - Add human control to play against
-- New analysis tools
   
 Requests for useful features and additions are welcome 🤗.
