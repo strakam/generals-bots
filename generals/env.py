@@ -71,7 +71,8 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         self.game = game.Game(map, self.possible_agents)
 
         if self.render_mode == "human":
-            self.renderer = Renderer(self.game)
+            from_replay = "from_replay" in options and options["from_replay"] or False
+            self.renderer = Renderer(self.game, from_replay)
 
         if "replay_file" in options:
             self.replay = options["replay_file"]
@@ -185,7 +186,8 @@ class Gym_Generals(gymnasium.Env):
         self.action_space = self.game.action_space
 
         if self.render_mode == "human":
-            self.renderer = Renderer(self.game)
+            from_replay = "from_replay" in options and options["from_replay"] or False
+            self.renderer = Renderer(self.game, from_replay)
 
         if "replay_file" in options:
             self.replay = options["replay_file"]

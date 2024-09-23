@@ -149,9 +149,9 @@ generals.utils.run_replay("replay_001")
 ### 🕹️ Replay controls
 - `q` — quit/close the replay
 - `←/→` — increase/decrease the replay speed
-- `h/l` — to control replay frames
-- `spacebar` — to pause
-- `mouse` click on the player's row — toggle the FOV (Field Of View) of the given player
+- `h/l` — move backward/forward by one frame in the replay
+- `spacebar` — toggle play/pause
+- `mouse` click on the player's row — toggle the FoV (Field Of View) of the given player
 
 ## 🌍 Environment
 ### 🔭 Observation
