@@ -98,7 +98,7 @@ class Renderer:
             if event.type == pygame.KEYDOWN and self.from_replay:
                 # Speed up game right arrow is pressed
                 if event.key == pygame.K_RIGHT and not self.paused:
-                    self.game_speed = max(1 / 16, self.game_speed / 2)
+                    self.game_speed = max(1 / 128, self.game_speed / 2)
                 # Slow down game left arrow is pressed
                 if event.key == pygame.K_LEFT and not self.paused:
                     self.game_speed = min(32, self.game_speed * 2)
