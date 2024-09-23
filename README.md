@@ -118,7 +118,7 @@ The environment can be customized via `GridConfig` class or by creating a custom
 
 ### 🗺️ Random maps
 ```python
-from generals.env import generals_v0
+from generals.env import pz_generals
 from generals.config import GameConfig
 
 game_config = GameConfig(
@@ -130,7 +130,7 @@ game_config = GameConfig(
 )
 
 # Create environment
-env = generals_v0(game_config, render_mode="none")
+env = pz_generals(game_config, render_mode="none")
 observations, info = env.reset()
 ```
 
@@ -138,7 +138,7 @@ observations, info = env.reset()
 Maps can be described by strings. We can either load them directly from a string or from a file.
 
 ```python
-from generals.env import generals_v0
+from generals.env import pz_generals
 from generals.config import GameConfig
 
 game_config = GameConfig(
@@ -151,6 +151,7 @@ map = """
 .#.B
 """
 
+env = pz_generals(game_config, render_mode="none")
 env.reset(map=map) # Here map related settings from game_config are overridden
 ```
 Maps are encoded using these symbols:
@@ -163,11 +164,12 @@ Maps are encoded using these symbols:
 We can store replays and then analyze them.
 ### Storing a replay
 ```python
-from generals.env import generals_v0
+from generals.env import pz_generals
 from generals.config import GameConfig
 
 game_config = GameConfig()
 options = {"replay_file": "replay_001"}
+env = pz_generals(game_config, render_mode="none")
 env.reset(options=options) # encodes the next game into a "replay_001" file
 ```
 
