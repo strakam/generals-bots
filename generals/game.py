@@ -1,9 +1,7 @@
 import numpy as np
 import gymnasium as gym
 from typing import Dict, List
-from generals.config import PASSABLE, MOUNTAIN
-from generals.config import UP, DOWN, LEFT, RIGHT
-from generals.config import INCREMENT_RATE
+from generals.config import DIRECTIONS, PASSABLE, MOUNTAIN, INCREMENT_RATE
 
 from scipy.ndimage import maximum_filter
 
@@ -109,7 +107,7 @@ class Game:
         if self.is_done():
             return valid_action_mask
 
-        for channel_index, direction in enumerate([UP, DOWN, LEFT, RIGHT]):
+        for channel_index, direction in enumerate(DIRECTIONS):
             destinations = owned_cells_indices + direction
 
             # check if destination is in grid bounds
@@ -158,7 +156,6 @@ class Game:
             actions: dictionary of agent name to action
         """
         done_before_actions = self.is_done()
-        directions = np.array([UP, DOWN, LEFT, RIGHT])
 
         # Agent with smaller army to move is prioritized
         armies = [
@@ -178,8 +175,8 @@ class Game:
 
             si, sj = source[0], source[1]  # source indices
             di, dj = (
-                source[0] + directions[direction][0],
-                source[1] + directions[direction][1],
+                source[0] + DIRECTIONS[direction][0],
+                source[1] + DIRECTIONS[direction][1],
             )  # destination indices
 
             send_half = actions[agent][3]

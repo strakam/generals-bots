@@ -28,6 +28,7 @@ UP: List[int] = [-1, 0]
 DOWN: List[int] = [1, 0]
 LEFT: List[int] = [0, -1]
 RIGHT: List[int] = [0, 1]
+DIRECTIONS: List[List[int]] = [UP, DOWN, LEFT, RIGHT]
 
 ##################
 # Game constants #
