@@ -1,7 +1,7 @@
 import numpy as np
 import gymnasium as gym
 from typing import Dict, List
-from generals.config import PASSABLE, MOUNTAIN, GENERAL
+from generals.config import PASSABLE, MOUNTAIN
 from generals.config import UP, DOWN, LEFT, RIGHT
 from generals.config import INCREMENT_RATE
 
@@ -18,7 +18,7 @@ class Game:
         self.grid_size = spatial_dim[0]  # Grid shape should be square
 
         self.general_positions = {
-            agent: np.argwhere(map == chr(ord(GENERAL) + i))[0]
+            agent: np.argwhere(map == chr(ord('A') + i))[0]
             for i, agent in enumerate(self.agents)
         }
 
@@ -44,7 +44,7 @@ class Game:
             ),
             **{
                 f"ownership_{agent}": np.where(
-                    map == chr(ord(GENERAL) + id), 1, 0
+                    map == chr(ord('A') + id), 1, 0
                 ).astype(bool)
                 for id, agent in enumerate(self.agents)
             },

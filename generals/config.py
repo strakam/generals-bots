@@ -17,11 +17,9 @@ class GameConfig(BaseModel):
 #################
 # Game Literals #
 #################
-PASSABLE: Literal[0] = '.'
-MOUNTAIN: Literal[1] = '#'
-# CITY can be any digit 0-9
-CITY: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9] = 0
-GENERAL: Literal['A'] = 'A'
+PASSABLE: Literal['.'] = '.'
+MOUNTAIN: Literal['#'] = '#'
+CITY: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9] = 0 # CITY can be any digit 0-9
 
 #########
 # Moves #
