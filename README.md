@@ -196,6 +196,7 @@ Values are (binary) masked so that only information about cells that an agent ca
 | `army`               | `(N,N,1)` | Number of units in a cell regardless of owner                                                                                                  |
 | `general`            | `(N,N,1)` | Mask of cells that are visible to the agent                                                                                                    |
 | `city`               | `(N,N,1)` | Mask saying whether a city is in a cell                                                                                                        |
+| `visibility`         | `(N,N,1)` | Mask indicating cells that are visible to the agent                                                                                            |
 | `ownership`          | `(N,N,1)` | Mask indicating cells controlled by the agent                                                                                                  |
 | `ownership_opponent` | `(N,N,1)` | Mask indicating cells owned by the opponent                                                                                                    |
 | `ownership_neutral`  | `(N,N,1)` | Mask indicating cells that are not owned by agents                                                                                             |
@@ -242,8 +243,8 @@ observations, info = env.reset()
 ## 🚀 Getting Started
 Creating your first agent is very simple. Start by subclassing an `Agent` class just like `RandomAgent` [here](./generals/agents.py).
 - Every agent must have a name as it is his ID by which he is called for actions.
-- Every agent must implement `play(observation, info)` function that takes in `observation` and `info` and returns an action as described above.
-- You can simply follow [Usage Example](#usage-example-pettingzoo) to make your bot running.
+- Every agent must implement `play(observation)` function that takes in `observation` and returns an action as described above.
+- You can simply follow examples to make your bot running.
 - When creating an environment, you can choose out of two `render_modes`:
      - `none` that omits rendering and is suitable for training,
      - `human` where you can see the game roll out.
