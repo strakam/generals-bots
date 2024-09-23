@@ -123,26 +123,28 @@ class Renderer:
     def render(self, from_replay=False):
         control_events = self.handle_events()
         self.render_grid()
-        self.render_gui(from_replay)
+        self.render_stats()
         pygame.display.flip()
         return control_events
 
-    def render_gui_cell(self, cell, text, color):
+    def render_cell_text(self, cell, text, fg_color=c.BLACK, bg_color=c.WHITE):
         """
-        Draw a text in the middle of the cell with the given background color
+        Draw a text in the middle of the cell with given foreground and background colors
 
         Args:
             cell: cell to draw
             text: text to write on the cell
-            color: color of the cell
+            fg_color: foreground color of the text
+            bg_color: background color of the cell
         """
         center = (cell.get_width() // 2, cell.get_height() // 2)
 
-        text = self._font.render(text, True, c.BLACK)
-        cell.fill(color)
+        text = self._font.render(text, True, fg_color)
+        if bg_color:
+            cell.fill(bg_color)
         cell.blit(text, text.get_rect(center=center))
 
-    def render_gui(self, from_replay=False):
+    def render_stats(self):
         """
         Draw player stats on the right_panel surface
         """
@@ -155,20 +157,20 @@ class Renderer:
             # add opacity to the color, where color is a tuple (r,g,b)
             if name in self.agent_fov and not self.agent_fov[name]:
                 color = tuple([int(0.5 * c) for c in color])
-            self.render_gui_cell(self.score_cols["Agent"][i], name, color)
+            self.render_cell_text(self.score_cols["Agent"][i], name, bg_color=color)
 
         # Write other columns
         for i, col in enumerate(["Army", "Land"]):
-            self.render_gui_cell(self.score_cols[col][0], col, c.WHITE)
+            self.render_cell_text(self.score_cols[col][0], col)
             for j, name in enumerate(names):
                 # Give darkish color if agents FoV is off
                 color = c.WHITE
                 if name in self.agent_fov and not self.agent_fov[name]:
                     color = (128, 128, 128)
-                self.render_gui_cell(
+                self.render_cell_text(
                     self.score_cols[col][j + 1],
                     str(player_stats[name][col.lower()]),
-                    color,
+                    bg_color=color,
                 )
 
         # Blit each right_panel cell to the right_panel surface
@@ -184,16 +186,12 @@ class Renderer:
 
         info_text = {
             "time": f"Time: {str(self.game.time // 2) + ('.' if self.game.time % 2 == 1 else '')}",
-            "speed": "Paused" if self.paused and from_replay else f"Speed: {str(1 / self.game_speed)}x",
+            "speed": "Paused" if self.paused else f"Speed: {str(1 / self.game_speed)}x",
         }
 
         # Write additional info
         for i, key in enumerate(["time", "speed"]):
-            self.render_gui_cell(
-                self.info_panel[key],
-                info_text[key],
-                c.WHITE,
-            )
+            self.render_cell_text(self.info_panel[key], info_text[key])
 
             rect_dim = (0,0,self.info_panel[key].get_width(),self.info_panel[key].get_height())
             pygame.draw.rect(self.info_panel[key],c.BLACK,rect_dim,1)
@@ -276,9 +274,12 @@ class Renderer:
         visible_army = self.game.channels["army"] * visible_map
         visible_army_indices = self.game.channel_to_indices(visible_army)
         for i, j in visible_army_indices:
-            text = self._font.render(str(int(visible_army[i, j])), True, c.WHITE)
-            text_rect = text.get_rect(center=(c.SQUARE_SIZE / 2, c.SQUARE_SIZE / 2))
-            self.tiles[i][j].blit(text, text_rect)
+            self.render_cell_text(
+                self.tiles[i][j],
+                str(int(visible_army[i, j])),
+                fg_color=c.WHITE,
+                bg_color=None,
+            )
 
         # Blit tiles to the self.game_area
         for i in range(self.grid_size):
