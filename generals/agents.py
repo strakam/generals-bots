@@ -31,8 +31,10 @@ class RandomAgent(Agent):
         mask = observation['action_mask']
         valid_actions = np.argwhere(mask == 1)
         action_index = np.random.choice(len(valid_actions))
+        action = np.array([1])
+        action = np.append(action, valid_actions[action_index])
         # append 1 or 0 randomly to the action (to say whether to send half of troops or all troops)
-        action = np.append(valid_actions[action_index], np.random.choice([0, 1]))
+        action = np.append(action, np.random.choice([0, 1]))
         return action
 
 class ExpanderAgent(Agent):
@@ -52,7 +54,7 @@ class ExpanderAgent(Agent):
             army[valid_actions[:, 0], valid_actions[:, 1]] > 1
         )
         if np.sum(actions_with_more_than_1_army) == 0:
-            return [-1, -1, 0, 0]  # IDLE move
+            return np.array([0, 0, 0, 0, 0])  # IDLE move
 
         valid_actions = valid_actions[actions_with_more_than_1_army]
 
@@ -86,5 +88,7 @@ class ExpanderAgent(Agent):
             action = valid_actions[action_index]
 
         # append 0 to the action (to send all available troops)
-        action = np.append(action, 0)
-        return action
+        final_action = np.array([1])
+        final_action = np.append(final_action, action)
+        final_action = np.append(final_action, 0)
+        return final_action

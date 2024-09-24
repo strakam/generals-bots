@@ -29,7 +29,9 @@ def sample_action(
         # pick random index of the mask with a 1, it should be 3 numbers
         valid_actions = np.argwhere(mask == 1)
         action_index = np.random.choice(len(valid_actions))
-        action = valid_actions[action_index]
+        action = np.array([1])
+        action = np.append(action, valid_actions[action_index])
+        # append 1 or 0 randomly to the action (to say whether to send half of troops or all troops)
         action = np.append(action, np.random.choice([0, 1]))
         return action
     return env.action_space(agent).sample()

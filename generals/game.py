@@ -16,7 +16,7 @@ class Game:
         self.grid_size = spatial_dim[0]  # Grid shape should be square
 
         self.general_positions = {
-            agent: np.argwhere(map == chr(ord('A') + i))[0]
+            agent: np.argwhere(map == chr(ord("A") + i))[0]
             for i, agent in enumerate(self.agents)
         }
 
@@ -41,9 +41,9 @@ class Game:
                 bool
             ),
             **{
-                f"ownership_{agent}": np.where(
-                    map == chr(ord('A') + id), 1, 0
-                ).astype(bool)
+                f"ownership_{agent}": np.where(map == chr(ord("A") + id), 1, 0).astype(
+                    bool
+                )
                 for id, agent in enumerate(self.agents)
             },
         }
@@ -53,6 +53,9 @@ class Game:
         city_costs = np.where(np.char.isdigit(map), map, "0").astype(np.float32)
         self.channels["army"] += base_cost * self.channels["city"] + city_costs
 
+        ##########
+        # Spaces #
+        ##########
         box = gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.float32)
         self.observation_space = gym.spaces.Dict(
             {
@@ -79,9 +82,7 @@ class Game:
             }
         )
 
-        self.action_space = gym.spaces.MultiDiscrete(
-            [self.grid_size, self.grid_size, 4, 2]
-        )
+        self.action_space = gym.spaces.MultiDiscrete([2, self.grid_size, self.grid_size, 4, 2])
 
     def action_mask(self, agent: str) -> np.ndarray:
         """
@@ -158,36 +159,29 @@ class Game:
         done_before_actions = self.is_done()
 
         # Agent with smaller army to move is prioritized
-        armies = [
-            (self.channels["army"][actions[agent][0]][actions[agent][1]], agent)
-            for agent in list(actions.keys())
-        ]
-        # If only half of the army is sent, update the army size
-        armies = [
-            (army, agent) if actions[agent][3] == 0 else (army // 2, agent)
-            for army, agent in armies
-        ]
-        agents = [agent for _, agent in sorted(armies)]
-
-        for agent in agents:
-            source = actions[agent][:2]  # x,y indices of a source cell
-            direction = actions[agent][2]  # 0,1,2,3
-
-            si, sj = source[0], source[1]  # source indices
-            di, dj = (
-                source[0] + DIRECTIONS[direction][0],
-                source[1] + DIRECTIONS[direction][1],
-            )  # destination indices
-
-            send_half = actions[agent][3]
-            if send_half:
-                army_to_move = self.channels["army"][si, sj] // 2
-                army_to_stay = self.channels["army"][si, sj] - army_to_move
+        moves = {}
+        for agent, move in actions.items():
+            pass_or_play, i, j, direction, half = move
+            if pass_or_play == 0:  # Agent wants to pass the turn
+                continue
+            if half == 1:
+                moved_amount = self.channels["army"][i, j] // 2
             else:
-                army_to_move = (
-                    self.channels["army"][si, sj] - 1
-                )  # Send all but one army
-                army_to_stay = 1
+                moved_amount = self.channels["army"][i, j] - 1
+            moves[agent] = (move, moved_amount)
+
+        # Take agents from smallest moved amount to largest
+        for agent in sorted(moves, key=lambda x: moves[x][1]):
+            si, sj = moves[agent][0][1:3]  # x,y indices of a source cell
+            direction = moves[agent][0][3]  # 0,1,2,3
+
+            army_to_move = min(moves[agent][1], self.channels["army"][si, sj])
+            army_to_stay = self.channels["army"][si, sj] - army_to_move
+
+            di, dj = (
+                si + DIRECTIONS[direction][0],
+                sj + DIRECTIONS[direction][1],
+            )  # destination indices
 
             # Check if the current player owns the source cell and has atleast 2 army size
             if army_to_move < 1 or self.channels[f"ownership_{agent}"][si, sj] == 0:
