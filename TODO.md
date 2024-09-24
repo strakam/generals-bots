@@ -8,10 +8,12 @@
 ### Improvements
 - [ ] Let user change game speed even when the game is paused; make 'Paused' text separate in the side panel.
 - [ ] Revisit types for observation space (np.float32 vs np.bool)
-- [ ] Make ExpanderAgent a bit more readable if possible
+- [x] Make ExpanderAgent a bit more readable if possible
 - [ ] Test IDLE actions
 
 ### Bug fixes
 
-### Documentation and examples
+### Documentation and CI
 - [ ] Create more examples of usage (Stable Baselines3 demo)
+- [ ] Look for more suitable license
+- [ ] Pre-commit hooks for conventional commit checks (enforcing conventional commits)
