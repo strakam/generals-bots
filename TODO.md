@@ -18,4 +18,4 @@
 - [ ] Create more examples of usage (Stable Baselines3 demo)
 - [x] Pre-commit hooks for conventional commit checks (enforcing conventional commits)
 - [x] Add CI for running tests (pre commit)
-- [ ] Add CI passing badge to README
+- [x] Add CI passing badge to README

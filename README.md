@@ -6,6 +6,8 @@
 
 [![CodeFactor](https://www.codefactor.io/repository/github/strakam/generals-rl/badge)](https://www.codefactor.io/repository/github/strakam/generals-rl)
 [![CodeQL](https://github.com/strakam/Generals-RL/actions/workflows/codeql.yml/badge.svg)](https://github.com/strakam/Generals-RL/actions/workflows/codeql.yml)
+[![CI](https://github.com/strakam/Generals-RL/actions/workflows/tests.yml/badge.svg)](https://github.com/strakam/Generals-RL/actions/workflows/tests.yml)
+
 
 
 
@@ -65,7 +67,7 @@ game_config = GameConfig(
 )
 
 # Create environment
-env = pz_generals(game_config, render_mode="human") # render_mode {"none", "human"}
+env = pz_generals(game_config, render_mode="human") # render_modes are ["none", "human"]
 observations, info = env.reset()
 
 # How fast we want rendering to be
@@ -95,11 +97,12 @@ game_config = GameConfig(
     mountain_density=0.2,
     city_density=0.05,
     general_positions=[(2, 12), (8, 9)],
-    agent_names=[agent.name]
+    agent_names=[agent.name],
+    gymnasium_npc="expander" # available options as of now: ["expander", "random"]
 )
 
 # Create environment
-env = gym_generals(game_config, render_mode="human") # render_mode {"none", "human"}
+env = gym_generals(game_config, render_mode="human") # render_modes are ["none", "human"]
 observation, info = env.reset()
 
 # How fast we want rendering to be
