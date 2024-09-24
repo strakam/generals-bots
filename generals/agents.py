@@ -33,14 +33,14 @@ class RandomAgent(Agent):
         """
         Randomly selects a valid action.
         """
-        pass_or_play = [1] if np.random.rand() > self.idle_probability else [0]
-        all_or_split = [0] if np.random.rand() > self.split_probability else [1]
+        pass_turn = [0] if np.random.rand() > self.idle_probability else [1]
+        split_army = [0] if np.random.rand() > self.split_probability else [1]
 
         mask = observation["action_mask"]
         valid_actions = np.argwhere(mask == 1)
         action_index = np.random.choice(len(valid_actions))
 
-        action = np.concatenate((pass_or_play, valid_actions[action_index], all_or_split))
+        action = np.concatenate((pass_turn, valid_actions[action_index], split_army))
         return action
 
 
@@ -94,7 +94,7 @@ class ExpanderAgent(Agent):
             action_index = np.random.choice(len(valid_actions))
             action = valid_actions[action_index]
 
-        # [1] to indicate we want to move, [0] to indicate we want to move all troops
-        action = np.concatenate(([1], action, [0]))
+        # [0] to indicate we want to move, [0] to indicate we want to move all troops
+        action = np.concatenate(([0], action, [0]))
 
         return action

@@ -11,11 +11,15 @@
 - [x] Revisit types for observation space (np.float32 vs np.bool)
 - [x] Make ExpanderAgent a bit more readable if possible
 - [x] Test IDLE actions
+- [ ] Should we error out when agent tries to perform an invalid move, so that it is easier to debug?
 
 ### Bug fixes
 
 ### Documentation and CI
 - [ ] Create more examples of usage (Stable Baselines3 demo)
+- [ ] Use gymnasium check_env
 - [x] Pre-commit hooks for conventional commit checks (enforcing conventional commits)
 - [x] Add CI for running tests (pre commit)
 - [x] Add CI passing badge to README
+- [ ] Document agent move format
+- [ ] Split game step tests into more specific tests
