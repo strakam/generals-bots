@@ -475,25 +475,78 @@ def test_game_step():
     reference_total_army_land = 4
     assert stats['blue']['land'] == reference_total_army_land
 
+    ##################################################
+    # Red moves army from (3, 2) UP and blue is IDLE #
+    ##################################################
+    moves = {
+        'red': np.array([1, 3, 2, 0, 0]),
+        'blue': np.array([0, 1, 3, 2, 1])
+    }
+
+    game.step(moves)
+    reference_army = np.array([
+        [1, 2, 0, 0],
+        [0, 5, 2, 3],
+        [1, 1, 8, 0],
+        [0, 0, 1, 6],
+    ], dtype=np.float32)
+    assert (game.channels['army'] == reference_army).all()
+
+    reference_ownership_red = np.array([
+        [0, 0, 0, 0],
+        [0, 1, 0, 0],
+        [1, 1, 1, 0],
+        [0, 0, 1, 1],
+    ], dtype=np.float32)
+    assert (game.channels['ownership_red'] == reference_ownership_red).all()
+
+    reference_ownership_blue = np.array([
+        [1, 1, 0, 0],
+        [0, 0, 1, 1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+    ], dtype=np.float32)
+    assert (game.channels['ownership_blue'] == reference_ownership_blue).all()
+
+    reference_ownership_neutral = np.array([
+        [0, 0, 1, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [1, 0, 0, 0],
+    ], dtype=np.float32)
+    assert (game.channels['ownership_neutral'] == reference_ownership_neutral).all()
+
+    reference_total_army_red = 22
+    stats = game.get_infos()
+    assert stats['red']['army'] == reference_total_army_red
+
+    reference_total_army_blue = 8
+    assert stats['blue']['army'] == reference_total_army_blue
+
+    reference_total_army_land = 6
+    assert stats['red']['land'] == reference_total_army_land
+
+    reference_total_army_land = 4
+    assert stats['blue']['land'] == reference_total_army_land
+
     ##############################
     # Test global army increment #
     ##############################
     game.time = 50
     game._global_game_update()
-    print(game.channels['army'])
     reference_army = np.array([
         [2, 3, 0, 0],
-        [0, 6, 3, 4],
-        [2, 2, 1, 0],
-        [0, 0, 10, 7],
+        [0, 6, 3, 5],
+        [2, 2, 9, 0],
+        [0, 0, 2, 8],
     ], dtype=np.float32)
     assert (game.channels['army'] == reference_army).all()
 
-    reference_total_army_red = 28
+    reference_total_army_red = 29
     stats = game.get_infos()
     assert stats['red']['army'] == reference_total_army_red
 
-    reference_total_army_blue = 12
+    reference_total_army_blue = 13
     assert stats['blue']['army'] == reference_total_army_blue
 
     reference_total_army_land = 6

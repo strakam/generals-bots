@@ -9,7 +9,7 @@
 - [ ] Let user change game speed even when the game is paused; make 'Paused' text separate in the side panel.
 - [ ] Revisit types for observation space (np.float32 vs np.bool)
 - [x] Make ExpanderAgent a bit more readable if possible
-- [ ] Test IDLE actions
+- [x] Test IDLE actions
 
 ### Bug fixes
 
