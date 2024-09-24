@@ -6,7 +6,7 @@ def load_requirements():
 
 setup(
     name='generals',
-    version='0.1.0',
+    version='0.2.1',
     description='Generals.io environment compliant with PettingZoo API standard powered by Numpy.',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
@@ -18,6 +18,10 @@ setup(
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',
     ],
-    python_requires='>=3.6',
+    python_requires='>=3.10',
     install_requires=load_requirements(),
+    include_package_data=True,
+    package_data={
+        "generals": ['images/*', 'fonts/*'],
+    }
 )

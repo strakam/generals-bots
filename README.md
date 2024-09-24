@@ -55,7 +55,7 @@ from generals.config import GameConfig
 # Initialize agents - their names are then called for actions
 agents = {
     "Random": RandomAgent("Random"),
-    "Expander": RandomAgent("Expander")
+    "Expander": ExpanderAgent("Expander")
 }
 
 game_config = GameConfig(
