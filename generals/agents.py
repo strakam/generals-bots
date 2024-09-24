@@ -64,8 +64,8 @@ class ExpanderAgent(Agent):
 
         valid_actions = valid_actions[actions_with_more_than_1_army]
 
-        opponent = observation["ownership_opponent"]
-        neutral = observation["ownership_neutral"]
+        opponent = observation["opponent_cells"]
+        neutral = observation["neutral_cells"]
 
         # Find actions that capture opponent or neutral cells
         actions_to_opponent = np.zeros(len(valid_actions))

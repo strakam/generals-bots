@@ -195,14 +195,16 @@ An observation for one agent is a dictionary of 13 key/value pairs. Each key/val
 | `army`               | `(N,N,1)` | Number of units in a cell regardless of owner                                                                                                  |
 | `general`            | `(N,N,1)` | Mask of cells that are visible to the agent                                                                                                    |
 | `city`               | `(N,N,1)` | Mask saying whether a city is in a cell                                                                                                        |
-| `visibility`         | `(N,N,1)` | Mask indicating cells that are visible to the agent                                                                                            |
-| `ownership`          | `(N,N,1)` | Mask indicating cells controlled by the agent                                                                                                  |
-| `ownership_opponent` | `(N,N,1)` | Mask indicating cells owned by the opponent                                                                                                    |
-| `ownership_neutral`  | `(N,N,1)` | Mask indicating cells that are not owned by agents                                                                                             |
+| `visibile_cells`     | `(N,N,1)` | Mask indicating cells that are visible to the agent                                                                                            |
+| `owned_cells`        | `(N,N,1)` | Mask indicating cells controlled by the agent                                                                                                  |
+| `opponent_cells`     | `(N,N,1)` | Mask indicating cells owned by the opponent                                                                                                    |
+| `neutral_cells`      | `(N,N,1)` | Mask indicating cells that are not owned by agents                                                                                             |
 | `structure`          | `(N,N,1)` | Mask indicating whether cells contain cities or mountains, even out of FoV                                                                     |
 | `action_mask`        | `(N,N,4)` | Mask where `[i,j,k]` indicates whether you can move from a cell `[i,j]` to direction `k` where directions are in order (UP, DOWN, LEFT, RIGHT) |
-| `n_land`             | `(1,)`    | Int representing number of cells an agent owns                                                                                                 |
-| `n_army`             | `(1,)`    | Int representing total number of units of an agent over all cells                                                                              |
+| `owned_land_count`   | `(1,)`    | Int representing number of cells an agent owns                                                                                                 |
+| `owned_army_count`   | `(1,)`    | Int representing total number of units of an agent over all cells                                                                              |
+| `opponent_land_count`| `(1,)`    | Int representing number of cells owned by the opponent                                                                                         |
+| `opponent_army_count`| `(1,)`    | Int representing total number of units owned by the opponent                                                                                   |
 | `is_winner`          | `(1,)`    | Bool representing whether an agent won                                                                                                         |
 | `timestep`           | `(1,)`    | Timestep                                                                                                                                       |
    

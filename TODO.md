@@ -17,3 +17,4 @@
 - [ ] Create more examples of usage (Stable Baselines3 demo)
 - [ ] Look for more suitable license
 - [ ] Pre-commit hooks for conventional commit checks (enforcing conventional commits)
+- [ ] Add CI for running tests (pre commit)

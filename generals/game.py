@@ -56,27 +56,24 @@ class Game:
         ##########
         # Spaces #
         ##########
-        box = gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.float32)
+        grid_multi_binary = gym.spaces.MultiBinary(spatial_dim)
         self.observation_space = gym.spaces.Dict(
             {
                 "army": gym.spaces.Box(
                     low=0, high=np.inf, shape=spatial_dim, dtype=np.float32
                 ),
-                "general": box,
-                "city": box,
-                "ownership": box,
-                "ownership_opponent": box,
-                "ownership_neutral": box,
-                "visibility": box,
-                "structure": box,
-                "action_mask": gym.spaces.Box(
-                    low=0,
-                    high=1,
-                    shape=(spatial_dim[0], spatial_dim[1], 4),
-                    dtype=np.float32,
-                ),
-                "n_land": gym.spaces.Discrete(np.iinfo(np.int32).max),
-                "n_army": gym.spaces.Discrete(np.iinfo(np.int32).max),
+                "general": grid_multi_binary,
+                "city":grid_multi_binary,
+                "owned_cells":grid_multi_binary,
+                "opponent_cells":grid_multi_binary,
+                "neutral_cells":grid_multi_binary,
+                "visibile_cells":grid_multi_binary,
+                "structure":grid_multi_binary,
+                "action_mask": gym.spaces.MultiBinary((spatial_dim[0], spatial_dim[1], 4)),
+                "owned_land_count": gym.spaces.Discrete(np.iinfo(np.int32).max),
+                "owned_army_count": gym.spaces.Discrete(np.iinfo(np.int32).max),
+                "opponent_land_count": gym.spaces.Discrete(np.iinfo(np.int32).max),
+                "opponent_army_count": gym.spaces.Discrete(np.iinfo(np.int32).max),
                 "is_winner": gym.spaces.MultiBinary(1),
                 "timestep": gym.spaces.Discrete(np.iinfo(np.int32).max),
             }
@@ -102,7 +99,7 @@ class Game:
 
         owned_cells_indices = self.channel_to_indices(ownership_channel)
         valid_action_mask = np.zeros(
-            (self.grid_size, self.grid_size, 4), dtype=np.float32
+            (self.grid_size, self.grid_size, 4), dtype=bool
         )
 
         if self.is_done():
@@ -175,7 +172,7 @@ class Game:
             si, sj = moves[agent][0][1:3]  # x,y indices of a source cell
             direction = moves[agent][0][3]  # 0,1,2,3
 
-            army_to_move = min(moves[agent][1], self.channels["army"][si, sj])
+            army_to_move = min(moves[agent][1], self.channels["army"][si, sj] - 1)
             army_to_stay = self.channels["army"][si, sj] - army_to_move
 
             di, dj = (
@@ -195,7 +192,6 @@ class Game:
                 ]
             )
             target_square_owner = (["neutral"] + self.agents)[target_square_owner_idx]
-
             if target_square_owner == agent:
                 self.channels["army"][di, dj] += army_to_move
                 self.channels["army"][si, sj] = army_to_stay
@@ -294,14 +290,16 @@ class Game:
             "army": self.channels["army"] * visibility,
             "general": self.channels["general"] * visibility,
             "city": self.channels["city"] * visibility,
-            "ownership": self.channels[f"ownership_{agent}"] * visibility,
-            "ownership_opponent": self.channels[f"ownership_{opponent}"] * visibility,
-            "ownership_neutral": self.channels["ownership_neutral"] * visibility,
-            "visibility": visibility,
+            "owned_cells": self.channels[f"ownership_{agent}"] * visibility,
+            "opponent_cells": self.channels[f"ownership_{opponent}"] * visibility,
+            "neutral_cells": self.channels["ownership_neutral"] * visibility,
+            "visibile_cells": visibility,
             "structure": self.channels["mountain"] + self.channels["city"],
             "action_mask": self.action_mask(agent),
-            "n_land": info[agent]["land"],
-            "n_army": info[agent]["army"],
+            "owned_land_count": info[agent]["land"],
+            "owned_army_count": info[agent]["army"],
+            "opponent_land_count": info[opponent]["land"],
+            "opponent_army_count": info[opponent]["army"],
             "is_winner": np.array([info[agent]["is_winner"]], dtype=np.bool),
             "timestep": self.time,
         }
