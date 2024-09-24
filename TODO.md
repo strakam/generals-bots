@@ -16,5 +16,5 @@
 
 ### Documentation and CI
 - [ ] Create more examples of usage (Stable Baselines3 demo)
-- [ ] Pre-commit hooks for conventional commit checks (enforcing conventional commits)
-- [ ] Add CI for running tests (pre commit)
+- [x] Pre-commit hooks for conventional commit checks (enforcing conventional commits)
+- [x] Add CI for running tests (pre commit)
