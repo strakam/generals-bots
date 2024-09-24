@@ -23,19 +23,24 @@ class Agent:
 
 
 class RandomAgent(Agent):
-    def __init__(self, name):
+    def __init__(self, name, idle_prob=0.1, split_prob=0.25):
         super().__init__(name)
+
+        self.idle_probability = idle_prob
+        self.split_probability = split_prob
 
     def play(self, observation):
         """
         Randomly selects a valid action.
         """
+        pass_or_play = [1] if np.random.rand() > self.idle_probability else [0]
+        all_or_split = [0] if np.random.rand() > self.split_probability else [1]
+
         mask = observation["action_mask"]
         valid_actions = np.argwhere(mask == 1)
         action_index = np.random.choice(len(valid_actions))
 
-        # [1] to indicate we want to move, [0] to indicate we want to move all troops
-        action = np.concatenate(([1], valid_actions[action_index], [0]))
+        action = np.concatenate((pass_or_play, valid_actions[action_index], all_or_split))
         return action
 
 
