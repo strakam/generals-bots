@@ -10,7 +10,8 @@ game_config = GameConfig(
     mountain_density=0.2,
     city_density=0.05,
     general_positions=[(2, 12), (8, 9)],
-    agent_names=[agent.name]
+    agent_names=[agent.name],
+    gymnasium_npc="expander"
 )
 
 # Create environment

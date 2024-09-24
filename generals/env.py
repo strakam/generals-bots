@@ -143,7 +143,12 @@ class Gym_Generals(gymnasium.Env):
         else:
             self.agent_name = game_config.agent_names[0]
 
-        self.opponent = agents.RandomAgent("Opponent")
+        # Select opponent NPC
+        if game_config.gymnasium_npc == "expander":
+            self.npc = agents.ExpanderAgent("Expander")
+        else:
+            self.npc = agents.RandomAgent("Random")
+
         
         _map = utils.map_from_generator(
             grid_size=self.game_config.grid_size,
@@ -151,7 +156,7 @@ class Gym_Generals(gymnasium.Env):
             city_density=self.game_config.city_density,
             general_positions=self.game_config.general_positions,
         )
-        _game = game.Game(_map, [self.agent_name, "Opponent"])
+        _game = game.Game(_map, [self.agent_name, self.npc.name])
         self.observation_space = _game.observation_space
         self.action_space = _game.action_space
 
@@ -182,7 +187,7 @@ class Gym_Generals(gymnasium.Env):
                 seed=seed,
             )
 
-        self.game = game.Game(map, [self.agent_name, "Opponent"])
+        self.game = game.Game(map, [self.agent_name, self.npc.name])
 
         self.observation_space = self.game.observation_space
         self.action_space = self.game.action_space
@@ -203,10 +208,10 @@ class Gym_Generals(gymnasium.Env):
 
     def step(self, action):
         # get action of NPC
-        npc_action = self.opponent.play(self.game._agent_observation("Opponent"))
+        npc_action = self.npc.play(self.game._agent_observation(self.npc.name))
         actions = {
             self.agent_name: action,
-            "Opponent": npc_action
+            self.npc.name: npc_action
         }
 
         if self.replay:
@@ -233,7 +238,7 @@ class Gym_Generals(gymnasium.Env):
         Give 0 if game still running, otherwise 1 for winner and -1 for loser.
         """
         reward = 0
-        game_ended = any(observations[agent]["is_winner"] for agent in [self.agent_name, "Opponent"])
+        game_ended = any(observations[agent]["is_winner"] for agent in [self.agent_name, self.npc.name])
         if game_ended:
             reward = 1 if observations[self.agent_name]["is_winner"] else -1
         return reward

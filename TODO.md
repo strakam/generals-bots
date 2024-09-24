@@ -1,7 +1,7 @@
 ## TODOs
 
 ### Features
-- [ ] Let user pass argument indicating what is the default opponent agent for Gymnasium environment.
+- [x] Let user pass argument indicating what is the default opponent agent for Gymnasium environment.
 - [x] Extend action space by allowing user to be IDLE.
 - [ ] Add human control, so people can play against bots.
 - [x] Random agent new parameters
@@ -18,3 +18,4 @@
 - [ ] Create more examples of usage (Stable Baselines3 demo)
 - [x] Pre-commit hooks for conventional commit checks (enforcing conventional commits)
 - [x] Add CI for running tests (pre commit)
+- [ ] Add CI passing badge to README

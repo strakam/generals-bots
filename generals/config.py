@@ -13,6 +13,7 @@ class GameConfig(BaseModel):
     map: str = None # Map layout as string
     replay_file: str = None # File from which to replay the game
     agent_names: List[str] = None # Names of the agents that will be called to play the game
+    gymnasium_npc: str = "random" # Name of the opponent to be used in gymnasium
 
 #################
 # Game Literals #
