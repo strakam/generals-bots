@@ -155,35 +155,40 @@ class Game:
         """
         done_before_actions = self.is_done()
 
-        # Agent with smaller army to move is prioritized
+        # Process whether agents want to pass the turn, and calculate
+        # intended amount of army to move (all available or split)
         moves = {}
         for agent, move in actions.items():
-            pass_or_play, i, j, direction, half = move
-            if pass_or_play == 0:  # Agent wants to pass the turn
+            pass_turn, i, j, direction, split_army = move
+            # Skip if wants to pass the turn
+            if pass_turn == 1:
                 continue
-            if half == 1:
-                moved_amount = self.channels["army"][i, j] // 2
-            else:
-                moved_amount = self.channels["army"][i, j] - 1
-            moves[agent] = (move, moved_amount)
+            if split_army == 1:  # Agent wants to split the army
+                army_to_move = self.channels["army"][i, j] // 2
+            else:  # Leave just one army in the source cell
+                army_to_move = self.channels["army"][i, j] - 1
+            if army_to_move < 1:  # Skip if army size to move is less than 1
+                continue
+            moves[agent] = (i, j, direction, army_to_move)
 
-        # Take agents from smallest moved amount to largest
-        for agent in sorted(moves, key=lambda x: moves[x][1]):
-            si, sj = moves[agent][0][1:3]  # x,y indices of a source cell
-            direction = moves[agent][0][3]  # 0,1,2,3
+        # Evaluate moves (smaller army movements are prioritized)
+        for agent in sorted(moves, key=lambda x: moves[x][3]):
+            si, sj, direction, army_to_move = moves[agent]
 
-            army_to_move = min(moves[agent][1], self.channels["army"][si, sj] - 1)
+            # Cap the amount of army to move (previous moves may have lowered available army)
+            army_to_move = min(army_to_move, self.channels["army"][si, sj] - 1)
             army_to_stay = self.channels["army"][si, sj] - army_to_move
+
+            # Check if the current agent still owns the source cell and has more than 1 army
+            if self.channels[f"ownership_{agent}"][si, sj] == 0 or army_to_move < 1:
+                continue
 
             di, dj = (
                 si + DIRECTIONS[direction][0],
                 sj + DIRECTIONS[direction][1],
             )  # destination indices
 
-            # Check if the current player owns the source cell and has atleast 2 army size
-            if army_to_move < 1 or self.channels[f"ownership_{agent}"][si, sj] == 0:
-                continue
-
+            # Figure out the target square owner and army size
             target_square_army = self.channels["army"][di, dj]
             target_square_owner_idx = np.argmax(
                 [
