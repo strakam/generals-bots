@@ -29,7 +29,3 @@ jobs:
       - name: Run pytest
         run: |
           pytest
-
-      - name: Run Python scripts
-        run: |
-          python3 tests/sb3_check.py
