@@ -7,7 +7,7 @@
 - [x] Random agent new parameters
 
 ### Improvements
-- [ ] Let user change game speed even when the game is paused; make 'Paused' text separate in the side panel.
+- [x] Let user change game speed even when the game is paused; make 'Paused' text separate in the side panel.
 - [x] Revisit types for observation space (np.float32 vs np.bool)
 - [x] Make ExpanderAgent a bit more readable if possible
 - [x] Test IDLE actions
