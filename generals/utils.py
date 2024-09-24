@@ -39,12 +39,10 @@ def map_from_generator(
 
     # Place generals on random squares
     if general_positions is None:
-        general_positions = np.random.choice(
-            grid_size, size=(2, 2), replace=False
-        )
+        general_positions = np.random.choice(grid_size, size=(2, 2), replace=False)
 
     for i, idx in enumerate(general_positions):
-        map[idx[0], idx[1]] = chr(ord('A') + i)
+        map[idx[0], idx[1]] = chr(ord("A") + i)
 
     # Generate until valid map
     return (
@@ -114,7 +112,7 @@ def validate_map(map: str) -> bool:
             new_square = (i + di, j + dj)
             dfs(map, visited, new_square)
 
-    generals = np.argwhere(np.isin(map, ['A', 'B']))  # hardcoded for now
+    generals = np.argwhere(np.isin(map, ["A", "B"]))  # hardcoded for now
     start, end = generals[0], generals[1]
     visited = np.zeros_like(map, dtype=bool)
     dfs(map, visited, start)
@@ -132,15 +130,15 @@ def store_replay(
         f.write(f"{players[0]} vs {players[1]}\n")
         map = "\n".join(["".join([cell for cell in row]) for row in map])
         f.write(f"{map}\n\n")
-        for player_action in action_sequence:
-            # action shouldnt be printed with brackets
-            row = ",".join(
-                [
-                    f"{player}:{' '.join([str(cell) for cell in action])}"
-                    for player, action in player_action.items()
-                ]
-            )
-            f.write(f"{row}\n")
+        for player_actions in action_sequence:
+            player_string = {}
+            for player in players:
+                act = player_actions[player]
+                player_string[player] = (
+                    f"{player}:{act[0]} {act[1]} {act[2]} {act[3]} {act[4]}"
+                )
+            # join all player strings with comma and write to file
+            f.write(",".join(player_string.values()) + "\n")
 
 
 def load_replay(path: str):
@@ -184,9 +182,11 @@ def load_replay(path: str):
 
     return players, map, game_states
 
+
 def run_replay(replay_file: str):
     agents, map, game_states = load_replay(replay_file)
     from generals.env import pz_generals
+
     game_config = GameConfig(
         agent_names=agents,
     )
@@ -198,20 +198,25 @@ def run_replay(replay_file: str):
     while 1:
         _t = time.time()
         # Check inputs
-        if _t - last_input_time > 0.008: # check for input every 8ms
+        if _t - last_input_time > 0.008:  # check for input every 8ms
             control_events = env.renderer.render()
             last_input_time = _t
         else:
             control_events = {"time_change": 0}
         # If we control replay, change game state
-        game_step = max(0, min(len(game_states) - 1, game_step + control_events["time_change"]))
+        game_step = max(
+            0, min(len(game_states) - 1, game_step + control_events["time_change"])
+        )
         if env.renderer.paused and game_step != env.game.time:
             env.agents = deepcopy(env.possible_agents)
             env.game.channels = deepcopy(game_states[game_step])
             env.game.time = game_step
             last_move_time = _t
         # If we are not paused, play the game
-        elif _t - last_move_time > env.renderer.game_speed * 0.512 and not env.renderer.paused:
+        elif (
+            _t - last_move_time > env.renderer.game_speed * 0.512
+            and not env.renderer.paused
+        ):
             if env.game.is_done():
                 env.renderer.paused = True
             game_step = min(len(game_states) - 1, game_step + 1)

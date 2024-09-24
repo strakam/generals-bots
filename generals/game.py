@@ -16,7 +16,7 @@ class Game:
         self.grid_size = spatial_dim[0]  # Grid shape should be square
 
         self.general_positions = {
-            agent: np.argwhere(map == chr(ord('A') + i))[0]
+            agent: np.argwhere(map == chr(ord("A") + i))[0]
             for i, agent in enumerate(self.agents)
         }
 
@@ -41,9 +41,9 @@ class Game:
                 bool
             ),
             **{
-                f"ownership_{agent}": np.where(
-                    map == chr(ord('A') + id), 1, 0
-                ).astype(bool)
+                f"ownership_{agent}": np.where(map == chr(ord("A") + id), 1, 0).astype(
+                    bool
+                )
                 for id, agent in enumerate(self.agents)
             },
         }
@@ -53,35 +53,33 @@ class Game:
         city_costs = np.where(np.char.isdigit(map), map, "0").astype(np.float32)
         self.channels["army"] += base_cost * self.channels["city"] + city_costs
 
-        box = gym.spaces.Box(low=0, high=1, shape=spatial_dim, dtype=np.float32)
+        ##########
+        # Spaces #
+        ##########
+        grid_multi_binary = gym.spaces.MultiBinary(spatial_dim)
         self.observation_space = gym.spaces.Dict(
             {
                 "army": gym.spaces.Box(
                     low=0, high=np.inf, shape=spatial_dim, dtype=np.float32
                 ),
-                "general": box,
-                "city": box,
-                "ownership": box,
-                "ownership_opponent": box,
-                "ownership_neutral": box,
-                "visibility": box,
-                "structure": box,
-                "action_mask": gym.spaces.Box(
-                    low=0,
-                    high=1,
-                    shape=(spatial_dim[0], spatial_dim[1], 4),
-                    dtype=np.float32,
-                ),
-                "n_land": gym.spaces.Discrete(np.iinfo(np.int32).max),
-                "n_army": gym.spaces.Discrete(np.iinfo(np.int32).max),
+                "general": grid_multi_binary,
+                "city":grid_multi_binary,
+                "owned_cells":grid_multi_binary,
+                "opponent_cells":grid_multi_binary,
+                "neutral_cells":grid_multi_binary,
+                "visibile_cells":grid_multi_binary,
+                "structure":grid_multi_binary,
+                "action_mask": gym.spaces.MultiBinary((spatial_dim[0], spatial_dim[1], 4)),
+                "owned_land_count": gym.spaces.Discrete(np.iinfo(np.int32).max),
+                "owned_army_count": gym.spaces.Discrete(np.iinfo(np.int32).max),
+                "opponent_land_count": gym.spaces.Discrete(np.iinfo(np.int32).max),
+                "opponent_army_count": gym.spaces.Discrete(np.iinfo(np.int32).max),
                 "is_winner": gym.spaces.MultiBinary(1),
                 "timestep": gym.spaces.Discrete(np.iinfo(np.int32).max),
             }
         )
 
-        self.action_space = gym.spaces.MultiDiscrete(
-            [self.grid_size, self.grid_size, 4, 2]
-        )
+        self.action_space = gym.spaces.MultiDiscrete([2, self.grid_size, self.grid_size, 4, 2])
 
     def action_mask(self, agent: str) -> np.ndarray:
         """
@@ -101,7 +99,7 @@ class Game:
 
         owned_cells_indices = self.channel_to_indices(ownership_channel)
         valid_action_mask = np.zeros(
-            (self.grid_size, self.grid_size, 4), dtype=np.float32
+            (self.grid_size, self.grid_size, 4), dtype=bool
         )
 
         if self.is_done():
@@ -158,36 +156,29 @@ class Game:
         done_before_actions = self.is_done()
 
         # Agent with smaller army to move is prioritized
-        armies = [
-            (self.channels["army"][actions[agent][0]][actions[agent][1]], agent)
-            for agent in list(actions.keys())
-        ]
-        # If only half of the army is sent, update the army size
-        armies = [
-            (army, agent) if actions[agent][3] == 0 else (army // 2, agent)
-            for army, agent in armies
-        ]
-        agents = [agent for _, agent in sorted(armies)]
-
-        for agent in agents:
-            source = actions[agent][:2]  # x,y indices of a source cell
-            direction = actions[agent][2]  # 0,1,2,3
-
-            si, sj = source[0], source[1]  # source indices
-            di, dj = (
-                source[0] + DIRECTIONS[direction][0],
-                source[1] + DIRECTIONS[direction][1],
-            )  # destination indices
-
-            send_half = actions[agent][3]
-            if send_half:
-                army_to_move = self.channels["army"][si, sj] // 2
-                army_to_stay = self.channels["army"][si, sj] - army_to_move
+        moves = {}
+        for agent, move in actions.items():
+            pass_or_play, i, j, direction, half = move
+            if pass_or_play == 0:  # Agent wants to pass the turn
+                continue
+            if half == 1:
+                moved_amount = self.channels["army"][i, j] // 2
             else:
-                army_to_move = (
-                    self.channels["army"][si, sj] - 1
-                )  # Send all but one army
-                army_to_stay = 1
+                moved_amount = self.channels["army"][i, j] - 1
+            moves[agent] = (move, moved_amount)
+
+        # Take agents from smallest moved amount to largest
+        for agent in sorted(moves, key=lambda x: moves[x][1]):
+            si, sj = moves[agent][0][1:3]  # x,y indices of a source cell
+            direction = moves[agent][0][3]  # 0,1,2,3
+
+            army_to_move = min(moves[agent][1], self.channels["army"][si, sj] - 1)
+            army_to_stay = self.channels["army"][si, sj] - army_to_move
+
+            di, dj = (
+                si + DIRECTIONS[direction][0],
+                sj + DIRECTIONS[direction][1],
+            )  # destination indices
 
             # Check if the current player owns the source cell and has atleast 2 army size
             if army_to_move < 1 or self.channels[f"ownership_{agent}"][si, sj] == 0:
@@ -201,7 +192,6 @@ class Game:
                 ]
             )
             target_square_owner = (["neutral"] + self.agents)[target_square_owner_idx]
-
             if target_square_owner == agent:
                 self.channels["army"][di, dj] += army_to_move
                 self.channels["army"][si, sj] = army_to_stay
@@ -232,7 +222,7 @@ class Game:
             self._global_game_update()
 
         observations = {agent: self._agent_observation(agent) for agent in self.agents}
-        infos = self.get_infos()
+        infos = {agent: {} for agent in self.agents}
         return observations, infos
 
     def get_all_observations(self):
@@ -300,14 +290,16 @@ class Game:
             "army": self.channels["army"] * visibility,
             "general": self.channels["general"] * visibility,
             "city": self.channels["city"] * visibility,
-            "ownership": self.channels[f"ownership_{agent}"] * visibility,
-            "ownership_opponent": self.channels[f"ownership_{opponent}"] * visibility,
-            "ownership_neutral": self.channels["ownership_neutral"] * visibility,
-            "visibility": visibility,
+            "owned_cells": self.channels[f"ownership_{agent}"] * visibility,
+            "opponent_cells": self.channels[f"ownership_{opponent}"] * visibility,
+            "neutral_cells": self.channels["ownership_neutral"] * visibility,
+            "visibile_cells": visibility,
             "structure": self.channels["mountain"] + self.channels["city"],
             "action_mask": self.action_mask(agent),
-            "n_land": info[agent]["land"],
-            "n_army": info[agent]["army"],
+            "owned_land_count": info[agent]["land"],
+            "owned_army_count": info[agent]["army"],
+            "opponent_land_count": info[opponent]["land"],
+            "opponent_army_count": info[opponent]["army"],
             "is_winner": np.array([info[agent]["is_winner"]], dtype=np.bool),
             "timestep": self.time,
         }

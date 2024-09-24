@@ -86,7 +86,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
             agent: self.game._agent_observation(agent) for agent in self.agents
         })
 
-        infos = self.game.get_infos()
+        infos = {agent: {} for agent in self.agents}
         return observations, infos
 
     def step(self, actions):
@@ -198,7 +198,7 @@ class Gym_Generals(gymnasium.Env):
             self.replay = False
 
         observation = OrderedDict(self.game._agent_observation(self.agent_name))
-        info = self.game.get_infos()[self.agent_name]
+        info = {}
         return observation, info
 
     def step(self, action):

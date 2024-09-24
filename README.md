@@ -47,13 +47,13 @@ pip install -e .
 ## Usage Example (🦁 PettingZoo)
 ```python
 from generals.env import pz_generals
-from generals.agents import RandomAgent
+from generals.agents import RandomAgent, ExpanderAgent
 from generals.config import GameConfig
 
 # Initialize agents - their names are then called for actions
 agents = {
-    "Red": RandomAgent("Red"),
-    "Blue": RandomAgent("Blue")
+    "Random": RandomAgent("Random"),
+    "Expander": RandomAgent("Expander")
 }
 
 game_config = GameConfig(
@@ -66,10 +66,10 @@ game_config = GameConfig(
 
 # Create environment
 env = pz_generals(game_config, render_mode="human") # render_mode {"none", "human"}
-observations, info = env.reset(options={"replay_file": "test"})
+observations, info = env.reset()
 
 # How fast we want rendering to be
-actions_per_second = 2
+actions_per_second = 6
 
 while not env.game.is_done():
     actions = {}
@@ -100,7 +100,7 @@ game_config = GameConfig(
 
 # Create environment
 env = gym_generals(game_config, render_mode="human") # render_mode {"none", "human"}
-observation, info = env.reset(options={"replay_file": "test"})
+observation, info = env.reset()
 
 # How fast we want rendering to be
 actions_per_second = 2
@@ -126,7 +126,7 @@ game_config = GameConfig(
     mountain_density=0.2,                  # Probability of a mountain in a cell
     city_density=0.05,                     # Probability of a city in a cell
     general_positions=[(0,3),(5,7)],       # Positions of generals (i, j)
-    agent_names=['Human.exe','Agent007']   # Names of the agents that will be called to play the game
+    agent_names=['Human.exe','Expander']   # Names of the agents that will be called to play the game
 )
 
 # Create environment
@@ -142,7 +142,7 @@ from generals.env import pz_generals
 from generals.config import GameConfig
 
 game_config = GameConfig(
-    agent_names=['Human.exe','Agent007']  # Names of the agents that will be called to play the game
+    agent_names=['Human.exe','Expander']  # Names of the agents that will be called to play the game
 )
 map = """
 .3.#
@@ -195,36 +195,25 @@ An observation for one agent is a dictionary of 13 key/value pairs. Each key/val
 | `army`               | `(N,N,1)` | Number of units in a cell regardless of owner                                                                                                  |
 | `general`            | `(N,N,1)` | Mask of cells that are visible to the agent                                                                                                    |
 | `city`               | `(N,N,1)` | Mask saying whether a city is in a cell                                                                                                        |
-| `visibility`         | `(N,N,1)` | Mask indicating cells that are visible to the agent                                                                                            |
-| `ownership`          | `(N,N,1)` | Mask indicating cells controlled by the agent                                                                                                  |
-| `ownership_opponent` | `(N,N,1)` | Mask indicating cells owned by the opponent                                                                                                    |
-| `ownership_neutral`  | `(N,N,1)` | Mask indicating cells that are not owned by agents                                                                                             |
+| `visibile_cells`     | `(N,N,1)` | Mask indicating cells that are visible to the agent                                                                                            |
+| `owned_cells`        | `(N,N,1)` | Mask indicating cells controlled by the agent                                                                                                  |
+| `opponent_cells`     | `(N,N,1)` | Mask indicating cells owned by the opponent                                                                                                    |
+| `neutral_cells`      | `(N,N,1)` | Mask indicating cells that are not owned by agents                                                                                             |
 | `structure`          | `(N,N,1)` | Mask indicating whether cells contain cities or mountains, even out of FoV                                                                     |
 | `action_mask`        | `(N,N,4)` | Mask where `[i,j,k]` indicates whether you can move from a cell `[i,j]` to direction `k` where directions are in order (UP, DOWN, LEFT, RIGHT) |
-| `n_land`             | `(1,)`    | Int representing number of cells an agent owns                                                                                                 |
-| `n_army`             | `(1,)`    | Int representing total number of units of an agent over all cells                                                                              |
+| `owned_land_count`   | `(1,)`    | Int representing number of cells an agent owns                                                                                                 |
+| `owned_army_count`   | `(1,)`    | Int representing total number of units of an agent over all cells                                                                              |
+| `opponent_land_count`| `(1,)`    | Int representing number of cells owned by the opponent                                                                                         |
+| `opponent_army_count`| `(1,)`    | Int representing total number of units owned by the opponent                                                                                   |
 | `is_winner`          | `(1,)`    | Bool representing whether an agent won                                                                                                         |
 | `timestep`           | `(1,)`    | Timestep                                                                                                                                       |
-
-
-### ℹ️ Information
-The environment also returns information dictionary for each agent, but it is the same for everyone.
-This might potentially contain debug information.
-| Key         | Type | Description                                   |
-| ---         | ---  | ---                                           |
-| `army`      | Int  | Total number of units that the agent controls |
-| `land`      | Int  | Total number of cells that the agent controls |
-| `is_winner` | Bool | Boolean indicator saying whether agent won    |
-
-#### Example:
-```python
-print(info['red_agent']['army'])
-```
    
 ### ⚡ Action
-Action is an `np.array([i,j,k,h])` indicating that you want to move units from cell `[i,j]` in a direction `k`.
-
-The last value `h` signals whether to send `1 (half)` of units or `0 (all)` units to the neighboring cell.
+Action is an `np.array([p,i,j,d,s])`:
+- Value of `p` is `1 (play)` or `0 (pass)`.
+- Indices `i,j` say that you want to move from cell with index `[i,j]`.
+- Value of `d` is a direction you want to choose: `0 (up)`, `1 (down)`, `2 (left)`, `3 (right)`
+- Value of `s` says whether you want to split units. Value `1` sends half of units and value `0` sends all possible units to the next cell.
 
 ### 🎁 Reward
 It is possible to implement custom reward function. The default is `1` for winner and `-1` for loser, otherwise `0`.

@@ -18,7 +18,7 @@ game_config = GameConfig(
 
 # Create environment
 env = pz_generals(game_config, render_mode="human") # render_mode {"none", "human"}
-observations, info = env.reset(options={"replay_file": "test"})
+observations, info = env.reset()
 
 # How fast we want rendering to be
 actions_per_second = 6
