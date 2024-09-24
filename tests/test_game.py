@@ -312,6 +312,7 @@ def test_game_step():
         [1, 0, 0, 0],
     ], dtype=np.float32)
 
+    # Test capturing (if equal armies meet, the defender keeps the cell)
     #############################################################################################################
     # red moves from (2, 1) UP (captures blue square), blue moves from (1, 2) DOWN, (doesnt capture red square) #
     #############################################################################################################
@@ -365,6 +366,7 @@ def test_game_step():
     reference_total_army_land = 3
     assert stats['blue']['land'] == reference_total_army_land
 
+    # Always leave one army behind
     #####################################################################################
     # Now red moves from (2, 1) DOWN (should not move) and blue moves from (0, 0) RIGHT #
     #####################################################################################
@@ -422,6 +424,7 @@ def test_game_step():
     reference_total_army_land = 4
     assert stats['blue']['land'] == reference_total_army_land
 
+    # Test splitting of army
     #####################################################################################
     # Red sends half army from (3, 3) LEFT and blue sends half army from (1, 3) LEFT    #
     #####################################################################################
@@ -475,6 +478,7 @@ def test_game_step():
     reference_total_army_land = 4
     assert stats['blue']['land'] == reference_total_army_land
 
+    # Test passing a move
     ##################################################
     # Red moves army from (3, 2) UP and blue is IDLE #
     ##################################################
@@ -529,6 +533,61 @@ def test_game_step():
     reference_total_army_land = 4
     assert stats['blue']['land'] == reference_total_army_land
 
+    # Test order of moves (smaller army has priority)
+    #############################################################
+    # Red moves from (2, 2) UP and blue moves from (1, 2) RIGHT #
+    #############################################################
+    moves = {
+        'red': np.array([0, 2, 2, 0, 0]),
+        'blue': np.array([0, 1, 2, 3, 0])
+    }
+
+    game.step(moves)
+    reference_army = np.array([
+        [1, 2, 0, 0],
+        [0, 5, 6, 4],
+        [1, 1, 1, 0],
+        [0, 0, 1, 6],
+    ], dtype=np.float32)
+    assert (game.channels['army'] == reference_army).all()
+
+    reference_ownership_red = np.array([
+        [0, 0, 0, 0],
+        [0, 1, 1, 0],
+        [1, 1, 1, 0],
+        [0, 0, 1, 1],
+    ], dtype=np.float32)
+    assert (game.channels['ownership_red'] == reference_ownership_red).all()
+
+    reference_ownership_blue = np.array([
+        [1, 1, 0, 0],
+        [0, 0, 0, 1],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+    ], dtype=np.float32)
+    assert (game.channels['ownership_blue'] == reference_ownership_blue).all()
+
+    reference_ownership_neutral = np.array([
+        [0, 0, 1, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [1, 0, 0, 0],
+    ], dtype=np.float32)
+    assert (game.channels['ownership_neutral'] == reference_ownership_neutral).all()
+
+    reference_total_army_red = 21
+    stats = game.get_infos()
+    assert stats['red']['army'] == reference_total_army_red
+
+    reference_total_army_blue = 7
+    assert stats['blue']['army'] == reference_total_army_blue
+
+    reference_total_army_land = 7
+    assert stats['red']['land'] == reference_total_army_land
+
+    reference_total_army_land = 3
+    assert stats['blue']['land'] == reference_total_army_land
+
     ##############################
     # Test global army increment #
     ##############################
@@ -536,8 +595,8 @@ def test_game_step():
     game._global_game_update()
     reference_army = np.array([
         [2, 3, 0, 0],
-        [0, 6, 3, 5],
-        [2, 2, 9, 0],
+        [0, 6, 7, 6],
+        [2, 2, 2, 0],
         [0, 0, 2, 8],
     ], dtype=np.float32)
     assert (game.channels['army'] == reference_army).all()
@@ -546,13 +605,13 @@ def test_game_step():
     stats = game.get_infos()
     assert stats['red']['army'] == reference_total_army_red
 
-    reference_total_army_blue = 13
+    reference_total_army_blue = 11
     assert stats['blue']['army'] == reference_total_army_blue
 
-    reference_total_army_land = 6
+    reference_total_army_land = 7
     assert stats['red']['land'] == reference_total_army_land
 
-    reference_total_army_land = 4
+    reference_total_army_land = 3
     assert stats['blue']['land'] == reference_total_army_land
 
 
