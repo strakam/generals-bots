@@ -155,13 +155,13 @@ class Game:
         """
         done_before_actions = self.is_done()
 
-        # Process whether agents want to pass the turn, and calculate
-        # intended amount of army to move (all available or split)
+        # Process validity of moves, whether agents want to pass the turn,
+        # and calculate intended amount of army to move (all available or split)
         moves = {}
         for agent, move in actions.items():
             pass_turn, i, j, direction, split_army = move
-            # Skip if wants to pass the turn
-            if pass_turn == 1:
+            # Skip if the move is not valid or the agent wants to pass the turn
+            if self.action_mask(agent)[i, j, direction] == 0 or pass_turn == 1:
                 continue
             if split_army == 1:  # Agent wants to split the army
                 army_to_move = self.channels["army"][i, j] // 2

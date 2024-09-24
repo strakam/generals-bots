@@ -11,6 +11,7 @@
 - [x] Revisit types for observation space (np.float32 vs np.bool)
 - [x] Make ExpanderAgent a bit more readable if possible
 - [x] Test IDLE actions
+- [ ] Should we error out when agent tries to perform an invalid move, so that it is easier to debug?
 
 ### Bug fixes
 
