@@ -97,10 +97,10 @@ class Renderer:
             # Control game speed, pause, and replay frames if the game is from a replay
             if event.type == pygame.KEYDOWN and self.from_replay:
                 # Speed up game right arrow is pressed
-                if event.key == pygame.K_RIGHT and not self.paused:
+                if event.key == pygame.K_RIGHT:
                     self.game_speed = max(1 / 128, self.game_speed / 2)
                 # Slow down game left arrow is pressed
-                if event.key == pygame.K_LEFT and not self.paused:
+                if event.key == pygame.K_LEFT:
                     self.game_speed = min(32, self.game_speed * 2)
                 # Toggle play/pause
                 if event.key == pygame.K_SPACE:
