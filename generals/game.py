@@ -226,7 +226,7 @@ class Game:
             self._global_game_update()
 
         observations = {agent: self._agent_observation(agent) for agent in self.agents}
-        infos = self.get_infos()
+        infos = {agent: {} for agent in self.agents}
         return observations, infos
 
     def get_all_observations(self):

@@ -18,7 +18,7 @@ env = gym_generals(game_config, render_mode="human") # render_mode {"none", "hum
 observation, info = env.reset(options={"replay_file": "test"})
 
 # How fast we want rendering to be
-actions_per_second = 2
+actions_per_second = 6
 
 done = False
 
