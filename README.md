@@ -67,7 +67,7 @@ game_config = GameConfig(
 )
 
 # Create environment
-env = pz_generals(game_config, render_mode="human") # render_modes are ["none", "human"]
+env = pz_generals(game_config, render_mode="human") # render_modes are [None, "human"]
 observations, info = env.reset()
 
 # How fast we want rendering to be
@@ -102,11 +102,11 @@ game_config = GameConfig(
 )
 
 # Create environment
-env = gym_generals(game_config, render_mode="human") # render_modes are ["none", "human"]
+env = gym_generals(game_config, render_mode="human") # render_modes are [None, "human"]
 observation, info = env.reset()
 
 # How fast we want rendering to be
-actions_per_second = 2
+actions_per_second = 6
 done = False
 
 while not done:
@@ -129,11 +129,10 @@ game_config = GameConfig(
     mountain_density=0.2,                  # Probability of a mountain in a cell
     city_density=0.05,                     # Probability of a city in a cell
     general_positions=[(0,3),(5,7)],       # Positions of generals (i, j)
-    agent_names=['Human.exe','Expander']   # Names of the agents that will be called to play the game
 )
 
 # Create environment
-env = pz_generals(game_config, render_mode="none")
+env = pz_generals(game_config)
 observations, info = env.reset()
 ```
 
@@ -144,9 +143,7 @@ Maps can be described by strings. We can either load them directly from a string
 from generals.env import pz_generals
 from generals.config import GameConfig
 
-game_config = GameConfig(
-    agent_names=['Human.exe','Expander']  # Names of the agents that will be called to play the game
-)
+game_config = GameConfig()
 map = """
 .3.#
 #..A
@@ -154,7 +151,7 @@ map = """
 .#.B
 """
 
-env = pz_generals(game_config, render_mode="none")
+env = pz_generals(game_config)
 env.reset(map=map) # Here map related settings from game_config are overridden
 ```
 Maps are encoded using these symbols:
@@ -172,7 +169,7 @@ from generals.config import GameConfig
 
 game_config = GameConfig()
 options = {"replay_file": "replay_001"}
-env = pz_generals(game_config, render_mode="none")
+env = pz_generals(game_config)
 env.reset(options=options) # encodes the next game into a "replay_001" file
 ```
 
@@ -193,7 +190,7 @@ generals.utils.run_replay("replay_001")
 ## 🌍 Environment
 ### 🔭 Observation
 An observation for one agent is a dictionary of 13 key/value pairs. Each key/value pair contains information about part of the game that is accessible to the agent.
-| Key                  | Shape     | Description                                                                                                                                    |
+| Key                  | Shape/Type| Description                                                                                                                                    |
 | ---                  | ---       | ---                                                                                                                                            |
 | `army`               | `(N,N,1)` | Number of units in a cell regardless of owner                                                                                                  |
 | `general`            | `(N,N,1)` | Mask of cells that are visible to the agent                                                                                                    |
@@ -203,29 +200,29 @@ An observation for one agent is a dictionary of 13 key/value pairs. Each key/val
 | `opponent_cells`     | `(N,N,1)` | Mask indicating cells owned by the opponent                                                                                                    |
 | `neutral_cells`      | `(N,N,1)` | Mask indicating cells that are not owned by agents                                                                                             |
 | `structure`          | `(N,N,1)` | Mask indicating whether cells contain cities or mountains, even out of FoV                                                                     |
-| `action_mask`        | `(N,N,4)` | Mask where `[i,j,k]` indicates whether you can move from a cell `[i,j]` to direction `k` where directions are in order (UP, DOWN, LEFT, RIGHT) |
-| `owned_land_count`   | `(1,)`    | Int representing number of cells an agent owns                                                                                                 |
-| `owned_army_count`   | `(1,)`    | Int representing total number of units of an agent over all cells                                                                              |
-| `opponent_land_count`| `(1,)`    | Int representing number of cells owned by the opponent                                                                                         |
-| `opponent_army_count`| `(1,)`    | Int representing total number of units owned by the opponent                                                                                   |
-| `is_winner`          | `(1,)`    | Bool representing whether an agent won                                                                                                         |
-| `timestep`           | `(1,)`    | Timestep                                                                                                                                       |
+| `action_mask`        | `(N,N,4)` | Mask where `[i,j,d]` indicates whether you can move from a cell `[i,j]` to direction `d` where directions are in order (UP, DOWN, LEFT, RIGHT) |
+| `owned_land_count`   | `Int`     | Int representing number of cells an agent owns                                                                                                 |
+| `owned_army_count`   | `Int`     | Int representing total number of units of an agent over all cells                                                                              |
+| `opponent_land_count`| `Int`     | Int representing number of cells owned by the opponent                                                                                         |
+| `opponent_army_count`| `Int`     | Int representing total number of units owned by the opponent                                                                                   |
+| `is_winner`          | `Bool`    | Bool representing whether an agent won                                                                                                         |
+| `timestep`           | `Int`     | Timestep                                                                                                                                       |
    
 ### ⚡ Action
 Action is an `np.array([pass,i,j,d,split])`:
-- Value of `pass` is `0 (play)` or `1 (pass)`.
+- Value indicating whether you want to `1 (pass)` or `0 (play)`.
 - Indices `i,j` say that you want to move from cell with index `[i,j]`.
 - Value of `d` is a direction of the movement: `0 (up)`, `1 (down)`, `2 (left)`, `3 (right)`
-- Value of `split` says whether you want to split units. Value `1` sends half of units and value `0` sends all possible units to the next cell.
+- Value of `split` says whether you want to split units. Value `1 (split)` sends half of units and value `0 (no split)` sends all possible units to the next cell.
 
 ### 🎁 Reward
 It is possible to implement custom reward function. The default is `1` for winner and `-1` for loser, otherwise `0`.
 ```python
-def custom_reward_fn(observation, info):
+def custom_reward_fn(observations):
     # Give agent a reward based on the number of cells they own
     return {
-        agent: info[agent]["land"]
-        for agent in observation.keys()
+        agent: observations[agent]["owned_land_count"]
+        for agent in observations.keys()
     }
 
 env = generals_v0(reward_fn=custom_reward_fn)
