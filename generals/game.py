@@ -61,7 +61,7 @@ class Game:
         self.observation_space = gym.spaces.Dict(
             {
                 "army": gym.spaces.Box(
-                    low=0, high=np.inf, shape=spatial_dim, dtype=np.float32
+                    low=0, high=1e5, shape=spatial_dim, dtype=np.float32
                 ),
                 "general": grid_multi_binary,
                 "city": grid_multi_binary,
@@ -73,12 +73,12 @@ class Game:
                 "action_mask": gym.spaces.MultiBinary(
                     (spatial_dim[0], spatial_dim[1], 4)
                 ),
-                "owned_land_count": gym.spaces.Discrete(np.iinfo(np.int32).max),
-                "owned_army_count": gym.spaces.Discrete(np.iinfo(np.int32).max),
-                "opponent_land_count": gym.spaces.Discrete(np.iinfo(np.int32).max),
-                "opponent_army_count": gym.spaces.Discrete(np.iinfo(np.int32).max),
+                "owned_land_count": gym.spaces.Discrete(np.iinfo(np.int64).max),
+                "owned_army_count": gym.spaces.Discrete(np.iinfo(np.int64).max),
+                "opponent_land_count": gym.spaces.Discrete(np.iinfo(np.int64).max),
+                "opponent_army_count": gym.spaces.Discrete(np.iinfo(np.int64).max),
                 "is_winner": gym.spaces.MultiBinary(1),
-                "timestep": gym.spaces.Discrete(np.iinfo(np.int32).max),
+                "timestep": gym.spaces.Discrete(np.iinfo(np.int64).max),
             }
         )
 
@@ -157,7 +157,6 @@ class Game:
             actions: dictionary of agent name to action
         """
         done_before_actions = self.is_done()
-
         # Process validity of moves, whether agents want to pass the turn,
         # and calculate intended amount of army to move (all available or split)
         moves = {}
@@ -283,8 +282,8 @@ class Game:
         for agent in self.agents:
             army_size = np.sum(
                 self.channels["army"] * self.channels[f"ownership_{agent}"]
-            ).astype(np.int32)
-            land_size = np.sum(self.channels[f"ownership_{agent}"]).astype(np.int32)
+            ).astype(np.int64)
+            land_size = np.sum(self.channels[f"ownership_{agent}"]).astype(np.int64)
             players_stats[agent] = {
                 "army": army_size,
                 "land": land_size,

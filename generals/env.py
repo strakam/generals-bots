@@ -8,14 +8,14 @@ from .rendering import Renderer
 from collections import OrderedDict
 
 
-def pz_generals(game_config: config.GameConfig=config.GameConfig(), reward_fn=None, render_mode="none"):
+def pz_generals(game_config: config.GameConfig=config.GameConfig(), reward_fn=None, render_mode=None):
     """
     Here we apply wrappers to the environment.
     """
     env = PZ_Generals(game_config, reward_fn=reward_fn, render_mode=render_mode)
     return env
 
-def gym_generals(game_config: config.GameConfig=config.GameConfig(), reward_fn=None, render_mode="none"):
+def gym_generals(game_config: config.GameConfig=config.GameConfig(), reward_fn=None, render_mode=None):
     """
     Here we apply wrappers to the environment.
     """
@@ -26,9 +26,9 @@ def gym_generals(game_config: config.GameConfig=config.GameConfig(), reward_fn=N
 class PZ_Generals(pettingzoo.ParallelEnv):
     def __init__(
         self,
-        game_config = None,
+        game_config=None,
         reward_fn=None,
-        render_mode="none"
+        render_mode=None
     ):
         self.render_mode = render_mode
         self.game_config = game_config
@@ -89,11 +89,11 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         infos = {agent: {} for agent in self.agents}
         return observations, infos
 
-    def step(self, actions):
+    def step(self, action):
         if self.replay:
-            self.action_history.append(actions)
+            self.action_history.append(action)
 
-        observations, infos = self.game.step(actions)
+        observations, infos = self.game.step(action)
 
         truncated = {agent: False for agent in self.agents} # no truncation
         terminated = {agent: True if self.game.is_done() else False for agent in self.agents}
@@ -131,7 +131,7 @@ class Gym_Generals(gymnasium.Env):
         self,
         game_config=None,
         reward_fn=None,
-        render_mode="none"
+        render_mode=None
     ):
         self.render_mode = render_mode
         self.game_config = game_config
@@ -177,6 +177,7 @@ class Gym_Generals(gymnasium.Env):
 
 
     def reset(self, map: np.ndarray = None, seed=None, options={}):
+        super().reset(seed=seed)
         # If map is not provided, generate a new one
         if map is None:
             map = utils.map_from_generator(
