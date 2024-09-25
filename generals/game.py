@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 import gymnasium as gym
 from typing import Dict, List
@@ -63,13 +64,15 @@ class Game:
                     low=0, high=np.inf, shape=spatial_dim, dtype=np.float32
                 ),
                 "general": grid_multi_binary,
-                "city":grid_multi_binary,
-                "owned_cells":grid_multi_binary,
-                "opponent_cells":grid_multi_binary,
-                "neutral_cells":grid_multi_binary,
-                "visibile_cells":grid_multi_binary,
-                "structure":grid_multi_binary,
-                "action_mask": gym.spaces.MultiBinary((spatial_dim[0], spatial_dim[1], 4)),
+                "city": grid_multi_binary,
+                "owned_cells": grid_multi_binary,
+                "opponent_cells": grid_multi_binary,
+                "neutral_cells": grid_multi_binary,
+                "visibile_cells": grid_multi_binary,
+                "structure": grid_multi_binary,
+                "action_mask": gym.spaces.MultiBinary(
+                    (spatial_dim[0], spatial_dim[1], 4)
+                ),
                 "owned_land_count": gym.spaces.Discrete(np.iinfo(np.int32).max),
                 "owned_army_count": gym.spaces.Discrete(np.iinfo(np.int32).max),
                 "opponent_land_count": gym.spaces.Discrete(np.iinfo(np.int32).max),
@@ -79,7 +82,9 @@ class Game:
             }
         )
 
-        self.action_space = gym.spaces.MultiDiscrete([2, self.grid_size, self.grid_size, 4, 2])
+        self.action_space = gym.spaces.MultiDiscrete(
+            [2, self.grid_size, self.grid_size, 4, 2]
+        )
 
     def action_mask(self, agent: str) -> np.ndarray:
         """
@@ -98,9 +103,7 @@ class Game:
         ownership_channel = self.channels[f"ownership_{agent}"]
 
         owned_cells_indices = self.channel_to_indices(ownership_channel)
-        valid_action_mask = np.zeros(
-            (self.grid_size, self.grid_size, 4), dtype=bool
-        )
+        valid_action_mask = np.zeros((self.grid_size, self.grid_size, 4), dtype=bool)
 
         if self.is_done():
             return valid_action_mask
@@ -160,8 +163,15 @@ class Game:
         moves = {}
         for agent, move in actions.items():
             pass_turn, i, j, direction, split_army = move
-            # Skip if the move is not valid or the agent wants to pass the turn
-            if self.action_mask(agent)[i, j, direction] == 0 or pass_turn == 1:
+            # Skip if agent wants to pass the turn
+            if pass_turn == 1:
+                continue
+            # Skip if the move is invalid
+            if self.action_mask(agent)[i, j, direction] == 0:
+                warnings.warn(
+                    f"The submitted move byt agent {agent} does not take effect.\
+                    Probably because you submitted an invalid move.", UserWarning
+                )
                 continue
             if split_army == 1:  # Agent wants to split the army
                 army_to_move = self.channels["army"][i, j] // 2

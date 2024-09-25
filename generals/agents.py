@@ -65,7 +65,7 @@ class ExpanderAgent(Agent):
         ) # Filter actions that can actually move something
 
         if np.sum(actions_with_more_than_1_army) == 0:
-            return np.array([0, 0, 0, 0, 0])  # IDLE move
+            return np.array([1, 0, 0, 0, 0])  # IDLE move
 
         valid_actions = valid_actions[actions_with_more_than_1_army]
 
