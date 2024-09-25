@@ -17,7 +17,7 @@ game_config = GameConfig(
 )
 
 # Create environment
-env = pz_generals(game_config, render_mode="human") # render_mode {"none", "human"}
+env = pz_generals(game_config, render_mode="human") # render_mode {None, "human"}
 observations, info = env.reset()
 
 # How fast we want rendering to be
