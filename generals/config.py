@@ -1,7 +1,6 @@
 from typing import List, Tuple, Literal
 from importlib.resources import files
-from pydantic import BaseModel
-
+from pydantic import BaseModel, Field
 ################
 # Game Config  #
 ################
@@ -12,8 +11,11 @@ class GameConfig(BaseModel):
     general_positions: List[Tuple[int, int]] = None # Positions of generals
     map: str = None # Map layout as string
     replay_file: str = None # File from which to replay the game
-    agent_names: List[str] = None # Names of the agents that will be called to play the game
-    gymnasium_npc: str = "random" # Name of the opponent to be used in gymnasium
+    agents: List = Field(default_factory=list) # List of agents
+
+    class Config:
+        arbitrary_types_allowed = True
+
 
 #################
 # Game Literals #
