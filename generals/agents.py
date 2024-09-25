@@ -64,14 +64,8 @@ class ExpanderAgent(Agent):
             mask == 1
         )  # List of [row, col, direction] indices of valid actions
 
-        actions_with_more_than_1_army = (
-            army[valid_actions[:, 0], valid_actions[:, 1]] > 1
-        ) # Filter actions that can actually move something
-
-        if np.sum(actions_with_more_than_1_army) == 0:
+        if np.sum(mask) == 0:
             return np.array([1, 0, 0, 0, 0])  # IDLE move
-
-        valid_actions = valid_actions[actions_with_more_than_1_army]
 
         opponent = observation["opponent_cells"]
         neutral = observation["neutral_cells"]
