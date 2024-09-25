@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 import generals.game as game
 import generals.utils as utils
@@ -372,17 +373,17 @@ def test_game_step():
     reference_total_army_land = 3
     assert stats['blue']['land'] == reference_total_army_land
 
-    # Always leave one army behind
-    #####################################################################################
-    # Now red moves from (2, 1) DOWN (should not move) and blue moves from (0, 0) RIGHT #
-    #####################################################################################
-    # rewrite moves with same text as above
+    # Test raising of warning on invalid move (moving from cell with only 1 army)
+    ##################################################################################
+    # Now red moves from (2, 1) DOWN (invalid move) and blue moves from (0, 0) RIGHT #
+    ##################################################################################
     moves = {
         'red': np.array([0, 2, 1, 1, 0]),
         'blue': np.array([0, 0, 0, 3, 0])
     }
 
-    game.step(moves)
+    with pytest.warns(UserWarning):  # we expect a warning
+        game.step(moves)
 
     # this is second move, so army increments in base
     reference_army = np.array([
@@ -485,9 +486,9 @@ def test_game_step():
     assert stats['blue']['land'] == reference_total_army_land
 
     # Test passing a move
-    ##################################################
-    # Red moves army from (3, 2) UP and blue is IDLE #
-    ##################################################
+    ##############################################################
+    # Red moves army from (3, 2) UP and blue is passing the move #
+    ##############################################################
     moves = {
         'red': np.array([0, 3, 2, 0, 0]),
         'blue': np.array([1, 1, 3, 2, 1])
