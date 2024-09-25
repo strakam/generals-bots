@@ -12,6 +12,8 @@
 - [x] Make ExpanderAgent a bit more readable if possible
 - [x] Test IDLE actions
 - [x] Should we error out when agent tries to perform an invalid move, so that it is easier to debug?
+- [ ] Redo how replays are stored and loaded
+- [ ] In config, resolve circular dependency in a cleaner manner
 
 ### Bug fixes
 
