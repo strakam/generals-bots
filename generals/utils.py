@@ -3,6 +3,7 @@ import numpy as np
 from importlib.resources import files
 from generals.config import PASSABLE, MOUNTAIN
 from generals.config import GameConfig
+from generals.agents import RandomAgent
 from copy import deepcopy
 
 from typing import List, Dict, Tuple
@@ -165,9 +166,9 @@ def load_replay(path: str):
             )
     # Play actions to recreate states that happened
     from generals.env import pz_generals
-
+    agents = [RandomAgent(name=players[0]), RandomAgent(name=players[1])]
     game_config = GameConfig(
-        agent_names=players,
+        agents=agents,
     )
     env = pz_generals(game_config)
     _ = env.reset(map, seed=42)
@@ -186,9 +187,9 @@ def load_replay(path: str):
 def run_replay(replay_file: str):
     agents, map, game_states = load_replay(replay_file)
     from generals.env import pz_generals
-
+    agents = [RandomAgent(name=agents[0],color=(67,99,216)), RandomAgent(name=agents[1])]
     game_config = GameConfig(
-        agent_names=agents,
+        agents=agents,
     )
     env = pz_generals(game_config, render_mode="human")
     env.reset(map, options={"from_replay": True})

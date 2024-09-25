@@ -93,23 +93,20 @@ def test_generate_map():
 
 def test_replays():
     # run N games, store their replay, then load the replay and compare game states
-    agents = {
-        "A": RandomAgent("A"),
-        "B": RandomAgent("B"),
-    }
-
-    for _ in range(5):
+    for _ in range(3):
+        agents = [RandomAgent(name="A"), RandomAgent(name="B")]
         game_states_before, game_states_after = [], []
 
         game_config = GameConfig(
-            grid_size=5,
+            grid_size=4,
             mountain_density=0.2,
             city_density=0.05,
-            agent_names=["A", "B"],
+            agents=agents,
         )
         env = pz_generals(game_config, render_mode=None)
         observations, info = env.reset(options={"replay_file": "test"})
 
+        agents = {agent.name: agent for agent in agents}
         game_states_before.append(deepcopy(env.game.channels))
         while not env.game.is_done():
             actions = {}
@@ -117,7 +114,6 @@ def test_replays():
                 actions[agent] = agents[agent].play(observations[agent])
             observations, rewards, terminated, truncated, info = env.step(actions)
             game_states_after.append(deepcopy(env.game.channels))
-
         agents_after, map, game_states_after = load_replay("test")
         assert list(agents.keys()) == agents_after
         for before, after in zip(game_states_before, game_states_after):

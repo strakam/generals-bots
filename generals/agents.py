@@ -8,8 +8,8 @@ class Agent:
     Base class for all agents.
     """
 
-    def __init__(self, name):
-        self.name = name
+    def __init__(self):
+        pass
 
     def play(self):
         """
@@ -18,13 +18,23 @@ class Agent:
         """
         raise NotImplementedError
 
+    def reset(self):
+        """
+        This method allows the agent to reset its state.
+        If not needed, just pass.
+        """
+        raise NotImplementedError
+
     def __str__(self):
         return self.name
 
 
 class RandomAgent(Agent):
-    def __init__(self, name, idle_prob=0.05, split_prob=0.25):
-        super().__init__(name)
+    def __init__(
+        self, idle_prob=0.05, split_prob=0.25, name="Random", color=(255, 0, 0)
+    ):
+        self.name = name
+        self.color = color
 
         self.idle_probability = idle_prob
         self.split_probability = split_prob
@@ -46,10 +56,14 @@ class RandomAgent(Agent):
         action = np.concatenate((pass_turn, valid_actions[action_index], split_army))
         return action
 
+    def reset(self):
+        pass
+
 
 class ExpanderAgent(Agent):
-    def __init__(self, name):
-        super().__init__(name)
+    def __init__(self, name="Expander", color=(0, 130, 255)):
+        self.name = name
+        self.color = color
 
     def play(self, observation):
         """
@@ -91,3 +105,6 @@ class ExpanderAgent(Agent):
         action = np.concatenate(([0], action, [0]))
 
         return action
+
+    def reset(self):
+        pass
