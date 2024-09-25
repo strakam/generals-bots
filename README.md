@@ -210,7 +210,7 @@ An observation for one agent is a dictionary of 13 key/value pairs. Each key/val
    
 ### ⚡ Action
 Action is an `np.array([pass,i,j,d,split])`:
-- Value indicating whether you want to `1 (pass)` or `0 (play)`.
+- Value of `pass` indicates whether you want to `1 (pass)` or `0 (play)`.
 - Indices `i,j` say that you want to move from cell with index `[i,j]`.
 - Value of `d` is a direction of the movement: `0 (up)`, `1 (down)`, `2 (left)`, `3 (right)`
 - Value of `split` says whether you want to split units. Value `1 (split)` sends half of units and value `0 (no split)` sends all possible units to the next cell.
