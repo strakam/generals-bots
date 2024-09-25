@@ -212,11 +212,11 @@ An observation for one agent is a dictionary of 13 key/value pairs. Each key/val
 | `timestep`           | `(1,)`    | Timestep                                                                                                                                       |
    
 ### ⚡ Action
-Action is an `np.array([p,i,j,d,s])`:
-- Value of `p` is `1 (play)` or `0 (pass)`.
+Action is an `np.array([pass,i,j,d,split])`:
+- Value of `pass` is `0 (play)` or `1 (pass)`.
 - Indices `i,j` say that you want to move from cell with index `[i,j]`.
-- Value of `d` is a direction you want to choose: `0 (up)`, `1 (down)`, `2 (left)`, `3 (right)`
-- Value of `s` says whether you want to split units. Value `1` sends half of units and value `0` sends all possible units to the next cell.
+- Value of `d` is a direction of the movement: `0 (up)`, `1 (down)`, `2 (left)`, `3 (right)`
+- Value of `split` says whether you want to split units. Value `1` sends half of units and value `0` sends all possible units to the next cell.
 
 ### 🎁 Reward
 It is possible to implement custom reward function. The default is `1` for winner and `-1` for loser, otherwise `0`.
