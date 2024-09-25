@@ -38,6 +38,10 @@ class RandomAgent(Agent):
 
         mask = observation["action_mask"]
         valid_actions = np.argwhere(mask == 1)
+
+        if len(valid_actions) == 0: # No valid actions
+            return np.array([1, 0, 0, 0, 0])
+
         action_index = np.random.choice(len(valid_actions))
 
         action = np.concatenate((pass_turn, valid_actions[action_index], split_army))

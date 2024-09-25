@@ -90,6 +90,9 @@ class Game:
         """
         Function to compute valid actions from a given ownership mask.
 
+        Valid action is an action that originates from agent's cell with atleast 2 units
+        and does not bump into a mountain or fall out of the grid.
+
         Args:
             agent: str
 
@@ -101,8 +104,8 @@ class Game:
         """
 
         ownership_channel = self.channels[f"ownership_{agent}"]
-
-        owned_cells_indices = self.channel_to_indices(ownership_channel)
+        more_than_1_army = (self.channels["army"] > 1) * ownership_channel
+        owned_cells_indices = self.channel_to_indices(more_than_1_army)
         valid_action_mask = np.zeros((self.grid_size, self.grid_size, 4), dtype=bool)
 
         if self.is_done():
