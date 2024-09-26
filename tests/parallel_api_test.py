@@ -1,6 +1,7 @@
 from __future__ import annotations
 from generals.env import pz_generals
-from generals.config import GameConfig
+from generals.agent import RandomAgent
+from generals.map import Mapper
 import warnings
 
 import numpy as np
@@ -24,10 +25,10 @@ def sample_action(
     # custom action action sampler
     if isinstance(agent_obs, dict) and "action_mask" in agent_obs:
         mask = agent_obs["action_mask"]
-        if not np.any(mask):
-            raise ValueError(f"Agent {agent} has no valid actions")
         # pick random index of the mask with a 1, it should be 3 numbers
         valid_actions = np.argwhere(mask == 1)
+        if len(valid_actions) == 0:
+            return np.array([1, 0, 0, 0, 0])
         action_index = np.random.choice(len(valid_actions))
         action = np.array([1])
         action = np.append(action, valid_actions[action_index])
@@ -140,13 +141,9 @@ def parallel_api_test(par_env: ParallelEnv, num_cycles=1000):
     print("Passed Parallel API test")
 
 if __name__ == "__main__":
-    game_config = GameConfig(
-        grid_size=10,
-        mountain_density=0.1,
-        town_density=0.1,
-        agent_names=["red", "blue"]
-    )
-    env = pz_generals(game_config, render_mode="none")
+    mapper = Mapper()
+    agents = [RandomAgent(name="A"), RandomAgent(name="B")]
+    env = pz_generals(mapper, agents)
     # test the environment with parallel_api_test
     import time
     start = time.time()

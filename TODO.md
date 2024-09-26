@@ -12,8 +12,9 @@
 - [x] Make ExpanderAgent a bit more readable if possible
 - [x] Test IDLE actions
 - [x] Should we error out when agent tries to perform an invalid move, so that it is easier to debug?
-- [ ] Redo how replays are stored and loaded
-- [ ] In config, resolve circular dependency in a cleaner manner
+- [x] Redo how replays are stored and loaded
+- [x] In config, resolve circular dependency in a cleaner manner
+- [ ] Implement .close() method in envs and instead of quitting in renderer, quit in env
 
 ### Bug fixes
 
@@ -24,4 +25,4 @@
 - [x] Add CI for running tests (pre commit)
 - [x] Add CI passing badge to README
 - [x] Document agent action/move format
-- [ ] Split game step tests into more specific tests
+- [x] Split game step tests into more specific tests
