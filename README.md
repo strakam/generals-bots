@@ -49,29 +49,29 @@ pip install -e .
 ## Usage Example (🦁 PettingZoo)
 ```python
 from generals.env import pz_generals
-from generals.agents import RandomAgent, ExpanderAgent
+from generals.agents import ExpanderAgent, RandomAgent
 from generals.config import GameConfig
 
-# Initialize agents - their names are then called for actions
-agents = {
-    "Random": RandomAgent("Random"),
-    "Expander": ExpanderAgent("Expander")
-}
+# Initialize agents
+agents = [RandomAgent(), ExpanderAgent()]
 
 game_config = GameConfig(
     grid_size=16,
     mountain_density=0.2,
     city_density=0.05,
-    general_positions=[(2, 12), (8, 9)],
-    agent_names=list(agents.keys()),
+    general_positions=[(4, 12), (12, 4)],
+    agents=agents,
 )
 
 # Create environment
-env = pz_generals(game_config, render_mode="human") # render_modes are [None, "human"]
+env = pz_generals(game_config, render_mode="human")  # render_mode {None, "human"}
 observations, info = env.reset()
 
 # How fast we want rendering to be
 actions_per_second = 6
+agents = {
+    agent.name: agent for agent in agents
+}  # Create a dictionary of agents - their names are then called for actions
 
 while not env.game.is_done():
     actions = {}
@@ -86,27 +86,33 @@ while not env.game.is_done():
 ## Usage example (🤸 Gymnasium)
 ```python
 from generals.env import gym_generals
-from generals.agents import RandomAgent
+from generals.agents import RandomAgent, ExpanderAgent
 from generals.config import GameConfig
 
-# Initialize agent
-agent = RandomAgent("Red")
+# Initialize agents
+agent = RandomAgent()
+npc = ExpanderAgent()
+
+agents = [agent, npc]  # First is player, second is NPC
 
 game_config = GameConfig(
     grid_size=16,
     mountain_density=0.2,
     city_density=0.05,
     general_positions=[(2, 12), (8, 9)],
-    agent_names=[agent.name],
-    gymnasium_npc="expander" # available options as of now: ["expander", "random"]
+    agents=agents,
 )
 
 # Create environment
-env = gym_generals(game_config, render_mode="human") # render_modes are [None, "human"]
+env = gym_generals(game_config, render_mode="human")  # render_mode {None, "human"}
 observation, info = env.reset()
 
 # How fast we want rendering to be
 actions_per_second = 6
+agents = {
+    agent.name: agent for agent in game_config.agents
+} # Create a dictionary of agents - their names are then called for actions
+
 done = False
 
 while not done:
