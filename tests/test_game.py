@@ -302,7 +302,7 @@ def test_observations():
 
 def test_game_step():
     """
-    Test three moves from this situation
+    Test a number of moves from this situation
     """
     map = """...#
 #..A

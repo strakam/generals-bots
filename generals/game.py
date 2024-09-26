@@ -134,9 +134,7 @@ class Game:
 
     def channel_to_indices(self, channel: np.ndarray) -> np.ndarray:
         """
-        Returns a list of indices of cells from specified a channel.
-
-        Expected channels are ownership, general, city, mountain.
+        Returns a list of indices of cells with non-zero values from specified a channel.
 
         Args:
             channel: one channel of the game grid
