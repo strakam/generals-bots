@@ -8,6 +8,7 @@ from ..replay import Replay
 from ..rendering import Renderer
 from collections import OrderedDict
 
+
 class Gym_Generals(gymnasium.Env):
     def __init__(self, mapper=None, agents=None, reward_fn=None, render_mode=None):
         self.render_mode = render_mode
@@ -18,6 +19,11 @@ class Gym_Generals(gymnasium.Env):
         self.npc = agents[1]
 
         self.agent_data = {agent.name: {"color": agent.color} for agent in agents}
+
+        # check whether agents have unique names
+        assert (
+            agents[0].name != agents[1].name
+        ), "Agent names must be unique - you can pass custom names to agent constructors."
 
         map = self.mapper.get_map(numpify=True)
         game = Game(map, [self.agent_name, self.npc.name])

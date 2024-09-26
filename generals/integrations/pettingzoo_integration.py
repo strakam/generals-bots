@@ -1,9 +1,7 @@
-import numpy as np
 import functools
 import pettingzoo
 from copy import deepcopy
 from ..game import Game
-from ..map import Mapper
 from ..replay import Replay
 from ..rendering import Renderer
 from collections import OrderedDict
