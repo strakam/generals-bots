@@ -3,11 +3,11 @@ import pygame
 import numpy as np
 import generals.game as game
 import generals.config as c
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Any
 
 
 class Renderer:
-    def __init__(self, game: game.Game, agent_colors: Dict[str, Tuple], from_replay=False):
+    def __init__(self, game: game.Game, agent_data: Dict[str, Dict[str, Any]], from_replay=False):
         """
         Initialize the pygame GUI
 
@@ -21,12 +21,11 @@ class Renderer:
 
         self.game = game
         self.from_replay = from_replay
-        self.agents = game.agents
+        self.agent_data = agent_data
         self.grid_size = game.grid_size
         self.grid_width = c.SQUARE_SIZE * self.grid_size
         self.grid_height = c.SQUARE_SIZE * self.grid_size
         self.right_panel_width = 4 * c.GUI_CELL_WIDTH
-        self.agent_colors = agent_colors
         ############
         # Surfaces #
         ############
@@ -60,7 +59,7 @@ class Renderer:
             for _ in range(self.grid_size)
         ]
 
-        self.agent_fov = {name: True for name in self.agents}
+        self.agent_fov = {name: True for name in self.agent_data.keys()}
         self.game_speed = 1
         self.paused = False
         self.clock = pygame.time.Clock()
@@ -154,7 +153,7 @@ class Renderer:
 
         # Write names
         for i, name in enumerate(["Agent"] + names):
-            color = self.agent_colors[name] if name in self.agent_colors else c.WHITE
+            color = self.agent_data[name]["color"] if name in self.agent_data else c.WHITE
             # add opacity to the color, where color is a tuple (r,g,b)
             if name in self.agent_fov and not self.agent_fov[name]:
                 color = tuple([int(0.5 * c) for c in color])
@@ -227,7 +226,7 @@ class Renderer:
             ownership = self.game.channels["ownership_" + agent]
             visible_ownership = np.logical_and(ownership, visible_map)
             visible_ownership_indices = self.game.channel_to_indices(visible_ownership)
-            self.draw_channel(visible_ownership_indices, self.agent_colors[agent])
+            self.draw_channel(visible_ownership_indices, self.agent_data[agent]["color"])
 
         # Draw visible generals
         visible_generals = np.logical_and(self.game.channels["general"], visible_map)

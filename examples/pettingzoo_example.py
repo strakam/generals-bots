@@ -1,6 +1,6 @@
 from generals.env import pz_generals
-from generals.agents import ExpanderAgent, RandomAgent
-from generals.maps import Mapper
+from generals.agent import ExpanderAgent, RandomAgent
+from generals.map import Mapper
 
 # Initialize agents
 agents = [RandomAgent(), ExpanderAgent()]
@@ -13,7 +13,7 @@ mapper = Mapper(
 
 # Create environment
 env = pz_generals(mapper, agents, render_mode="human")  # render_mode {None, "human"}
-observations, info = env.reset()
+observations, info = env.reset(options={"replay_file": "replay"})
 
 # How fast we want rendering to be
 actions_per_second = 6

@@ -2,19 +2,21 @@ import numpy as np
 import pytest
 
 import generals.game as game
-import generals.utils as utils
+from generals.map import Mapper
 import itertools
 
-def get_game(map_name=None):
-    if map_name:
-        map = utils.map_from_file(map_name)
+def get_game(map=None):
+    mapper = Mapper(
+        grid_size=10,
+        mountain_density=0.1,
+        city_density=0.1,
+        general_positions=[[3, 3], [1, 3]]
+    )
+    if map is not None:
+        map = mapper.set_map_from_string(map)
+        map = mapper.get_map()
     else:
-        map = utils.map_from_generator(
-            grid_size=10,
-            mountain_density=0.1,
-            city_density=0.1,
-            general_positions=[[3, 3], [1, 3]]
-        )
+        map = mapper.generate_map()
     return game.Game(map, ['red', 'blue'])
 
 def test_grid_creation():
@@ -48,7 +50,12 @@ def test_channel_to_indices():
     """
     For given channel, we should get indices of cells that are 1.
     """
-    game = get_game()
+    map = """...#
+#..A
+#..#
+.#.B
+"""
+    game = get_game(map)
 
     channel = np.array([
         [1, 0, 1],
@@ -73,6 +80,12 @@ def test_visibility_channel():
     For given ownership mask, we should get visibility mask.
     """
     dummy_game = get_game()
+    map = """...#
+#..A
+#..#
+.#.B
+"""
+    game = get_game(map)
 
     ownership = np.array([
         [0, 0, 0],
@@ -171,7 +184,12 @@ def test_observations():
     """
     For given actions, we should get new state of the game.
     """
-    game = get_game(map_name='test_map')
+    map = """...#
+#..A
+#..#
+.#.B
+"""
+    game = get_game(map)
     game.channels['ownership_red'] = np.array([
         [0, 0, 0, 0],
         [0, 0, 0, 0],
@@ -293,7 +311,12 @@ def test_game_step():
     """
     Test three moves from this situation
     """
-    game = get_game(map_name='test_map')
+    map = """...#
+#..A
+#..#
+.#.B
+"""
+    game = get_game(map)
     game.channels['ownership_red'] = np.array([
         [0, 0, 0, 0],
         [0, 0, 0, 0],
@@ -623,7 +646,12 @@ def test_game_step():
 
 
 def test_end_of_game():
-    game = get_game(map_name='test_map')
+    map = """...#
+#..A
+#..#
+.#.B
+"""
+    game = get_game(map)
     game.general_positions = {
         'red': [3, 3],
         'blue': [1, 3]

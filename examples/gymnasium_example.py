@@ -1,6 +1,6 @@
 from generals.env import gym_generals
-from generals.agents import RandomAgent, ExpanderAgent
-from generals.maps import Mapper
+from generals.agent import RandomAgent, ExpanderAgent
+from generals.map import Mapper
 
 # Initialize agents
 agent = RandomAgent()

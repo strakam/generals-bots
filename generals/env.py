@@ -2,9 +2,10 @@ import numpy as np
 import functools
 import pettingzoo
 import gymnasium
-from copy import copy
-from generals.game import Game
-from generals.maps import Mapper
+from copy import deepcopy
+from .game import Game
+from .map import Mapper
+from .replay import Replay
 from .rendering import Renderer
 from collections import OrderedDict
 
@@ -43,13 +44,15 @@ class PZ_Generals(pettingzoo.ParallelEnv):
     def __init__(self, mapper=None, agents=None, reward_fn=None, render_mode=None):
         self.render_mode = render_mode
         self.mapper = mapper
+
+        self.agent_data = {
+            agent.name: {"color": agent.color} for agent in agents
+        }
         self.possible_agents = [agent.name for agent in agents]
 
         assert (
             len(self.possible_agents) == len(set(self.possible_agents))
         ), "Agent names must be unique - you can pass custom names to agent constructors."
-
-        self.agent_colors = {agent.name: agent.color for agent in agents}
 
         self.reward_fn = self.default_rewards if reward_fn is None else reward_fn
 
@@ -70,33 +73,30 @@ class PZ_Generals(pettingzoo.ParallelEnv):
                 self.renderer.clock.tick(tick_rate)
 
     def reset(self, seed=None, options={}):
-        self.agents = copy(self.possible_agents)
+        self.agents = deepcopy(self.possible_agents)
 
         map = self.mapper.get_map()
-
         self.game = Game(map, self.possible_agents)
 
         if self.render_mode == "human":
             from_replay = "from_replay" in options and options["from_replay"] or False
-            self.renderer = Renderer(self.game, self.agent_colors, from_replay)
+            self.renderer = Renderer(self.game, self.agent_data, from_replay)
 
         if "replay_file" in options:
-            self.replay = options["replay_file"]
-            self.state_history = []
-        else:
-            self.replay = False
+            self.replay = Replay(
+                name=options["replay_file"],
+                map=map,
+                agent_data=self.agent_data,
+            )
+            self.replay.add_state(deepcopy(self.game.channels))
 
         observations = OrderedDict(
             {agent: self.game._agent_observation(agent) for agent in self.agents}
         )
-
         infos = {agent: {} for agent in self.agents}
         return observations, infos
 
     def step(self, action):
-        if self.replay:
-            self.action_history.append(action)
-
         observations, infos = self.game.step(action)
 
         truncated = {agent: False for agent in self.agents}  # no truncation
@@ -105,13 +105,15 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         }
         rewards = self.reward_fn(observations)
 
+        if hasattr(self, "replay"):
+            self.replay.add_state(deepcopy(self.game.channels))
+
         # if any agent dies, all agents are terminated
         terminate = any(terminated.values())
         if terminate:
             self.agents = []
-            # if replay is on, store the game
-            # if self.replay:
-            #     utils.store_replay(self.game.map, self.action_history, self.replay)
+            if hasattr(self, "replay"):
+                self.replay.store()
 
         return OrderedDict(observations), rewards, terminated, truncated, infos
 
@@ -129,6 +131,9 @@ class PZ_Generals(pettingzoo.ParallelEnv):
                 else:
                     rewards[agent] = -1
         return rewards
+
+    def close(self):
+        print("Closing environment")
 
 
 class Gym_Generals(gymnasium.Env):

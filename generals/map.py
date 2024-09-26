@@ -44,13 +44,9 @@ class Mapper:
         for i, idx in enumerate(self.general_positions):
             map[idx[0], idx[1]] = chr(ord("A") + i)
 
-        # Generate until valid map
-        return (
-            map
-            if self.validate_map(map)
-            else self.generate_map()
-        )
-    
+        # iterate until map is valid
+        return map if self.validate_map(map) else self.generate_map()
+
     def validate_map(self, map: str) -> bool:
         """
         Validate map layout.
@@ -63,7 +59,13 @@ class Mapper:
 
         def dfs(map, visited, square):
             i, j = square
-            if i < 0 or i >= map.shape[0] or j < 0 or j >= map.shape[1] or visited[i, j]:
+            if (
+                i < 0
+                or i >= map.shape[0]
+                or j < 0
+                or j >= map.shape[1]
+                or visited[i, j]
+            ):
                 return
             if map[i, j] == MOUNTAIN:
                 return
@@ -72,7 +74,7 @@ class Mapper:
                 new_square = (i + di, j + dj)
                 dfs(map, visited, new_square)
 
-        generals = np.argwhere(np.isin(map, ["A", "B"]))  # hardcoded for now
+        generals = np.argwhere(np.isin(map, ["A", "B"]))
         start, end = generals[0], generals[1]
         visited = np.zeros_like(map, dtype=bool)
         dfs(map, visited, start)
@@ -81,14 +83,9 @@ class Mapper:
     def set_map_from_string(self, map_str: str) -> np.ndarray:
         """
         Convert map from string to np.ndarray.
-
-        Args:
-            map_str: str, map layout as string
-
-        Returns:
-            np.ndarray: map layout
         """
-        return np.array([list(row) for row in map_str.split("\n")])
+        map_str = map_str.strip("\n")
+        self.map = np.array([list(row) for row in map_str.split("\n")])
 
     def get_map(self) -> np.ndarray:
         return self.map
