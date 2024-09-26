@@ -75,7 +75,13 @@ class Mapper:
         if Mapper.validate_map(map):
             return map
         else:
-            return Mapper.generate_map()
+            return Mapper.generate_map(
+                grid_size=grid_size,
+                mountain_density=mountain_density,
+                city_density=city_density,
+                general_positions=general_positions,
+                seed=seed,
+            )
 
     @staticmethod
     def validate_map(map: str) -> bool:
