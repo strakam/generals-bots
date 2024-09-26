@@ -1,6 +1,6 @@
 from generals.env import gym_generals
 from generals.agents import RandomAgent, ExpanderAgent
-from generals.config import GameConfig
+from generals.maps import Mapper
 
 # Initialize agents
 agent = RandomAgent()
@@ -8,22 +8,21 @@ npc = ExpanderAgent()
 
 agents = [agent, npc]  # First is player, second is NPC
 
-game_config = GameConfig(
+mapper = Mapper(
     grid_size=16,
     mountain_density=0.2,
     city_density=0.05,
-    general_positions=[(2, 12), (8, 9)],
-    agents=agents,
+    general_positions=[(4, 12), (12, 4)],
 )
 
 # Create environment
-env = gym_generals(game_config, render_mode="human")  # render_mode {None, "human"}
+env = gym_generals(mapper, agents, render_mode="human")  # render_mode {None, "human"}
 observation, info = env.reset()
 
 # How fast we want rendering to be
 actions_per_second = 6
 agents = {
-    agent.name: agent for agent in game_config.agents
+    agent.name: agent for agent in agents
 } # Create a dictionary of agents - their names are then called for actions
 
 done = False

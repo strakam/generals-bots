@@ -1,22 +1,5 @@
 from typing import List, Tuple, Literal
 from importlib.resources import files
-from pydantic import BaseModel, Field
-################
-# Game Config  #
-################
-class GameConfig(BaseModel):
-    grid_size: int = 16 # Edge length of the square grid
-    mountain_density: float = 0.2 # Probability of mountain in a cell
-    city_density: float = 0.05 # Probability of city in a cell
-    general_positions: List[Tuple[int, int]] = None # Positions of generals
-    map: str = None # Map layout as string
-    replay_file: str = None # File from which to replay the game
-    agents: List = Field(default_factory=list) # List of agents
-
-    class Config:
-        arbitrary_types_allowed = True
-
-
 #################
 # Game Literals #
 #################

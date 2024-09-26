@@ -1,20 +1,18 @@
 from generals.env import pz_generals
 from generals.agents import ExpanderAgent, RandomAgent
-from generals.config import GameConfig
+from generals.maps import Mapper
 
 # Initialize agents
 agents = [RandomAgent(), ExpanderAgent()]
-
-game_config = GameConfig(
+mapper = Mapper(
     grid_size=16,
     mountain_density=0.2,
     city_density=0.05,
     general_positions=[(4, 12), (12, 4)],
-    agents=agents,
 )
 
 # Create environment
-env = pz_generals(game_config, render_mode="human")  # render_mode {None, "human"}
+env = pz_generals(mapper, agents, render_mode="human")  # render_mode {None, "human"}
 observations, info = env.reset()
 
 # How fast we want rendering to be
