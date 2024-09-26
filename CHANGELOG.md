@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.1](https://github.com/strakam/Generals-RL/compare/v0.3.0...v0.3.1) (2024-09-26)
+
+
+### 🛠️ Refactor
+
+* gigantic refactor ([d67e887](https://github.com/strakam/Generals-RL/commit/d67e8877523850df0c017fea0b5d7b7dd1dd92ae))
+* Rethink maps ([bbfb777](https://github.com/strakam/Generals-RL/commit/bbfb777cd4d02ba2f415171fdd94e74680fa80d8))
+* rethink replay ([ebc2587](https://github.com/strakam/Generals-RL/commit/ebc2587ade5e2d3ecab11177a0c428406fc053af))
+
 ## [0.3.0](https://github.com/strakam/Generals-RL/compare/v0.2.1...v0.3.0) (2024-09-25)
 
 
