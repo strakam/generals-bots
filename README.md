@@ -20,7 +20,7 @@ This repository aims to make bot development more accessible, especially for Mac
 
 Highlights:
 * 🚀 Fast & Lightweight simulator powered by `numpy` (thousands of steps per second)
-* 🦁\🤸 Compatibility with Reinforcement-Learning API standards [Gymnasium](https://gymnasium.farama.org/) and [PettingZoo](https://pettingzoo.farama.org/)
+* 🤝 Compatibility with Reinforcement-Learning API standards 🤸[Gymnasium](https://gymnasium.farama.org/) and 🦁[PettingZoo](https://pettingzoo.farama.org/)
 * 🔧 Easy customization of environments
 * 🔬 Analysis tools such as replays
 
