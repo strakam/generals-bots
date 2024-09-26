@@ -1,3 +1,4 @@
-import generals.utils
+from generals.replay import Replay
 
-generals.utils.run_replay("test")
+replay = Replay.load("test.pkl")
+replay.play()

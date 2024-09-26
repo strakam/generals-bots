@@ -1,7 +1,6 @@
 from generals.env import pz_generals
 from generals.agent import RandomAgent, ExpanderAgent
 from generals.map import Mapper
-from generals.replay import Replay
 
 # Initialize agents - their names are then called for actions
 agents = [RandomAgent(), ExpanderAgent()]
@@ -38,6 +37,3 @@ while not done:
     # All agents perform their actions
     observations, rewards, terminated, truncated, info = env.step(actions)
     done = any(terminated.values())
-
-replay = Replay.load("test")
-replay.play()
