@@ -12,6 +12,7 @@ gym:
 # Create new replay and run it
 make n_replay:
 	python3 -m examples.dummy
+	python3 -m examples.replay
 
 # Run existing replay
 replay:

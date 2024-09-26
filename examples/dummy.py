@@ -26,7 +26,7 @@ mapper.map = map
 env = pz_generals(mapper, agents, render_mode="none") # render_mode {"none", "human"}
 
 agents = {agent.name: agent for agent in agents}
-observations, info = env.reset(options={"replay_file": "test"})
+observations, info = env.reset(options={"replay_file": "replay"})
 done = False
 
 while not done:

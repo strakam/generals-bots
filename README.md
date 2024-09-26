@@ -53,6 +53,8 @@ from generals.map import Mapper
 
 # Initialize agents
 agents = [RandomAgent(), ExpanderAgent()]
+
+# Create map generator
 mapper = Mapper(
     grid_size=16,
     mountain_density=0.2,
@@ -92,6 +94,7 @@ npc = ExpanderAgent()
 
 agents = [agent, npc]  # First is player, second is NPC
 
+# Create map generator
 mapper = Mapper(
     grid_size=16,
     mountain_density=0.2,
