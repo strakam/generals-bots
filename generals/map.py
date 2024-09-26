@@ -20,15 +20,22 @@ class Mapper:
 
         self.map = self.generate_map()
 
-    def generate_map(self) -> np.ndarray:
-        spatial_dim = (self.grid_size, self.grid_size)
+    @staticmethod
+    def generate_map(
+        grid_size: int = 10,
+        mountain_density: float = 0.2,
+        city_density: float = 0.05,
+        general_positions: List[Tuple[int, int]] = None,
+        seed: int = None,
+    ) -> np.ndarray:
+        spatial_dim = (grid_size, grid_size)
 
         # Probabilities of each cell type
-        p_neutral = 1 - self.mountain_density - self.city_density
-        probs = [p_neutral, self.mountain_density] + [self.city_density / 10] * 10
+        p_neutral = 1 - mountain_density - city_density
+        probs = [p_neutral, mountain_density] + [city_density / 10] * 10
 
         # Place cells on the map
-        rng = np.random.default_rng(self.seed)
+        rng = np.random.default_rng(seed)
         map = rng.choice(
             [PASSABLE, MOUNTAIN, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
             size=spatial_dim,
@@ -36,23 +43,24 @@ class Mapper:
         )
 
         # Place generals on random squares
-        if self.general_positions is None:
-            self.general_positions = np.random.choice(
-                self.grid_size, size=(2, 2), replace=False
-            )
+        if general_positions is None:
+            general_positions = np.random.choice(grid_size, size=(2, 2), replace=False)
 
-        for i, idx in enumerate(self.general_positions):
+        for i, idx in enumerate(general_positions):
             map[idx[0], idx[1]] = chr(ord("A") + i)
 
-        # iterate until map is valid
-        return map if self.validate_map(map) else self.generate_map()
+        # Convert to string
+        map = "\n".join(["".join(row) for row in map])
+        # Iterate until map is valid
+        if Mapper.validate_map(map):
+            return map
+        else:
+            return Mapper.generate_map()
 
-    def validate_map(self, map: str) -> bool:
+    @staticmethod
+    def validate_map(map: str) -> bool:
         """
         Validate map layout.
-        Args:
-            map: np.ndarray
-
         Returns:
             bool: True if map is valid, False otherwise
         """
@@ -74,18 +82,22 @@ class Mapper:
                 new_square = (i + di, j + dj)
                 dfs(map, visited, new_square)
 
+        map = Mapper.numpify_map(map)
         generals = np.argwhere(np.isin(map, ["A", "B"]))
         start, end = generals[0], generals[1]
         visited = np.zeros_like(map, dtype=bool)
         dfs(map, visited, start)
         return visited[end[0], end[1]]
 
-    def set_map_from_string(self, map_str: str) -> np.ndarray:
-        """
-        Convert map from string to np.ndarray.
-        """
-        map_str = map_str.strip("\n")
-        self.map = np.array([list(row) for row in map_str.split("\n")])
+    @staticmethod
+    def numpify_map(map: str) -> np.ndarray:
+        return np.array([list(row) for row in map.strip().split("\n")])
 
-    def get_map(self) -> np.ndarray:
-        return self.map
+    @staticmethod
+    def stringify_map(map: np.ndarray) -> str:
+        return "\n".join(["".join(row) for row in map])
+
+    def get_map(self, numpify=False) -> np.ndarray:
+        if numpify:  # Return map as np.ndarray
+            return self.numpify_map(self.map)
+        return self.map  # Return map as string
