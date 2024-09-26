@@ -20,7 +20,7 @@ A..#
 ##B#
 """
 
-mapper.set_map_from_string(map)
+mapper.map = map
 
 
 # Create environment

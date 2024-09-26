@@ -18,7 +18,27 @@ class Mapper:
         self.general_positions = general_positions
         self.seed = seed
 
-        self.map = self.generate_map()
+        self.map = self.generate_map(
+            grid_size=grid_size,
+            mountain_density=mountain_density,
+            city_density=city_density,
+            general_positions=general_positions,
+            seed=seed,
+        )
+
+    def get_map(self, numpify=False) -> np.ndarray:
+        if numpify:  # Return map as np.ndarray
+            return self.numpify_map(self.map)
+        return self.map  # Return map as string
+
+    def reset(self):
+        self.map = self.generate_map(
+            grid_size=self.grid_size,
+            mountain_density=self.mountain_density,
+            city_density=self.city_density,
+            general_positions=self.general_positions,
+            seed=self.seed,
+        )
 
     @staticmethod
     def generate_map(
@@ -96,8 +116,3 @@ class Mapper:
     @staticmethod
     def stringify_map(map: np.ndarray) -> str:
         return "\n".join(["".join(row) for row in map])
-
-    def get_map(self, numpify=False) -> np.ndarray:
-        if numpify:  # Return map as np.ndarray
-            return self.numpify_map(self.map)
-        return self.map  # Return map as string

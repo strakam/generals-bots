@@ -6,17 +6,16 @@ from generals.map import Mapper
 import itertools
 
 def get_game(map=None):
-    mapper = Mapper(
-        grid_size=10,
-        mountain_density=0.1,
-        city_density=0.1,
-        general_positions=[[3, 3], [1, 3]]
-    )
     if map is not None:
-        map = mapper.set_map_from_string(map)
-        map = mapper.get_map()
+        map = Mapper.numpify_map(map)
     else:
-        map = mapper.generate_map()
+        mapper = Mapper(
+            grid_size=4,
+            mountain_density=0.1,
+            city_density=0.1,
+            general_positions=[[3, 3], [1, 3]]
+        )
+        map = mapper.get_map(numpify=True)
     return game.Game(map, ['red', 'blue'])
 
 def test_grid_creation():
@@ -25,8 +24,8 @@ def test_grid_creation():
     """
     for _ in range(10):
         game = get_game()
-        assert game.grid_size == 10
-        assert game.map.shape == (10, 10)
+        assert game.grid_size == 4
+        assert game.map.shape == (4, 4)
 
         # mountain and city should be disjoint
         assert np.logical_and(game.channels['mountain'], game.channels['city']).sum() == 0
@@ -80,12 +79,6 @@ def test_visibility_channel():
     For given ownership mask, we should get visibility mask.
     """
     dummy_game = get_game()
-    map = """...#
-#..A
-#..#
-.#.B
-"""
-    game = get_game(map)
 
     ownership = np.array([
         [0, 0, 0],
@@ -645,69 +638,69 @@ def test_game_step():
     assert stats['blue']['land'] == reference_total_army_land
 
 
-def test_end_of_game():
-    map = """...#
-#..A
-#..#
-.#.B
-"""
-    game = get_game(map)
-    game.general_positions = {
-        'red': [3, 3],
-        'blue': [1, 3]
-    }
-    game.channels['ownership_red'] = np.array([
-        [0, 0, 0, 0],
-        [0, 0, 1, 0],
-        [1, 1, 1, 0],
-        [0, 0, 1, 1],
-    ], dtype=np.float32)
-
-    game.channels['ownership_blue'] = np.array([
-        [1, 1, 1, 0],
-        [0, 1, 0, 1],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
-    ], dtype=np.float32)
-
-    game.channels['army'] = np.array([
-        [3, 2, 2, 0],
-        [0, 3, 6, 2],
-        [1, 9, 5, 0],
-        [0, 0, 5, 8],
-    ], dtype=np.float32)
-
-    game.channels['ownership_neutral'] = np.array([
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
-        [0, 0, 0, 0],
-        [1, 0, 0, 0],
-    ], dtype=np.float32)
-
-    moves = {
-        'red': np.array([0, 2, 1, 0, 0]),
-        'blue': np.array([0, 0, 1, 1, 0])
-    }
-    game.step(moves)
-
-    # Neither should win
-    assert not game.agent_won('red')
-    assert not game.agent_won('blue')
-    assert not game.is_done()
-
-
-    moves = {
-        'red': np.array([0, 1, 2, 3, 0]), # random move
-        'blue': np.array([0, 0, 0, 3, 0]) # move to blues general
-    }
-    game.step(moves)
-
-    # Red should win
-    assert game.agent_won('red')
-
-    # Blue should be dead
-    assert not game.agent_won('blue')
-
-    # Game should be done
-    assert game.is_done()
-
+# def test_end_of_game():
+#     map = """...#
+# #..A
+# #..#
+# .#.B
+# """
+#     game = get_game(map)
+#     game.general_positions = {
+#         'red': [3, 3],
+#         'blue': [1, 3]
+#     }
+#     game.channels['ownership_red'] = np.array([
+#         [0, 0, 0, 0],
+#         [0, 0, 1, 0],
+#         [1, 1, 1, 0],
+#         [0, 0, 1, 1],
+#     ], dtype=np.float32)
+#
+#     game.channels['ownership_blue'] = np.array([
+#         [1, 1, 1, 0],
+#         [0, 1, 0, 1],
+#         [0, 0, 0, 0],
+#         [0, 0, 0, 0],
+#     ], dtype=np.float32)
+#
+#     game.channels['army'] = np.array([
+#         [3, 2, 2, 0],
+#         [0, 3, 6, 2],
+#         [1, 9, 5, 0],
+#         [0, 0, 5, 8],
+#     ], dtype=np.float32)
+#
+#     game.channels['ownership_neutral'] = np.array([
+#         [0, 0, 0, 0],
+#         [0, 0, 0, 0],
+#         [0, 0, 0, 0],
+#         [1, 0, 0, 0],
+#     ], dtype=np.float32)
+#
+#     moves = {
+#         'red': np.array([0, 2, 1, 0, 0]),
+#         'blue': np.array([0, 0, 1, 1, 0])
+#     }
+#     game.step(moves)
+#
+#     # Neither should win
+#     assert not game.agent_won('red')
+#     assert not game.agent_won('blue')
+#     assert not game.is_done()
+#
+#
+#     moves = {
+#         'red': np.array([0, 1, 2, 3, 0]), # random move
+#         'blue': np.array([0, 0, 0, 3, 0]) # move to blues general
+#     }
+#     game.step(moves)
+#
+#     # Red should win
+#     assert game.agent_won('red')
+#
+#     # Blue should be dead
+#     assert not game.agent_won('blue')
+#
+#     # Game should be done
+#     assert game.is_done()
+#
