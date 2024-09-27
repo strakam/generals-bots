@@ -3,8 +3,15 @@ from generals.agent import RandomAgent, ExpanderAgent
 from generals.map import Mapper
 
 # Initialize agents - their names are then called for actions
-agents = [RandomAgent(), ExpanderAgent()]
+randomer = RandomAgent()
+expander = ExpanderAgent()
 
+agents = {
+    randomer.name: randomer,
+    expander.name: expander,
+}
+
+# Mapper will be default generate 4x4 maps
 mapper = Mapper(
     grid_size=4,
     mountain_density=0.2,
@@ -12,6 +19,7 @@ mapper = Mapper(
     general_positions=[(0, 0), (3, 3)],
 )
 
+# Custom map that will override mapper's map for next game
 map = """
 A..#
 .#3#
@@ -19,14 +27,15 @@ A..#
 ##B#
 """
 
-mapper.map = map
-
-
 # Create environment
-env = pz_generals(mapper, agents, render_mode="none") # render_mode {"none", "human"}
+env = pz_generals(mapper, agents, render_mode=None) # Disable rendering
 
-agents = {agent.name: agent for agent in agents}
-observations, info = env.reset(options={"replay_file": "replay"})
+options = {
+    "map": map,
+    "replay_file": "replay",
+}
+
+observations, info = env.reset(options=options)
 done = False
 
 while not done:

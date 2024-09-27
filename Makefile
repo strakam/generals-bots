@@ -11,12 +11,12 @@ gym:
 
 # Create new replay and run it
 make n_replay:
-	python3 -m examples.dummy
-	python3 -m examples.replay
+	python3 -m examples.complete_example
+	python3 -m examples.replay_example
 
 # Run existing replay
 replay:
-	python3 -m examples.replay
+	python3 -m examples.replay_example
 
 ###################
 # Developer tools #

@@ -49,28 +49,19 @@ pip install -e .
 ```python
 from generals.env import pz_generals
 from generals.agent import ExpanderAgent, RandomAgent
-from generals.map import Mapper
 
 # Initialize agents
-agents = [RandomAgent(), ExpanderAgent()]
+random = RandomAgent()
+expander = ExpanderAgent()
 
-# Create map generator
-mapper = Mapper(
-    grid_size=16,
-    mountain_density=0.2,
-    city_density=0.05,
-    general_positions=[(4, 12), (12, 4)],
-)
-
-# Create environment
-env = pz_generals(mapper, agents, render_mode="human")  # render_mode {None, "human"}
-observations, info = env.reset(options={"replay_file": "replay"})
-
-# How fast we want rendering to be
-actions_per_second = 6
 agents = {
-    agent.name: agent for agent in agents
-}  # Create a dictionary of agents - their names are then called for actions
+    random.name: random,
+    expander.name: expander,
+}  # Environment calls agents by name
+
+# Create environment -- render modes: {None, "human"}
+env = pz_generals(agents=agents, render_mode="human")
+observations, info = env.reset()
 
 while not env.game.is_done():
     actions = {}
@@ -79,38 +70,21 @@ while not env.game.is_done():
         actions[agent] = agents[agent].play(observations[agent])
     # All agents perform their actions
     observations, rewards, terminated, truncated, info = env.step(actions)
-    env.render(tick_rate=actions_per_second)
+    env.render(fps=6)
 ```
 
 ## Usage example (🤸 Gymnasium)
 ```python
 from generals.env import gym_generals
 from generals.agent import RandomAgent, ExpanderAgent
-from generals.map import Mapper
 
 # Initialize agents
 agent = RandomAgent()
 npc = ExpanderAgent()
 
-agents = [agent, npc]  # First is player, second is NPC
-
-# Create map generator
-mapper = Mapper(
-    grid_size=16,
-    mountain_density=0.2,
-    city_density=0.05,
-    general_positions=[(4, 12), (12, 4)],
-)
-
-# Create environment
-env = gym_generals(mapper, agents, render_mode="human")  # render_mode {None, "human"}
+# Create environment -- render modes: {None, "human"}
+env = gym_generals(agent=agent, npc=npc, render_mode="human")
 observation, info = env.reset()
-
-# How fast we want rendering to be
-actions_per_second = 6
-agents = {
-    agent.name: agent for agent in agents
-} # Create a dictionary of agents - their names are then called for actions
 
 done = False
 
@@ -118,18 +92,20 @@ while not done:
     action = agent.play(observation)
     observation, reward, terminated, truncated, info = env.step(action)
     done = terminated or truncated
-    env.render(tick_rate=actions_per_second)
+    env.render(fps=6)
 ```
 
 ## 🎨 Customization
 The environment can be customized via `GridConfig` class or by creating a custom map.
 
-### 🗺️ Random maps
+### 🗺️ Custom Maps
+Maps are handled via `Mapper` class. You can instantiate the class with desired map properties and it will generate
+maps with these properties for each run.
 ```python
 from generals.env import pz_generals
-from generals.config import GameConfig
+from generals.map import Mapper
 
-game_config = GameConfig(
+mapper = Mapper(
     grid_size=16,                          # Edge length of the square grid
     mountain_density=0.2,                  # Probability of a mountain in a cell
     city_density=0.05,                     # Probability of a city in a cell
@@ -137,18 +113,16 @@ game_config = GameConfig(
 )
 
 # Create environment
-env = pz_generals(game_config)
-observations, info = env.reset()
+env = pz_generals(mapper=mapper, ...)
 ```
-
-### 🗺️ Custom maps
-Maps can be described by strings. We can either load them directly from a string or from a file.
-
+You can also specify map manually, as a string via `options` dict:
 ```python
 from generals.env import pz_generals
-from generals.config import GameConfig
+from generals.map import Mapper
 
-game_config = GameConfig()
+mapper = Mapper()
+env = pz_generals(mapper=mapper, ...)
+
 map = """
 .3.#
 #..A
@@ -156,8 +130,10 @@ map = """
 .#.B
 """
 
-env = pz_generals(game_config)
-env.reset(map=map) # Here map related settings from game_config are overridden
+options = {'map' : map}
+
+# Pass the new map to the environment (for the next game)
+env.reset(options=options)
 ```
 Maps are encoded using these symbols:
 - `.` for passable terrain
@@ -166,24 +142,24 @@ Maps are encoded using these symbols:
 - digits `0-9` represent cost of cities calculated as `(40 + digit)`
 
 ## 🔬 Replay Analysis
-We can store replays and then analyze them.
+We can store replays and then analyze them. `Replay` class handles replay related functionality.
 ### Storing a replay
 ```python
 from generals.env import pz_generals
-from generals.config import GameConfig
 
-game_config = GameConfig()
-options = {"replay_file": "replay_001"}
-env = pz_generals(game_config)
-env.reset(options=options) # encodes the next game into a "replay_001" file
+options = {"replay": "my_replay"}
+env = pz_generals(...)
+env.reset(options=options) # The next game will be encoded in my_replay.pkl
 ```
 
 ### Loading a replay
-The following code loads and executes replay named `replay_001`:
-```python
-import generals.utils
 
-generals.utils.run_replay("replay_001")
+```python
+from generals.replay import Replay
+
+# Initialize Replay instance
+replay = Replay.load("my_replay")
+replay.play()
 ```
 ### 🕹️ Replay controls
 - `q` — quit/close the replay
