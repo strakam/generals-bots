@@ -225,50 +225,39 @@ class Renderer:
         for agent in agents:
             ownership = self.game.channels["ownership_" + agent]
             visible_ownership = np.logical_and(ownership, visible_map)
-            visible_ownership_indices = self.game.channel_to_indices(visible_ownership)
-            self.draw_channel(visible_ownership_indices, self.agent_data[agent]["color"])
+            self.draw_channel(visible_ownership, self.agent_data[agent]["color"])
 
         # Draw visible generals
         visible_generals = np.logical_and(self.game.channels["general"], visible_map)
-        visible_generals_indices = self.game.channel_to_indices(visible_generals)
-        self.draw_images(visible_generals_indices, self._general_img)
+        self.draw_images(visible_generals, self._general_img)
 
         # Draw background of visible but not owned squares
         visible_not_owned = np.logical_and(visible_map, not_owned_map)
-        visible_not_owned_indices = self.game.channel_to_indices(visible_not_owned)
-        self.draw_channel(visible_not_owned_indices, c.WHITE)
+        self.draw_channel(visible_not_owned, c.WHITE)
 
         # Draw background of squares in fog of war
-        invisible_map_indices = self.game.channel_to_indices(invisible_map)
-        self.draw_channel(invisible_map_indices, c.FOG_OF_WAR)
+        self.draw_channel(invisible_map, c.FOG_OF_WAR)
 
         # Draw background of visible mountains
         visible_mountain = np.logical_and(self.game.channels["mountain"], visible_map)
-        visible_mountain_indices = self.game.channel_to_indices(visible_mountain)
-        self.draw_channel(visible_mountain_indices, c.VISIBLE_MOUNTAIN)
+        self.draw_channel(visible_mountain, c.VISIBLE_MOUNTAIN)
 
         # Draw mountains (even if they are not visible)
-        mountain_indices = self.game.channel_to_indices(self.game.channels["mountain"])
-        self.draw_images(mountain_indices, self._mountain_img)
+        self.draw_images(self.game.channels["mountain"], self._mountain_img)
 
         # Draw background of visible neutral cities
         visible_cities = np.logical_and(self.game.channels["city"], visible_map)
         visible_cities_neutral = np.logical_and(
             visible_cities, self.game.channels["ownership_neutral"]
         )
-        visible_cities_neutral_indices = self.game.channel_to_indices(
-            visible_cities_neutral
-        )
-        self.draw_channel(visible_cities_neutral_indices, c.NEUTRAL_CASTLE)
+        self.draw_channel(visible_cities_neutral, c.NEUTRAL_CASTLE)
 
         # Draw invisible cities as mountains
         invisible_cities = np.logical_and(self.game.channels["city"], invisible_map)
-        invisible_cities_indices = self.game.channel_to_indices(invisible_cities)
-        self.draw_images(invisible_cities_indices, self._mountain_img)
+        self.draw_images(invisible_cities, self._mountain_img)
 
         # Draw visible cities
-        visible_cities_indices = self.game.channel_to_indices(visible_cities)
-        self.draw_images(visible_cities_indices, self._city_img)
+        self.draw_images(visible_cities, self._city_img)
 
         # Draw nonzero army counts on visible squares
         visible_army = self.game.channels["army"] * visible_map
@@ -282,33 +271,32 @@ class Renderer:
             )
 
         # Blit tiles to the self.game_area
-        for i in range(self.grid_size):
-            for j in range(self.grid_size):
-                self.game_area.blit(
-                    self.tiles[i][j], (j * c.SQUARE_SIZE, i * c.SQUARE_SIZE)
-                )
+        for i, j in np.ndindex(self.grid_size, self.grid_size):
+            self.game_area.blit(
+                self.tiles[i][j], (j * c.SQUARE_SIZE, i * c.SQUARE_SIZE)
+            )
         self.screen.blit(self.game_area, (0, 0))
 
-    def draw_channel(self, channel: list[Tuple[int, int]], color: Tuple[int, int, int]):
+    def draw_channel(self, channel, color: Tuple[int, int, int]):
         """
         Draw background and borders (left and top) for grid tiles of a given channel
 
         Args:
-            channel: list of tuples with indices of grid tiles
+            channel: game grid channel
             color: background color of the squares
         """
-        for i, j in channel:
+        for i, j in self.game.channel_to_indices(channel):
             self.tiles[i][j].fill(color)
             pygame.draw.line(self.tiles[i][j], c.BLACK, (0, 0), (0, c.SQUARE_SIZE), 1)
             pygame.draw.line(self.tiles[i][j], c.BLACK, (0, 0), (c.SQUARE_SIZE, 0), 1)
 
-    def draw_images(self, channel: list[Tuple[int, int]], image):
+    def draw_images(self, channel, image):
         """
         Draw images on grid tiles of a given channel
 
         Args:
-            channel: list of tuples with indices of grid tiles
+            channel: game grid channel
             image: pygame image object
         """
-        for i, j in channel:
+        for i, j in self.game.channel_to_indices(channel):
             self.tiles[i][j].blit(image, (3, 2))
