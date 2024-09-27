@@ -17,7 +17,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         self.agent_data = {
             agents[agent].name: {"color": agents[agent].color} for agent in agents.keys()
         }
-        self.possible_agents = [agent_name for agent_name in agents.keys()]
+        self.possible_agents = list(agents.keys())
 
         assert (
             len(self.possible_agents) == len(set(self.possible_agents))
