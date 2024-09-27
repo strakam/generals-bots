@@ -10,19 +10,19 @@ from collections import OrderedDict
 
 
 class Gym_Generals(gymnasium.Env):
-    def __init__(self, mapper=None, agents=None, reward_fn=None, render_mode=None):
+    def __init__(self, mapper, agent, npc, reward_fn=None, render_mode=None):
         self.render_mode = render_mode
         self.reward_fn = self.default_rewards if reward_fn is None else reward_fn
         self.mapper = mapper
 
-        self.agent_name = agents[0].name
-        self.npc = agents[1]
+        self.agent_name = agent.name
+        self.npc = npc
 
-        self.agent_data = {agent.name: {"color": agent.color} for agent in agents}
+        self.agent_data = {agent.name: {"color": agent.color} for agent in [agent, npc]}
 
         # check whether agents have unique names
         assert (
-            agents[0].name != agents[1].name
+            agent.name != npc.name
         ), "Agent names must be unique - you can pass custom names to agent constructors."
 
         map = self.mapper.get_map(numpify=True)
@@ -38,11 +38,10 @@ class Gym_Generals(gymnasium.Env):
     def action_space(self):
         return self.game.action_space
 
-    def render(self, tick_rate=None):
+    def render(self, fps=6):
         if self.render_mode == "human":
             self.renderer.render()
-            if tick_rate is not None:
-                self.renderer.clock.tick(tick_rate)
+            self.renderer.clock.tick(fps)
 
     def reset(self, map: np.ndarray = None, seed=None, options={}):
         super().reset(seed=seed)

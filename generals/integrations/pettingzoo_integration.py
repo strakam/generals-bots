@@ -5,17 +5,19 @@ from ..game import Game
 from ..replay import Replay
 from ..rendering import Renderer
 from collections import OrderedDict
+from typing import Dict
+from ..agent import Agent
 
 
 class PZ_Generals(pettingzoo.ParallelEnv):
-    def __init__(self, mapper=None, agents=None, reward_fn=None, render_mode=None):
+    def __init__(self, mapper, agents: Dict[str, Agent], reward_fn=None, render_mode=None):
         self.render_mode = render_mode
         self.mapper = mapper
 
         self.agent_data = {
-            agent.name: {"color": agent.color} for agent in agents
+            agents[agent].name: {"color": agents[agent].color} for agent in agents.keys()
         }
-        self.possible_agents = [agent.name for agent in agents]
+        self.possible_agents = [agent_name for agent_name in agents.keys()]
 
         assert (
             len(self.possible_agents) == len(set(self.possible_agents))
@@ -33,11 +35,10 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         assert agent_name in self.agents, f"{agent_name} is not a valid agent"
         return self.game.action_space
 
-    def render(self, tick_rate=None):
+    def render(self, fps=6):
         if self.render_mode == "human":
             self.renderer.render()
-            if tick_rate is not None:
-                self.renderer.clock.tick(tick_rate)
+            self.renderer.clock.tick(fps)
 
     def reset(self, seed=None, options={}):
         self.agents = deepcopy(self.possible_agents)
