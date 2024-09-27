@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.2](https://github.com/strakam/Generals-RL/compare/v0.3.1...v0.3.2) (2024-09-27)
+
+
+### 🐛 Bug Fixes
+
+* **mapper:** properly regenerate invalid map ([63ff837](https://github.com/strakam/Generals-RL/commit/63ff837c86d57f6b92d7445b5f1aaff0aed43673))
+
+
+### 🛠️ Refactor
+
+* Change agent passing, minimize examples ([11a38b7](https://github.com/strakam/Generals-RL/commit/11a38b711816e33300f25c4f024653f813b1be49))
+* **render:** simplify code ([58e8b01](https://github.com/strakam/Generals-RL/commit/58e8b0142c2e4e775488db00e2e8205d618b9952))
+
 ## [0.3.1](https://github.com/strakam/Generals-RL/compare/v0.3.0...v0.3.1) (2024-09-26)
 
 
