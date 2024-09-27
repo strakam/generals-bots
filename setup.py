@@ -6,7 +6,7 @@ def load_requirements():
 
 setup(
     name='generals',
-    version='0.3.1',
+    version='0.3.2',
     description='Generals.io environment compliant with PettingZoo API standard powered by Numpy.',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
