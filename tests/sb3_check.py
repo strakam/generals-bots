@@ -6,6 +6,6 @@ agent = RandomAgent(name="A")
 npc = RandomAgent(name="B")
 
 
-env = gym_generals(agents=[agent, npc])
+env = gym_generals(agent=agent, npc=npc)
 env_checker.check_env(env)
 print('SB3 check passed!')

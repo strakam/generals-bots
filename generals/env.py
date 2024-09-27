@@ -21,7 +21,8 @@ def pz_generals(
 
 def gym_generals(
     mapper: Mapper = Mapper(),
-    agents: list = None,
+    agent: object = None,
+    npc: object = None,
     reward_fn=None,
     render_mode=None,
 ):
@@ -29,6 +30,10 @@ def gym_generals(
     Here we apply wrappers to the environment.
     """
     env = Gym_Generals(
-        mapper=mapper, agents=agents, reward_fn=reward_fn, render_mode=render_mode
+        mapper=mapper,
+        agent=agent,
+        npc=npc,
+        reward_fn=reward_fn,
+        render_mode=render_mode,
     )
     return env

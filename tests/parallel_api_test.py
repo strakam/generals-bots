@@ -142,7 +142,12 @@ def parallel_api_test(par_env: ParallelEnv, num_cycles=1000):
 
 if __name__ == "__main__":
     mapper = Mapper()
-    agents = [RandomAgent(name="A"), RandomAgent(name="B")]
+    agent1 = RandomAgent(name="A")
+    agent2 = RandomAgent(name="B")
+    agents = {
+        agent1.name: agent1,
+        agent2.name: agent2,
+    }
     env = pz_generals(mapper, agents)
     # test the environment with parallel_api_test
     import time

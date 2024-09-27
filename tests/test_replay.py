@@ -7,7 +7,12 @@ from generals.env import pz_generals
 def test_replays():
     # run N games, store their replay, then load the replay and compare game states
     for _ in range(3):
-        agents = [RandomAgent(name="A"), RandomAgent(name="B")]
+        agent_1 = RandomAgent(name="A")
+        agent_2 = RandomAgent(name="B")
+        agents = {
+            agent_1.name: agent_1,
+            agent_2.name: agent_2,
+        }
         mapper = Mapper(
             grid_size=3,
             mountain_density=0.2,
@@ -15,10 +20,9 @@ def test_replays():
             general_positions=[(0, 0), (2, 2)],
         )
 
-        env = pz_generals(mapper, agents, render_mode="none")
+        env = pz_generals(mapper, agents, render_mode=None)
         observations, info = env.reset(options={"replay_file": "replay_test"})
 
-        agents = {agent.name: agent for agent in agents}
         while not env.game.is_done():
             actions = {}
             for agent in env.agents:
