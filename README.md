@@ -95,10 +95,8 @@ while not done:
     env.render(fps=6)
 ```
 
-## 🎨 Customization
-The environment can be customized via `GridConfig` class or by creating a custom map.
+## 🎨 Custom Maps
 
-### 🗺️ Custom Maps
 Maps are handled via `Mapper` class. You can instantiate the class with desired map properties and it will generate
 maps with these properties for each run.
 ```python
@@ -141,7 +139,7 @@ Maps are encoded using these symbols:
 - `A,B` are positions of generals
 - digits `0-9` represent cost of cities calculated as `(40 + digit)`
 
-## 🔬 Replay Analysis
+## 🔬 Replays
 We can store replays and then analyze them. `Replay` class handles replay related functionality.
 ### Storing a replay
 ```python
