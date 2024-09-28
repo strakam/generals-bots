@@ -106,7 +106,7 @@ from generals.env import pz_generals
 from generals.map import Mapper
 
 mapper = Mapper(
-    grid_size=16,                          # Edge length of the square grid
+    grid_dims=(10, 10),                    # Dimensions of the grid (height, width)
     mountain_density=0.2,                  # Probability of a mountain in a cell
     city_density=0.05,                     # Probability of a city in a cell
     general_positions=[(0,3),(5,7)],       # Positions of generals (i, j)
