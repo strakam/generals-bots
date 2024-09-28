@@ -124,7 +124,4 @@ def test_stringify_map():
 4.22.
 .1#B#
     """
-    print(map_str)
-    print()
-    print(reference_map.strip())
     assert map_str == reference_map.strip()

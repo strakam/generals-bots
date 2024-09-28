@@ -49,7 +49,6 @@ class Mapper:
         general_positions: List[Tuple[int, int]] = None,
         seed: int = None,
     ) -> np.ndarray:
-        grid_height, grid_width = grid_dims
 
         # Probabilities of each cell type
         p_neutral = 1 - mountain_density - city_density
@@ -65,16 +64,17 @@ class Mapper:
 
         # Place generals on random squares - generals_positions is a list of two tuples
         if general_positions is None:
-            general_positions = [
-                (rng.integers(0, grid_width), rng.integers(0, grid_height)),
-                (rng.integers(0, grid_width), rng.integers(0, grid_height)),
-            ]
+            general_positions = []
+            while len(general_positions) < 2:
+                position = tuple(rng.integers(0, grid_dims))
+                if position not in general_positions:
+                    general_positions.append(position)
 
         for i, idx in enumerate(general_positions):
             map[idx[0], idx[1]] = chr(ord("A") + i)
 
-        # Convert to string
-        map = "\n".join(["".join(row) for row in map])
+        map = Mapper.stringify_map(map)
+
         # Iterate until map is valid
         if Mapper.validate_map(map):
             return map

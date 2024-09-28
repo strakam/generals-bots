@@ -56,9 +56,8 @@ class PZ_Generals(pettingzoo.ParallelEnv):
                 agent_data=self.agent_data,
             )
             self.replay.add_state(deepcopy(self.game.channels))
-        else:
-            if hasattr(self, "replay"):
-                del self.replay
+        elif hasattr(self, "replay"):
+            del self.replay
 
         observations = OrderedDict(
             {agent: self.game._agent_observation(agent) for agent in self.agents}

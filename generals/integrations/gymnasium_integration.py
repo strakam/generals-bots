@@ -56,8 +56,7 @@ class Gym_Generals(gymnasium.Env):
         self.action_space = self.game.action_space
 
         if self.render_mode == "human":
-            from_replay = "from_replay" in options and options["from_replay"] or False
-            self.renderer = Renderer(self.game, self.agent_data, from_replay)
+            self.renderer = Renderer(self.game, self.agent_data)
 
         if "replay_file" in options:
             self.replay = Replay(
@@ -66,6 +65,8 @@ class Gym_Generals(gymnasium.Env):
                 agent_data=self.agent_colors,
             )
             self.replay.add_state(deepcopy(self.game.channels))
+        elif hasattr(self, "replay"):
+            del self.replay
 
         observation = OrderedDict(self.game._agent_observation(self.agent_name))
         info = {}
