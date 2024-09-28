@@ -1,6 +1,6 @@
 <div align="center">
 
-![Gameplay GIF](https://raw.githubusercontent.com/strakam/Generals-RL/master/generals/images/gameplay.gif)
+![Gameplay GIF](https://raw.githubusercontent.com/strakam/Generals-RL/master/generals/assets/images/gameplay.gif)
 
 ## **Generals.io RL**
 
