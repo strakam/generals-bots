@@ -50,7 +50,7 @@ PLAYER_COLORS: List[Tuple[int, int, int]] = [PLAYER_1_COLOR, PLAYER_2_COLOR]
 FONT_TYPE = "Quicksand-Medium.ttf"  # Font options are Quicksand-SemiBold.ttf, Quicksand-Medium.ttf, Quicksand-Light.ttf
 FONT_SIZE = 18
 try:
-    file_ref = files("generals.fonts") / FONT_TYPE
+    file_ref = files("generals.assets.fonts") / FONT_TYPE
     FONT_PATH = str(file_ref)
 except FileNotFoundError:
     raise FileNotFoundError(f"Font file {FONT_TYPE} not found in the fonts directory")
@@ -59,14 +59,14 @@ except FileNotFoundError:
 # Icons #
 #########
 try:
-    GENERAL_PATH = str(files("generals.images") / "crownie.png")
+    GENERAL_PATH = str(files("generals.assets.images") / "crownie.png")
 except FileNotFoundError:
     raise FileNotFoundError("Image not found")
 try:
-    CITY_PATH = str(files("generals.images") / "citie.png")
+    CITY_PATH = str(files("generals.assets.images") / "citie.png")
 except FileNotFoundError:
     raise FileNotFoundError("Image not found")
 try:
-    MOUNTAIN_PATH = str(files("generals.images") / "mountainie.png")
+    MOUNTAIN_PATH = str(files("generals.assets.images") / "mountainie.png")
 except FileNotFoundError:
     raise FileNotFoundError("Image not found")

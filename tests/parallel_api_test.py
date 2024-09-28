@@ -1,6 +1,6 @@
 from __future__ import annotations
 from generals.env import pz_generals
-from generals.agent import RandomAgent
+from generals.agents import RandomAgent
 from generals.map import Mapper
 import warnings
 

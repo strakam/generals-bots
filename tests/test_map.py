@@ -69,19 +69,21 @@ A#2#2
 
 def test_generate_map():
     mapper = Mapper()
-    grid_size, mountain_density, city_density = 16, 0.1, 0.1
+    grid_dims = (16, 16)
+    mountain_density, city_density = 0.1, 0.1
     for _ in range(5):
-        map_str = mapper.generate_map(grid_size, mountain_density, city_density)
+        map_str = mapper.generate_map(grid_dims, mountain_density, city_density)
         map = mapper.numpify_map(map_str)
         assert mapper.validate_map(map_str)  # map has to be valid
-        assert map.shape == (grid_size, grid_size)
+        assert map.shape == grid_dims
 
-    grid_size, mountain_density, town_density = 10, 0.2, 0.2
+    grid_dims = (10, 10)
+    mountain_density, town_density = 0.2, 0.2
     for _ in range(5):
-        map_str = mapper.generate_map(grid_size, mountain_density, town_density)
+        map_str = mapper.generate_map(grid_dims, mountain_density, town_density)
         assert mapper.validate_map(map_str)  # map has to be valid
         map = mapper.numpify_map(map_str)
-        assert map.shape == (grid_size, grid_size)
+        assert map.shape == grid_dims
 
 def test_numpify_map():
     mapper = Mapper()

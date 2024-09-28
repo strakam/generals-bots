@@ -2,11 +2,11 @@ import functools
 import pettingzoo
 from copy import deepcopy
 from ..game import Game
+from ..agents import Agent
 from ..replay import Replay
 from ..rendering import Renderer
 from collections import OrderedDict
 from typing import Dict
-from ..agent import Agent
 
 
 class PZ_Generals(pettingzoo.ParallelEnv):

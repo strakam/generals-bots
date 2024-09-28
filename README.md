@@ -48,7 +48,7 @@ pip install -e .
 ## Usage Example (🦁 PettingZoo)
 ```python
 from generals.env import pz_generals
-from generals.agent import ExpanderAgent, RandomAgent
+from generals.agents import ExpanderAgent, RandomAgent
 
 # Initialize agents
 random = RandomAgent()
@@ -76,7 +76,7 @@ while not env.game.is_done():
 ## Usage example (🤸 Gymnasium)
 ```python
 from generals.env import gym_generals
-from generals.agent import RandomAgent, ExpanderAgent
+from generals.agents import RandomAgent, ExpanderAgent
 
 # Initialize agents
 agent = RandomAgent()

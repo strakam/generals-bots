@@ -10,7 +10,7 @@ def get_game(map=None):
         map = Mapper.numpify_map(map)
     else:
         mapper = Mapper(
-            grid_size=4,
+            grid_dims=(4, 4),
             mountain_density=0.1,
             city_density=0.1,
             general_positions=[[3, 3], [1, 3]]
@@ -24,7 +24,6 @@ def test_grid_creation():
     """
     for _ in range(10):
         game = get_game()
-        assert game.grid_size == 4
         assert game.map.shape == (4, 4)
 
         # mountain and city should be disjoint

@@ -6,20 +6,21 @@ from generals.config import PASSABLE, MOUNTAIN
 class Mapper:
     def __init__(
         self,
-        grid_size: int = 10,
+        grid_dims: Tuple[int, int] = (10, 10),
         mountain_density: float = 0.2,
         city_density: float = 0.05,
         general_positions: List[Tuple[int, int]] = None,
         seed: int = None,
     ):
-        self.grid_size = grid_size
+        self.grid_height = grid_dims[0]
+        self.grid_width = grid_dims[1]
         self.mountain_density = mountain_density
         self.city_density = city_density
         self.general_positions = general_positions
         self.seed = seed
 
         self.map = self.generate_map(
-            grid_size=grid_size,
+            grid_dims=grid_dims,
             mountain_density=mountain_density,
             city_density=city_density,
             general_positions=general_positions,
@@ -33,7 +34,7 @@ class Mapper:
 
     def reset(self):
         self.map = self.generate_map(
-            grid_size=self.grid_size,
+            grid_dims=(self.grid_height, self.grid_width),
             mountain_density=self.mountain_density,
             city_density=self.city_density,
             general_positions=self.general_positions,
@@ -42,13 +43,13 @@ class Mapper:
 
     @staticmethod
     def generate_map(
-        grid_size: int = 10,
+        grid_dims: Tuple[int, int] = (10, 10),
         mountain_density: float = 0.2,
         city_density: float = 0.05,
         general_positions: List[Tuple[int, int]] = None,
         seed: int = None,
     ) -> np.ndarray:
-        spatial_dim = (grid_size, grid_size)
+        grid_height, grid_width = grid_dims
 
         # Probabilities of each cell type
         p_neutral = 1 - mountain_density - city_density
@@ -58,13 +59,16 @@ class Mapper:
         rng = np.random.default_rng(seed)
         map = rng.choice(
             [PASSABLE, MOUNTAIN, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-            size=spatial_dim,
+            size=grid_dims,
             p=probs,
         )
 
-        # Place generals on random squares
+        # Place generals on random squares - generals_positions is a list of two tuples
         if general_positions is None:
-            general_positions = np.random.choice(grid_size, size=(2, 2), replace=False)
+            general_positions = [
+                (rng.integers(0, grid_width), rng.integers(0, grid_height)),
+                (rng.integers(0, grid_width), rng.integers(0, grid_height)),
+            ]
 
         for i, idx in enumerate(general_positions):
             map[idx[0], idx[1]] = chr(ord("A") + i)
@@ -76,7 +80,7 @@ class Mapper:
             return map
         else:
             return Mapper.generate_map(
-                grid_size=grid_size,
+                grid_dims=grid_dims,
                 mountain_density=mountain_density,
                 city_density=city_density,
                 general_positions=general_positions,
