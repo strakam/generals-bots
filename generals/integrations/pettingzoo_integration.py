@@ -47,8 +47,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         self.game = Game(map, self.possible_agents)
 
         if self.render_mode == "human":
-            from_replay = "from_replay" in options and options["from_replay"] or False
-            self.renderer = Renderer(self.game, self.agent_data, from_replay)
+            self.renderer = Renderer(self.game, self.agent_data)
 
         if "replay_file" in options:
             self.replay = Replay(
@@ -57,6 +56,9 @@ class PZ_Generals(pettingzoo.ParallelEnv):
                 agent_data=self.agent_data,
             )
             self.replay.add_state(deepcopy(self.game.channels))
+        else:
+            if hasattr(self, "replay"):
+                del self.replay
 
         observations = OrderedDict(
             {agent: self.game._agent_observation(agent) for agent in self.agents}
