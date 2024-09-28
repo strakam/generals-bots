@@ -1,5 +1,5 @@
 from generals.env import pz_generals
-from generals.agent import ExpanderAgent, RandomAgent
+from generals.agents import ExpanderAgent, RandomAgent
 
 # Initialize agents
 random = RandomAgent()

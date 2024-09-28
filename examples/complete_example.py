@@ -1,5 +1,5 @@
 from generals.env import pz_generals
-from generals.agent import RandomAgent, ExpanderAgent
+from generals.agents import RandomAgent, ExpanderAgent
 from generals.map import Mapper
 
 # Initialize agents - their names are then called for actions

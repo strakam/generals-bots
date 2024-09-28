@@ -1,6 +1,6 @@
 import os
 from generals.replay import Replay
-from generals.agent import RandomAgent
+from generals.agents import RandomAgent
 from generals.map import Mapper
 from generals.env import pz_generals
 
