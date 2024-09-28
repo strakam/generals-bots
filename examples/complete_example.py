@@ -13,7 +13,7 @@ agents = {
 
 # Mapper will be default generate 4x4 maps
 mapper = Mapper(
-    grid_size=4,
+    grid_dims=(4, 8), # width x height
     mountain_density=0.2,
     city_density=0.05,
     general_positions=[(0, 0), (3, 3)],

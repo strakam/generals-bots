@@ -22,15 +22,16 @@ class Renderer:
         self.game = game
         self.from_replay = from_replay
         self.agent_data = agent_data
-        self.grid_size = game.grid_size
-        self.grid_width = c.SQUARE_SIZE * self.grid_size
-        self.grid_height = c.SQUARE_SIZE * self.grid_size
+        self.grid_height = self.game.grid_dims[0]
+        self.grid_width = self.game.grid_dims[1]
+        self.display_grid_width = c.SQUARE_SIZE * self.grid_width
+        self.display_grid_height = c.SQUARE_SIZE * self.grid_height
         self.right_panel_width = 4 * c.GUI_CELL_WIDTH
         ############
         # Surfaces #
         ############
-        window_width = self.grid_width + self.right_panel_width
-        window_height = self.grid_height + 1
+        window_width = self.display_grid_width + self.right_panel_width
+        window_height = self.display_grid_height + 1
 
         # Main window
         self.screen = pygame.display.set_mode(
@@ -50,13 +51,13 @@ class Renderer:
             "speed": pygame.Surface((self.right_panel_width / 2, c.GUI_ROW_HEIGHT)),
         }
         # Game area and tiles
-        self.game_area = pygame.Surface((self.grid_width, self.grid_height))
+        self.game_area = pygame.Surface((self.display_grid_width, self.display_grid_height))
         self.tiles = [
             [
                 pygame.Surface((c.SQUARE_SIZE, c.SQUARE_SIZE))
-                for _ in range(self.grid_size)
+                for _ in range(self.grid_width)
             ]
-            for _ in range(self.grid_size)
+            for _ in range(self.grid_height)
         ]
 
         self.agent_fov = {name: True for name in self.agent_data.keys()}
@@ -115,7 +116,7 @@ class Renderer:
                 x, y = pygame.mouse.get_pos()
                 for i, agent in enumerate(agents):
                     # if clicked agents row in the right panel
-                    if x >= self.grid_width and y >= (i + 1) * c.GUI_ROW_HEIGHT and y < (i + 2) * c.GUI_ROW_HEIGHT:
+                    if x >= self.display_grid_width and y >= (i + 1) * c.GUI_ROW_HEIGHT and y < (i + 2) * c.GUI_ROW_HEIGHT:
                         self.agent_fov[agent] = not self.agent_fov[agent]
                         break
         return control_events
@@ -200,7 +201,7 @@ class Renderer:
                 self.info_panel[key], (i*2*c.GUI_CELL_WIDTH, 3 * c.GUI_ROW_HEIGHT)
             )
         # Render right_panel on the screen
-        self.screen.blit(self.right_panel, (self.grid_width, 0))
+        self.screen.blit(self.right_panel, (self.display_grid_width, 0))
 
     def render_grid(self):
         """
@@ -208,8 +209,8 @@ class Renderer:
         """
         agents = self.game.agents
         # Maps of all owned and visible cells
-        owned_map = np.zeros((self.grid_size, self.grid_size), dtype=np.float32)
-        visible_map = np.zeros((self.grid_size, self.grid_size), dtype=np.float32)
+        owned_map = np.zeros((self.grid_height, self.grid_width), dtype=np.bool)
+        visible_map = np.zeros((self.grid_height, self.grid_width), dtype=np.bool)
         for agent in agents:
             ownership = self.game.channels["ownership_" + agent]
             owned_map = np.logical_or(owned_map, ownership)
@@ -271,7 +272,7 @@ class Renderer:
             )
 
         # Blit tiles to the self.game_area
-        for i, j in np.ndindex(self.grid_size, self.grid_size):
+        for i, j in np.ndindex(self.grid_height, self.grid_width):
             self.game_area.blit(
                 self.tiles[i][j], (j * c.SQUARE_SIZE, i * c.SQUARE_SIZE)
             )

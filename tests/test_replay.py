@@ -14,7 +14,7 @@ def test_replays():
             agent_2.name: agent_2,
         }
         mapper = Mapper(
-            grid_size=3,
+            grid_dims=(3, 3),
             mountain_density=0.2,
             city_density=0.05,
             general_positions=[(0, 0), (2, 2)],

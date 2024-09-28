@@ -12,9 +12,8 @@ class Game:
         self.agents = agents
         self.time = 0
 
-        spatial_dim = (map.shape[0], map.shape[1])
+        self.grid_dims = (map.shape[0], map.shape[1])
         self.map = map
-        self.grid_size = spatial_dim[0]  # Grid shape should be square
 
         self.general_positions = {
             agent: np.argwhere(map == chr(ord("A") + i))[0]
@@ -57,11 +56,11 @@ class Game:
         ##########
         # Spaces #
         ##########
-        grid_multi_binary = gym.spaces.MultiBinary(spatial_dim)
+        grid_multi_binary = gym.spaces.MultiBinary(self.grid_dims)
         self.observation_space = gym.spaces.Dict(
             {
                 "army": gym.spaces.Box(
-                    low=0, high=1e5, shape=spatial_dim, dtype=np.float32
+                    low=0, high=1e5, shape=self.grid_dims, dtype=np.float32
                 ),
                 "general": grid_multi_binary,
                 "city": grid_multi_binary,
@@ -71,7 +70,7 @@ class Game:
                 "visibile_cells": grid_multi_binary,
                 "structure": grid_multi_binary,
                 "action_mask": gym.spaces.MultiBinary(
-                    (spatial_dim[0], spatial_dim[1], 4)
+                    (self.grid_dims[0], self.grid_dims[1], 4)
                 ),
                 "owned_land_count": gym.spaces.Discrete(np.iinfo(np.int64).max),
                 "owned_army_count": gym.spaces.Discrete(np.iinfo(np.int64).max),
@@ -83,7 +82,7 @@ class Game:
         )
 
         self.action_space = gym.spaces.MultiDiscrete(
-            [2, self.grid_size, self.grid_size, 4, 2]
+            [2, self.grid_dims[0], self.grid_dims[1], 4, 2]
         )
 
     def action_mask(self, agent: str) -> np.ndarray:
@@ -106,7 +105,9 @@ class Game:
         ownership_channel = self.channels[f"ownership_{agent}"]
         more_than_1_army = (self.channels["army"] > 1) * ownership_channel
         owned_cells_indices = self.channel_to_indices(more_than_1_army)
-        valid_action_mask = np.zeros((self.grid_size, self.grid_size, 4), dtype=bool)
+        valid_action_mask = np.zeros(
+            (self.grid_dims[0], self.grid_dims[1], 4), dtype=bool
+        )
 
         if self.is_done():
             return valid_action_mask
@@ -116,8 +117,11 @@ class Game:
 
             # check if destination is in grid bounds
             in_first_boundary = np.all(destinations >= 0, axis=1)
-            in_second_boundary = np.all(destinations < self.grid_size, axis=1)
-            destinations = destinations[in_first_boundary & in_second_boundary]
+            in_height_boundary = destinations[:, 0] < self.grid_dims[0]
+            in_width_boundary = destinations[:, 1] < self.grid_dims[1]
+            destinations = destinations[
+                in_first_boundary & in_height_boundary & in_width_boundary
+            ]
 
             # check if destination is road
             passable_cell_indices = (
@@ -170,7 +174,8 @@ class Game:
             if self.action_mask(agent)[i, j, direction] == 0:
                 warnings.warn(
                     f"The submitted move byt agent {agent} does not take effect.\
-                    Probably because you submitted an invalid move.", UserWarning
+                    Probably because you submitted an invalid move.",
+                    UserWarning,
                 )
                 continue
             if split_army == 1:  # Agent wants to split the army
