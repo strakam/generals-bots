@@ -3,8 +3,8 @@ from generals.agents import RandomAgent, ExpanderAgent
 from generals.map import Mapper
 
 # Initialize agents - their names are then called for actions
-randomer = RandomAgent()
-expander = ExpanderAgent()
+randomer = RandomAgent("Random1", color=(255, 125, 0))
+expander = ExpanderAgent("BigBoy")
 
 agents = {
     randomer.name: randomer,

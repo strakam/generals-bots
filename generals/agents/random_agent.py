@@ -3,7 +3,7 @@ import numpy as np
 
 class RandomAgent(Agent):
     def __init__(
-        self, idle_prob=0.05, split_prob=0.25, name="Random", color=(255, 0, 0)
+        self, name="Random", color=(255, 0, 0), split_prob=0.25, idle_prob=0.05
     ):
         self.name = name
         self.color = color
