@@ -44,7 +44,7 @@ cd Generals-RL
 pip install -e .
 ```
 
-<h2 id="custom-usage-example">Usage example (🤸 Gymnasium)</h2>
+## Usage example (🤸 Gymnasium)
 
 ```python
 from generals.env import gym_generals
@@ -73,15 +73,15 @@ example [here](./examples/complete_example.py).
 Creating your first agent is very simple. 
 - Start by subclassing an `Agent` class just like [`RandomAgent`](./generals/agents/random_agent.py) or [`ExpanderAgent`](./generals/agents/expander_agent.py).
 - Every agent must have a name as it is his ID by which he is called for actions.
-- Every agent must implement `play(observation)` function that takes in `observation` and returns an action as described above.
-- You can start by copying the [Usage Example](#custom-usage-example) and replacing `agent` with your implementation.
+- Every agent must implement `play(observation)` function that takes in `observation` and returns an [action](#-action).
+- You can start by copying the [Usage Example](#usage-example--gymnasium) and replacing `agent` with your implementation.
 - When creating an environment, you can choose out of two `render_modes`:
      - `None` that omits rendering and is suitable for training,
      - `"human"` where you can see the game roll out.
 - Also check `Makefile` that runs examples so you can get a feel for the repo 🤗.
 
 ## 🎨 Custom maps
-Maps are handled via `Mapper` class. You can instantiate the class with desired map properties and it will generate
+Maps are handled via `Mapper` class. You can instantiate the class with desired map properties, and it will generate
 maps with these properties for each run.
 ```python
 from generals.env import pz_generals
@@ -121,7 +121,7 @@ Maps are encoded using these symbols:
 - `.` for cells where you can move your army
 - `#` for mountains (terrain that can not be passed)
 - `A,B` are positions of generals
-- digits `0-9` represent cost of cities calculated as `(40 + digit)`
+- digits `0-9` represent cities with the cost calculated as `(40 + digit)`
 
 ## 🔬 Replays
 We can store replays and then analyze them. `Replay` class handles replay related functionality.
