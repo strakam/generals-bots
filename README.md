@@ -1,6 +1,6 @@
 <div align="center">
 
-![Gameplay GIF](https://raw.githubusercontent.com/strakam/Generals-RL/master/generals/assets/gifs/wide_gameplay.gif)
+![Gameplay GIF](https://raw.githubusercontent.com/strakam/Generals-RL/master/generals/assets/gifs/wider_gameplay.gif)
 
 ## **Generals.io RL**
 
@@ -145,7 +145,7 @@ replay.play()
 ```
 ### 🕹️ Replay controls
 - `q` — quit/close the replay
-- `r` - restart replay from the beginning
+- `r` — restart replay from the beginning
 - `←/→` — increase/decrease the replay speed
 - `h/l` — move backward/forward by one frame in the replay
 - `spacebar` — toggle play/pause
