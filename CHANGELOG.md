@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.0](https://github.com/strakam/Generals-RL/compare/v0.3.2...v0.4.0) (2024-09-29)
+
+
+### 🚀 Features
+
+* Support rectangular grid shapes ([bb3c5e1](https://github.com/strakam/Generals-RL/commit/bb3c5e1ef7cd53c8d92c3a901010ef6f263e73d8))
+
+
+### 🐛 Bug Fixes
+
+* Delete replay class on reset ([3ee9a68](https://github.com/strakam/Generals-RL/commit/3ee9a688a73eacdd5a780baeb4186edeaf4ddf06))
+* Fix possibility that two generals are generated in the same location ([d63978b](https://github.com/strakam/Generals-RL/commit/d63978b2b09acda1b22d86d80386117e508e7ff2))
+
 ## [0.3.2](https://github.com/strakam/Generals-RL/compare/v0.3.1...v0.3.2) (2024-09-27)
 
 
