@@ -70,8 +70,8 @@ You can also check an example for 🦁[PettingZoo](./examples/pettingzoo_example
 example [here](./examples/complete_example.py).
 
 ## 🚀 Getting Started
-Creating your first agent is very simple. Start by subclassing an `Agent` class just like 
-[`RandomAgent`](./generals/agents/random_agent.py) or [`ExpanderAgent`](./generals/agents/expander_agent.py).
+Creating your first agent is very simple. 
+- Start by subclassing an `Agent` class just like [`RandomAgent`](./generals/agents/random_agent.py) or [`ExpanderAgent`](./generals/agents/expander_agent.py).
 - Every agent must have a name as it is his ID by which he is called for actions.
 - Every agent must implement `play(observation)` function that takes in `observation` and returns an action as described above.
 - You can start by copying the [Usage Example](#custom-usage-example) and replacing `agent` with your implementation.
@@ -148,13 +148,13 @@ replay.play()
 - `←/→` — increase/decrease the replay speed
 - `h/l` — move backward/forward by one frame in the replay
 - `spacebar` — toggle play/pause
-- `mouse` click on the player's row — toggle the FoV (Field Of View) of the given player
+- `mouse` click on the player's row — toggle the FoV (Field of View) of the given player
 
 ## 🌍 Environment
 ### 🔭 Observation
 An observation for one agent is a dictionary of 13 key/value pairs.
 Each key/value pair contains information about part of the game that is accessible to the agent.
-Values are `numpy` matrices with shape `(N, M)`, where `N` is height of the map and `M` is the width.
+Values are `numpy` matrices with shape `(N,M)`, where `N` is height of the map and `M` is the width.
 
 | Key                  | Shape/Type| Description                                                                                                                                    |
 | ---                  | ---       | ---                                                                                                                                            |
