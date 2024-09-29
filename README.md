@@ -44,7 +44,8 @@ cd Generals-RL
 pip install -e .
 ```
 
-## Usage example (🤸 Gymnasium)
+<h2 id="custom-usage-example">Usage example (🤸 Gymnasium)</h2>
+
 ```python
 from generals.env import gym_generals
 from generals.agents import RandomAgent, ExpanderAgent
@@ -65,7 +66,7 @@ while not done:
     done = terminated or truncated
     env.render(fps=6)
 ```
-You can also check an example for [🦁 PettingZoo](./examples/pettingzoo_example) or more extensive
+You can also check an example for 🦁[PettingZoo](./examples/pettingzoo_example.py) or more extensive
 example [here](./examples/complete_example.py).
 
 ## 🚀 Getting Started
@@ -73,7 +74,7 @@ Creating your first agent is very simple. Start by subclassing an `Agent` class 
 [`RandomAgent`](./generals/agents/random_agent.py) or [`ExpanderAgent`](./generals/agents/expander_agent.py).
 - Every agent must have a name as it is his ID by which he is called for actions.
 - Every agent must implement `play(observation)` function that takes in `observation` and returns an action as described above.
-- You can start by copying the [usage example](TODO) and replacing `agent` with your implementation.
+- You can start by copying the [Usage Example](#custom-usage-example) and replacing `agent` with your implementation.
 - When creating an environment, you can choose out of two `render_modes`:
      - `None` that omits rendering and is suitable for training,
      - `"human"` where you can see the game roll out.
@@ -160,15 +161,15 @@ Values are `numpy` matrices with shape `(N, M)`, where `N` is height of the map 
 
 | Key                  | Shape/Type| Description                                                                                                                                    |
 | ---                  | ---       | ---                                                                                                                                            |
-| `army`               | `(N,M)` | Number of units in a cell regardless of owner                                                                                                  |
-| `general`            | `(N,M)` | Mask of cells that are visible to the agent                                                                                                    |
-| `city`               | `(N,M)` | Mask saying whether a city is in a cell                                                                                                        |
-| `visibile_cells`     | `(N,M)` | Mask indicating cells that are visible to the agent                                                                                            |
-| `owned_cells`        | `(N,M)` | Mask indicating cells controlled by the agent                                                                                                  |
-| `opponent_cells`     | `(N,M)` | Mask indicating cells owned by the opponent                                                                                                    |
-| `neutral_cells`      | `(N,M)` | Mask indicating cells that are not owned by agents                                                                                             |
-| `structure`          | `(N,M)` | Mask indicating whether cells contain cities or mountains, even out of FoV                                                                     |
-| `action_mask`        | `(N,M)` | Mask where `[i,j,d]` indicates whether you can move from a cell `[i,j]` to direction `d` where directions are in order (UP, DOWN, LEFT, RIGHT) |
+| `army`               | `(N,M)`   | Number of units in a cell regardless of owner                                                                                                  |
+| `general`            | `(N,M)`   | Mask of cells that are visible to the agent                                                                                                    |
+| `city`               | `(N,M)`   | Mask saying whether a city is in a cell                                                                                                        |
+| `visibile_cells`     | `(N,M)`   | Mask indicating cells that are visible to the agent                                                                                            |
+| `owned_cells`        | `(N,M)`   | Mask indicating cells controlled by the agent                                                                                                  |
+| `opponent_cells`     | `(N,M)`   | Mask indicating cells owned by the opponent                                                                                                    |
+| `neutral_cells`      | `(N,M)`   | Mask indicating cells that are not owned by agents                                                                                             |
+| `structure`          | `(N,M)`   | Mask indicating whether cells contain cities or mountains, even out of FoV                                                                     |
+| `action_mask`        | `(N,M,4)` | Mask where `[i,j,d]` indicates whether you can move from a cell `[i,j]` to direction `d` where directions are in order (UP, DOWN, LEFT, RIGHT) |
 | `owned_land_count`   | `Int`     | Int representing number of cells an agent owns                                                                                                 |
 | `owned_army_count`   | `Int`     | Int representing total number of units of an agent over all cells                                                                              |
 | `opponent_land_count`| `Int`     | Int representing number of cells owned by the opponent                                                                                         |
