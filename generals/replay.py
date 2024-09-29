@@ -44,6 +44,8 @@ class Replay:
                 last_input_time = _t
             else:
                 control_events = {"time_change": 0}
+            if "restart" in control_events:
+                game_step = 0
             # If we control replay, change game state
             game_step = max(
                 0, min(len(self.game_states) - 1, game_step + control_events["time_change"])

@@ -105,7 +105,8 @@ class Renderer:
                 # Toggle play/pause
                 if event.key == pygame.K_SPACE:
                     self.paused = not self.paused
-
+                if event.key == pygame.K_r:
+                    control_events["restart"] = True
                 # Control replay frames
                 if event.key == pygame.K_h:
                     control_events["time_change"] = -1
