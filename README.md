@@ -10,7 +10,7 @@
 
 
 
-[Installation](#-installation) • [Getting Started](#-getting-started) • [Customization](#-customization) • [Environment](#-environment)
+[Installation](#-installation) • [Getting Started](#-getting-started) • [Customization](#-custom-maps) • [Environment](#-environment)
 </div>
 
 [Generals.io](https://generals.io/) is a real-time strategy game where players compete to conquer their opponents' generals on a 2D grid. While the goal is simple — capture the enemy general — the gameplay involves a lot of depth. Players need to employ strategic planning, deception, and manage both micro and macro mechanics throughout the game. The combination of these elements makes the game highly engaging and complex.
@@ -80,10 +80,7 @@ Creating your first agent is very simple. Start by subclassing an `Agent` class 
      - `"human"` where you can see the game roll out.
 - Also check `Makefile` that runs examples so you can get a feel for the repo 🤗.
 
-## 🎨 Customization
-The environment can be customized via `GridConfig` class or by creating a custom map.
-
-### 🗺️ Custom Maps
+## 🎨 Custom maps
 Maps are handled via `Mapper` class. You can instantiate the class with desired map properties and it will generate
 maps with these properties for each run.
 ```python
