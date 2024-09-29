@@ -100,10 +100,10 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         Give 0 if game still running, otherwise 1 for winner and -1 for loser.
         """
         rewards = {agent: 0 for agent in self.agents}
-        game_ended = any(observations[agent]["is_winner"] for agent in self.agents)
+        game_ended = any(observations[agent].is_winner for agent in self.agents)
         if game_ended:
             for agent in self.agents:
-                if observations[agent]["is_winner"]:
+                if observations[agent].is_winner:
                     rewards[agent] = 1
                 else:
                     rewards[agent] = -1

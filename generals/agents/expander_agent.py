@@ -14,14 +14,14 @@ class ExpanderAgent(Agent):
         Heuristically selects a valid (expanding) action.
         Prioritizes capturing opponent and then neutral cells.
         """
-        mask = observation["action_mask"]
+        mask = observation.action_mask
         valid_actions = np.argwhere(mask == 1)
         if len(valid_actions) == 0:  # No valid actions
             return np.array([1, 0, 0, 0, 0])  # pass the move
 
-        army = observation["army"]
-        opponent = observation["opponent_cells"]
-        neutral = observation["neutral_cells"]
+        army = observation.army
+        opponent = observation.opponent_cells
+        neutral = observation.neutral_cells
 
         # Find actions that capture opponent or neutral cells
         actions_capture_opponent = np.zeros(len(valid_actions))

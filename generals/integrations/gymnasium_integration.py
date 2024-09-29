@@ -70,9 +70,9 @@ class Gym_Generals(gymnasium.Env):
         elif hasattr(self, "replay"):
             del self.replay
 
-        observation = OrderedDict(self.game._agent_observation(self.agent_name))
+        observation = self.game._agent_observation(self.agent_name)
         info = {}
-        return observation, info
+        return OrderedDict(observation.as_dict()), info
 
     def step(self, action):
         # get action of NPC
@@ -94,7 +94,7 @@ class Gym_Generals(gymnasium.Env):
             if hasattr(self, "replay"):
                 self.replay.save()
 
-        return OrderedDict(observation), reward, terminated, truncated, info
+        return OrderedDict(observation.as_dict()), reward, terminated, truncated, info
 
     def default_rewards(self, observations):
         """
@@ -103,9 +103,9 @@ class Gym_Generals(gymnasium.Env):
         """
         reward = 0
         game_ended = any(
-            observations[agent]["is_winner"]
+            observations[agent].is_winner
             for agent in [self.agent_name, self.npc.name]
         )
         if game_ended:
-            reward = 1 if observations[self.agent_name]["is_winner"] else -1
+            reward = 1 if observations[self.agent_name].is_winner else -1
         return reward

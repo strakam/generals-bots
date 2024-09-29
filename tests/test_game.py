@@ -217,7 +217,7 @@ def test_observations():
         [0, 0, 0, 0],
         [0, 0, 0, 0],
     ], dtype=np.float32)
-    assert (red_observation['opponent_cells'] == reference_opponent_ownership).all()
+    assert (red_observation.opponent_cells == reference_opponent_ownership).all()
 
     reference_neutral_ownership = np.array([
         [0, 0, 0, 0],
@@ -225,7 +225,7 @@ def test_observations():
         [0, 0, 0, 0],
         [1, 0, 0, 0],
     ], dtype=np.float32)
-    assert (red_observation['neutral_cells'] == reference_neutral_ownership).all()
+    assert (red_observation.neutral_cells == reference_neutral_ownership).all()
 
     reference_ownership = np.array([
         [0, 0, 0, 0],
@@ -233,14 +233,14 @@ def test_observations():
         [1, 1, 1, 0],
         [0, 0, 1, 1],
     ], dtype=np.float32)
-    assert (red_observation['owned_cells'] == reference_ownership).all()
+    assert (red_observation.owned_cells == reference_ownership).all()
 
     # union of all ownerships should be zero
     assert (
         np.logical_and.reduce([
-            red_observation['opponent_cells'],
-            red_observation['neutral_cells'],
-            red_observation['owned_cells']
+            red_observation.opponent_cells,
+            red_observation.neutral_cells,
+            red_observation.owned_cells
         ])
     ).sum() == 0
 
@@ -251,7 +251,7 @@ def test_observations():
         [1, 9, 5, 0],
         [0, 0, 5, 8],
     ], dtype=np.float32)
-    assert (red_observation['army'] == reference_army).all()
+    assert (red_observation.army == reference_army).all()
 
     #############
     # TEST BLUE #
@@ -263,7 +263,7 @@ def test_observations():
         [1, 1, 1, 0],
         [0, 0, 0, 0],
     ], dtype=np.float32)
-    assert (blue_observation['opponent_cells'] == reference_opponent_ownership).all()
+    assert (blue_observation.opponent_cells == reference_opponent_ownership).all()
 
     reference_neutral_ownership = np.array([
         [0, 1, 1, 0],
@@ -271,7 +271,7 @@ def test_observations():
         [0, 0, 0, 0],
         [0, 0, 0, 0],
     ], dtype=np.float32)
-    assert (blue_observation['neutral_cells'] == reference_neutral_ownership).all()
+    assert (blue_observation.neutral_cells == reference_neutral_ownership).all()
 
     reference_ownership = np.array([
         [1, 0, 0, 0],
@@ -279,7 +279,7 @@ def test_observations():
         [0, 0, 0, 0],
         [0, 0, 0, 0],
     ], dtype=np.float32)
-    assert (blue_observation['owned_cells'] == reference_ownership).all()
+    assert (blue_observation.owned_cells == reference_ownership).all()
 
     reference_army = np.array([
         [3, 0, 0, 0],
@@ -287,14 +287,14 @@ def test_observations():
         [1, 9, 5, 0],
         [0, 0, 0, 0],
     ], dtype=np.float32)
-    assert (blue_observation['army'] == reference_army).all()
+    assert (blue_observation.army == reference_army).all()
 
     # union of all ownerships should be zero
     assert (
         np.logical_and.reduce([
-            blue_observation['opponent_cells'],
-            blue_observation['neutral_cells'],
-            blue_observation['owned_cells']
+            blue_observation.opponent_cells,
+            blue_observation.neutral_cells,
+            blue_observation.owned_cells
         ])
     ).sum() == 0
 

@@ -3,6 +3,7 @@ import numpy as np
 import gymnasium as gym
 from typing import Dict, List
 from generals.config import DIRECTIONS, PASSABLE, MOUNTAIN, INCREMENT_RATE
+from generals.observation import Observation
 
 from scipy.ndimage import maximum_filter
 
@@ -297,7 +298,7 @@ class Game:
             }
         return players_stats
 
-    def _agent_observation(self, agent: str) -> Dict[str, np.ndarray]:
+    def _agent_observation(self, agent: str) -> Observation:
         """
         Returns an observation for a given agent.
         Args:
@@ -306,23 +307,23 @@ class Game:
         info = self.get_infos()
         opponent = self.agents[0] if agent == self.agents[1] else self.agents[1]
         visibility = self.visibility_channel(self.channels[f"ownership_{agent}"])
-        observation = {
-            "army": self.channels["army"] * visibility,
-            "general": self.channels["general"] * visibility,
-            "city": self.channels["city"] * visibility,
-            "owned_cells": self.channels[f"ownership_{agent}"] * visibility,
-            "opponent_cells": self.channels[f"ownership_{opponent}"] * visibility,
-            "neutral_cells": self.channels["ownership_neutral"] * visibility,
-            "visibile_cells": visibility,
-            "structure": self.channels["mountain"] + self.channels["city"],
-            "action_mask": self.action_mask(agent),
-            "owned_land_count": info[agent]["land"],
-            "owned_army_count": info[agent]["army"],
-            "opponent_land_count": info[opponent]["land"],
-            "opponent_army_count": info[opponent]["army"],
-            "is_winner": np.array([info[agent]["is_winner"]], dtype=np.bool),
-            "timestep": self.time,
-        }
+        observation = Observation(
+            army=self.channels["army"] * visibility,
+            general=self.channels["general"] * visibility,
+            city=self.channels["city"] * visibility,
+            owned_cells=self.channels[f"ownership_{agent}"] * visibility,
+            opponent_cells=self.channels[f"ownership_{opponent}"] * visibility,
+            neutral_cells=self.channels["ownership_neutral"] * visibility,
+            visibile_cells=visibility,
+            structure=self.channels["mountain"] + self.channels["city"],
+            action_mask=self.action_mask(agent),
+            owned_land_count=info[agent]["land"],
+            owned_army_count=info[agent]["army"],
+            opponent_land_count=info[opponent]["land"],
+            opponent_army_count=info[opponent]["army"],
+            is_winner=np.array([info[agent]["is_winner"]], dtype=np.bool),
+            timestep=self.time,
+        )
         return observation
 
     def agent_won(self, agent: str) -> bool:

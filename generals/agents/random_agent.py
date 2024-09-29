@@ -15,7 +15,7 @@ class RandomAgent(Agent):
         """
         Randomly selects a valid action.
         """
-        mask = observation["action_mask"]
+        mask = observation.action_mask
         valid_actions = np.argwhere(mask == 1)
         if len(valid_actions) == 0:  # No valid actions
             return np.array([1, 0, 0, 0, 0])  # Pass the move
