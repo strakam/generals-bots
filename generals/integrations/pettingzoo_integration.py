@@ -10,12 +10,15 @@ from typing import Dict
 
 
 class PZ_Generals(pettingzoo.ParallelEnv):
-    def __init__(self, mapper, agents: Dict[str, Agent], reward_fn=None, render_mode=None):
+    def __init__(
+        self, mapper, agents: Dict[str, Agent], reward_fn=None, render_mode=None
+    ):
         self.render_mode = render_mode
         self.mapper = mapper
 
         self.agent_data = {
-            agents[agent].name: {"color": agents[agent].color} for agent in agents.keys()
+            agents[agent].name: {"color": agents[agent].color}
+            for agent in agents.keys()
         }
         self.possible_agents = list(agents.keys())
 
@@ -37,14 +40,18 @@ class PZ_Generals(pettingzoo.ParallelEnv):
 
     def render(self, fps=6):
         if self.render_mode == "human":
-            self.renderer.render()
-            self.renderer.clock.tick(fps)
+            self.renderer.render(fps=fps)
 
     def reset(self, seed=None, options={}):
         self.agents = deepcopy(self.possible_agents)
 
-        map = self.mapper.get_map(numpify=True)
-        self.game = Game(map, self.possible_agents)
+        if "map" in options:
+            map = options["map"]
+        else:
+            self.mapper.reset() # Generate new map
+            map = self.mapper.get_map()
+
+        self.game = Game(self.mapper.numpify_map(map), self.agents)
 
         if self.render_mode == "human":
             self.renderer = Renderer(self.game, self.agent_data)
@@ -52,7 +59,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         if "replay_file" in options:
             self.replay = Replay(
                 name=options["replay_file"],
-                map=self.mapper.get_map(numpify=False),
+                map=map,
                 agent_data=self.agent_data,
             )
             self.replay.add_state(deepcopy(self.game.channels))
@@ -82,6 +89,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         if terminate:
             self.agents = []
             if hasattr(self, "replay"):
+                print(self.replay.map)
                 self.replay.store()
 
         return OrderedDict(observations), rewards, terminated, truncated, infos

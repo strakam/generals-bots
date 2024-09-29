@@ -1,4 +1,3 @@
-import time
 import pygame
 import numpy as np
 import generals.game as game
@@ -7,7 +6,9 @@ from typing import Tuple, Dict, Any
 
 
 class Renderer:
-    def __init__(self, game: game.Game, agent_data: Dict[str, Dict[str, Any]], from_replay=False):
+    def __init__(
+        self, game: game.Game, agent_data: Dict[str, Dict[str, Any]], from_replay=False
+    ):
         """
         Initialize the pygame GUI
 
@@ -51,7 +52,9 @@ class Renderer:
             "speed": pygame.Surface((self.right_panel_width / 2, c.GUI_ROW_HEIGHT)),
         }
         # Game area and tiles
-        self.game_area = pygame.Surface((self.display_grid_width, self.display_grid_height))
+        self.game_area = pygame.Surface(
+            (self.display_grid_width, self.display_grid_height)
+        )
         self.tiles = [
             [
                 pygame.Surface((c.SQUARE_SIZE, c.SQUARE_SIZE))
@@ -60,11 +63,11 @@ class Renderer:
             for _ in range(self.grid_height)
         ]
 
+        self.clock = pygame.time.Clock()
+
         self.agent_fov = {name: True for name in self.agent_data.keys()}
         self.game_speed = 1
         self.paused = False
-        self.clock = pygame.time.Clock()
-        self.last_render_time = time.time()
 
         self._mountain_img = pygame.image.load(
             str(c.MOUNTAIN_PATH), "png"
@@ -116,16 +119,22 @@ class Renderer:
                 x, y = pygame.mouse.get_pos()
                 for i, agent in enumerate(agents):
                     # if clicked agents row in the right panel
-                    if x >= self.display_grid_width and y >= (i + 1) * c.GUI_ROW_HEIGHT and y < (i + 2) * c.GUI_ROW_HEIGHT:
+                    if (
+                        x >= self.display_grid_width
+                        and y >= (i + 1) * c.GUI_ROW_HEIGHT
+                        and y < (i + 2) * c.GUI_ROW_HEIGHT
+                    ):
                         self.agent_fov[agent] = not self.agent_fov[agent]
                         break
         return control_events
 
-    def render(self):
+    def render(self, fps=None):
         control_events = self.handle_events()
         self.render_grid()
         self.render_stats()
         pygame.display.flip()
+        if fps:
+            self.clock.tick(fps)
         return control_events
 
     def render_cell_text(self, cell, text, fg_color=c.BLACK, bg_color=c.WHITE):
@@ -154,7 +163,9 @@ class Renderer:
 
         # Write names
         for i, name in enumerate(["Agent"] + names):
-            color = self.agent_data[name]["color"] if name in self.agent_data else c.WHITE
+            color = (
+                self.agent_data[name]["color"] if name in self.agent_data else c.WHITE
+            )
             # add opacity to the color, where color is a tuple (r,g,b)
             if name in self.agent_fov and not self.agent_fov[name]:
                 color = tuple([int(0.5 * c) for c in color])
@@ -177,10 +188,10 @@ class Renderer:
         # Blit each right_panel cell to the right_panel surface
         for i, col in enumerate(["Agent", "Army", "Land"]):
             for j, cell in enumerate(self.score_cols[col]):
-                rect_dim = (0,0,cell.get_width(),cell.get_height())
-                pygame.draw.rect(cell,c.BLACK,rect_dim,1)
+                rect_dim = (0, 0, cell.get_width(), cell.get_height())
+                pygame.draw.rect(cell, c.BLACK, rect_dim, 1)
 
-                position = ((i+1) * c.GUI_CELL_WIDTH, j * c.GUI_ROW_HEIGHT)
+                position = ((i + 1) * c.GUI_CELL_WIDTH, j * c.GUI_ROW_HEIGHT)
                 if col == "Agent":
                     position = (0, j * c.GUI_ROW_HEIGHT)
                 self.right_panel.blit(cell, position)
@@ -194,11 +205,16 @@ class Renderer:
         for i, key in enumerate(["time", "speed"]):
             self.render_cell_text(self.info_panel[key], info_text[key])
 
-            rect_dim = (0,0,self.info_panel[key].get_width(),self.info_panel[key].get_height())
-            pygame.draw.rect(self.info_panel[key],c.BLACK,rect_dim,1)
+            rect_dim = (
+                0,
+                0,
+                self.info_panel[key].get_width(),
+                self.info_panel[key].get_height(),
+            )
+            pygame.draw.rect(self.info_panel[key], c.BLACK, rect_dim, 1)
 
             self.right_panel.blit(
-                self.info_panel[key], (i*2*c.GUI_CELL_WIDTH, 3 * c.GUI_ROW_HEIGHT)
+                self.info_panel[key], (i * 2 * c.GUI_CELL_WIDTH, 3 * c.GUI_ROW_HEIGHT)
             )
         # Render right_panel on the screen
         self.screen.blit(self.right_panel, (self.display_grid_width, 0))
@@ -281,10 +297,6 @@ class Renderer:
     def draw_channel(self, channel, color: Tuple[int, int, int]):
         """
         Draw background and borders (left and top) for grid tiles of a given channel
-
-        Args:
-            channel: game grid channel
-            color: background color of the squares
         """
         for i, j in self.game.channel_to_indices(channel):
             self.tiles[i][j].fill(color)
@@ -294,10 +306,6 @@ class Renderer:
     def draw_images(self, channel, image):
         """
         Draw images on grid tiles of a given channel
-
-        Args:
-            channel: game grid channel
-            image: pygame image object
         """
         for i, j in self.game.channel_to_indices(channel):
             self.tiles[i][j].blit(image, (3, 2))

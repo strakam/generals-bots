@@ -40,16 +40,18 @@ class Gym_Generals(gymnasium.Env):
 
     def render(self, fps=6):
         if self.render_mode == "human":
-            self.renderer.render()
-            self.renderer.clock.tick(fps)
+            self.renderer.render(fps=fps)
 
-    def reset(self, map: np.ndarray = None, seed=None, options={}):
+    def reset(self, seed=None, options={}):
         super().reset(seed=seed)
         # If map is not provided, generate a new one
-        self.mapper.reset()
-        map = self.mapper.get_map(numpify=True)
+        if "map" in options:
+            map = options["map"]
+        else:
+            self.mapper.reset() # Generate new map
+            map = self.mapper.get_map()
 
-        self.game = Game(map, [self.agent_name, self.npc.name])
+        self.game = Game(self.mapper.numpify_map(map), [self.agent_name, self.npc.name])
         self.npc.reset()
 
         self.observation_space = self.game.observation_space
@@ -61,7 +63,7 @@ class Gym_Generals(gymnasium.Env):
         if "replay_file" in options:
             self.replay = Replay(
                 name=options["replay_file"],
-                map=self.mapper.get_map(numpify=False),
+                map=map,
                 agent_data=self.agent_colors,
             )
             self.replay.add_state(deepcopy(self.game.channels))
