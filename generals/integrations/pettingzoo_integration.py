@@ -5,7 +5,6 @@ from ..game import Game
 from ..agents import Agent
 from ..replay import Replay
 from ..rendering import Renderer
-from collections import OrderedDict
 from typing import Dict
 
 
@@ -29,13 +28,11 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         self.reward_fn = self.default_rewards if reward_fn is None else reward_fn
 
     @functools.lru_cache(maxsize=None)
-    def observation_space(self, agent_name):
-        assert agent_name in self.agents, f"{agent_name} is not a valid agent"
+    def observation_space(self):
         return self.game.observation_space
 
     @functools.lru_cache(maxsize=None)
-    def action_space(self, agent_name):
-        assert agent_name in self.agents, f"{agent_name} is not a valid agent"
+    def action_space(self):
         return self.game.action_space
 
     def render(self, fps=6):
@@ -48,7 +45,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         if "map" in options:
             map = options["map"]
         else:
-            self.mapper.reset() # Generate new map
+            self.mapper.reset()  # Generate new map
             map = self.mapper.get_map()
 
         self.game = Game(self.mapper.numpify_map(map), self.agents)
@@ -66,9 +63,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         elif hasattr(self, "replay"):
             del self.replay
 
-        observations = OrderedDict(
-            {agent: self.game._agent_observation(agent) for agent in self.agents}
-        )
+        observations = self.game.get_all_observations()
         infos = {agent: {} for agent in self.agents}
         return observations, infos
 
@@ -89,10 +84,9 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         if terminate:
             self.agents = []
             if hasattr(self, "replay"):
-                print(self.replay.map)
                 self.replay.store()
 
-        return OrderedDict(observations), rewards, terminated, truncated, infos
+        return observations, rewards, terminated, truncated, infos
 
     def default_rewards(self, observations):
         """
@@ -100,6 +94,9 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         Give 0 if game still running, otherwise 1 for winner and -1 for loser.
         """
         rewards = {agent: 0 for agent in self.agents}
+
+        # Extract only observation, ignore action mask
+        observations = {agent: observations[agent]['observation'] for agent in self.agents}
         game_ended = any(observations[agent]["is_winner"] for agent in self.agents)
         if game_ended:
             for agent in self.agents:
