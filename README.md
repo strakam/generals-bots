@@ -153,34 +153,34 @@ replay.play()
 
 ## 🌍 Environment
 ### 🔭 Observation
-An observation for one agent is a dictionary of 13 key/value pairs.
-Each key/value pair contains information about part of the game that is accessible to the agent.
-Values are `numpy` matrices with shape `(N,M)`, where `N` is height of the map and `M` is the width.
+An observation for one agent is a dictionary `{"observation": observation, "action_mask": action_mask}`.
 
-| Key                  | Shape/Type| Description                                                                                                                                    |
-| ---                  | ---       | ---                                                                                                                                            |
-| `army`               | `(N,M)`   | Number of units in a cell regardless of owner                                                                                                  |
-| `general`            | `(N,M)`   | Mask of cells that are visible to the agent                                                                                                    |
-| `city`               | `(N,M)`   | Mask saying whether a city is in a cell                                                                                                        |
-| `visibile_cells`     | `(N,M)`   | Mask indicating cells that are visible to the agent                                                                                            |
-| `owned_cells`        | `(N,M)`   | Mask indicating cells controlled by the agent                                                                                                  |
-| `opponent_cells`     | `(N,M)`   | Mask indicating cells owned by the opponent                                                                                                    |
-| `neutral_cells`      | `(N,M)`   | Mask indicating cells that are not owned by agents                                                                                             |
-| `structure`          | `(N,M)`   | Mask indicating whether cells contain cities or mountains, even out of FoV                                                                     |
-| `action_mask`        | `(N,M,4)` | Mask where `[i,j,d]` indicates whether you can move from a cell `[i,j]` to direction `d` where directions are in order (UP, DOWN, LEFT, RIGHT) |
-| `owned_land_count`   | `Int`     | Int representing number of cells an agent owns                                                                                                 |
-| `owned_army_count`   | `Int`     | Int representing total number of units of an agent over all cells                                                                              |
-| `opponent_land_count`| `Int`     | Int representing number of cells owned by the opponent                                                                                         |
-| `opponent_army_count`| `Int`     | Int representing total number of units owned by the opponent                                                                                   |
-| `is_winner`          | `Bool`    | Bool representing whether an agent won                                                                                                         |
-| `timestep`           | `Int`     | Timestep                                                                                                                                       |
+The `observation` is a `Dict`. Values are either `numpy` matrices with shape `(N,M)`, or simple `int` constants:
+| Key                  | Shape     | Description                                                                  |
+| ---                  | ---       | ---                                                                          |
+| `army`               | `(N,M)`   | Number of units in a cell regardless of owner                                |
+| `general`            | `(N,M)`   | Mask of cells that are visible to the agent                                  |
+| `city`               | `(N,M)`   | Mask saying whether a city is in a cell                                      |
+| `visibile_cells`     | `(N,M)`   | Mask indicating cells that are visible to the agent                          |
+| `owned_cells`        | `(N,M)`   | Mask indicating cells controlled by the agent                                |
+| `opponent_cells`     | `(N,M)`   | Mask indicating cells owned by the opponent                                  |
+| `neutral_cells`      | `(N,M)`   | Mask indicating cells that are not owned by agents                           |
+| `structure`          | `(N,M)`   | Mask indicating whether cells contain cities or mountains, even out of FoV   |
+| `owned_land_count`   |     —     | Number of cells an agent owns                                                |
+| `owned_army_count`   |     —     | Total number of units of an agent over all cells                             |
+| `opponent_land_count`|     —     | Number of cells owned by the opponent                                        |
+| `opponent_army_count`|     —     | Int representing total number of units owned by the opponent                 |
+| `is_winner`          |     —     | Whether agent won                                                            |
+| `timestep`           |     —     | Timestep                                                                     |
+
+`action_mask` is a mask with shape `(N,M,4)` where value `[i,j,d]` says whether you can move from cell `[i,j]` in a direction `d`.
    
 ### ⚡ Action
-Action is an `np.array([pass,i,j,d,split])`:
-- Value of `pass` indicates whether you want to `1 (pass)` or `0 (play)`.
-- Indices `i,j` say that you want to move from cell with index `[i,j]`.
-- Value of `d` is a direction of the movement: `0 (up)`, `1 (down)`, `2 (left)`, `3 (right)`
-- Value of `split` says whether you want to split units. Value `1 (split)` sends half of units and value `0 (no split)` sends all possible units to the next cell.
+Action is a `Tuple(pass, cell, direction, split)`, where:
+- `pass` indicates whether you want to `1 (pass)` or `0 (play)`.
+- `cell` is an `np.array([i,j])` where `i,j` are indices of the cell you want to move from
+- `direction` indicates whether you want to move `0 (up)`, `1 (down)`, `2 (left)`, or `3 (right)`
+- `split` indicates whether you want to `1 (split)` units (send half of them) or `0 (no split)`, which sends all possible units to the next cell.
 
 ### 🎁 Reward
 It is possible to implement custom reward function. The default is `1` for winner and `-1` for loser, otherwise `0`.
