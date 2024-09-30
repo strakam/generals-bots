@@ -115,7 +115,7 @@ def test_action_mask():
             [1, 1, 5, 0],
             [2, 0, 5, 8],
         ],
-        dtype=np.float32,
+        dtype=int,
     )
     game.channels["passable"] = np.array(
         [
@@ -124,7 +124,7 @@ def test_action_mask():
             [1, 1, 1, 0],
             [1, 0, 0, 0],
         ],
-        dtype=np.float32,
+        dtype=bool,
     )
 
     game.channels["ownership_red"] = np.array(
@@ -134,7 +134,7 @@ def test_action_mask():
             [0, 1, 1, 0],
             [1, 0, 0, 0],
         ],
-        dtype=np.float32,
+        dtype=bool,
     )
     reference = np.array(
         [
@@ -167,7 +167,7 @@ def test_action_mask():
                 [0, 0, 0, 0],
             ],
         ],
-        dtype=np.float32,
+        dtype=bool,
     )
 
     action_mask = game.action_mask("red")
@@ -360,7 +360,7 @@ def test_game_step():
             [1, 1, 1, 0],
             [0, 0, 1, 1],
         ],
-        dtype=np.float32,
+        dtype=int,
     )
     game.channels["ownership_blue"] = np.array(
         [

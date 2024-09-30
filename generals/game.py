@@ -31,7 +31,7 @@ class Game:
         # Ownerhsip_0 - ownership mask for neutral cells that are passable (1 if cell is neutral, 0 otherwise)
         # Initialize channels
         self.channels = {
-            "army": np.where(np.isin(map, valid_generals), 1, 0).astype(np.float32),
+            "army": np.where(np.isin(map, valid_generals), 1, 0).astype(int),
             "general": np.where(np.isin(map, valid_generals), 1, 0).astype(bool),
             "mountain": np.where(map == MOUNTAIN, 1, 0).astype(bool),
             "city": np.where(np.char.isdigit(map), 1, 0).astype(bool),
@@ -48,7 +48,7 @@ class Game:
         }
 
         # City costs are 40 + digit in the cell
-        city_costs = np.where(np.char.isdigit(map), map, "0").astype(np.float32)
+        city_costs = np.where(np.char.isdigit(map), map, "0").astype(int)
         self.channels["army"] += 40 * self.channels["city"] + city_costs
 
         ##########
@@ -56,16 +56,12 @@ class Game:
         ##########
         max_value = 100_000
         grid_multi_binary = gym.spaces.MultiBinary(self.grid_dims)
+        grid_discrete = np.ones(self.grid_dims, dtype=int) * max_value
         self.observation_space = gym.spaces.Dict(
             {
                 "observation": gym.spaces.Dict(
                     {
-                        "army": gym.spaces.Box(
-                            low=0,
-                            high=max_value,
-                            shape=self.grid_dims,
-                            dtype=np.float32,
-                        ),
+                        "army": gym.spaces.MultiDiscrete(grid_discrete),
                         "general": grid_multi_binary,
                         "city": grid_multi_binary,
                         "owned_cells": grid_multi_binary,
@@ -77,8 +73,8 @@ class Game:
                         "owned_army_count": gym.spaces.Discrete(max_value),
                         "opponent_land_count": gym.spaces.Discrete(max_value),
                         "opponent_army_count": gym.spaces.Discrete(max_value),
-                        "is_winner": gym.spaces.MultiBinary(1),
-                        "timestep": gym.spaces.Discrete(np.iinfo(np.int64).max),
+                        "is_winner": gym.spaces.Discrete(2),
+                        "timestep": gym.spaces.Discrete(max_value)
                     }
                 ),
                 "action_mask": gym.spaces.MultiBinary(self.grid_dims + (4,)),
@@ -297,8 +293,8 @@ class Game:
         for agent in self.agents:
             army_size = np.sum(
                 self.channels["army"] * self.channels[f"ownership_{agent}"]
-            ).astype(np.int64)
-            land_size = np.sum(self.channels[f"ownership_{agent}"]).astype(np.int64)
+            ).astype(int)
+            land_size = np.sum(self.channels[f"ownership_{agent}"]).astype(int)
             players_stats[agent] = {
                 "army": army_size,
                 "land": land_size,
@@ -316,7 +312,7 @@ class Game:
         opponent = self.agents[0] if agent == self.agents[1] else self.agents[1]
         visibility = self.visibility_channel(self.channels[f"ownership_{agent}"])
         _observation = {
-            "army": self.channels["army"] * visibility,
+            "army": self.channels["army"].astype(int) * visibility,
             "general": self.channels["general"] * visibility,
             "city": self.channels["city"] * visibility,
             "owned_cells": self.channels[f"ownership_{agent}"] * visibility,
@@ -328,13 +324,14 @@ class Game:
             "owned_army_count": info[agent]["army"],
             "opponent_land_count": info[opponent]["land"],
             "opponent_army_count": info[opponent]["army"],
-            "is_winner": np.array([info[agent]["is_winner"]], dtype=np.bool),
+            "is_winner": int(info[agent]["is_winner"]),
             "timestep": self.time,
         }
         observation = {
             "observation": _observation,
             "action_mask": self.action_mask(agent)
         }
+            
         return observation
 
     def agent_won(self, agent: str) -> bool:
