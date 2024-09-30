@@ -6,8 +6,7 @@ class RandomAgent(Agent):
     def __init__(
         self, name="Random", color=(255, 0, 0), split_prob=0.25, idle_prob=0.05
     ):
-        self.name = name
-        self.color = color
+        super().__init__(name, color)
 
         self.idle_probability = idle_prob
         self.split_probability = split_prob

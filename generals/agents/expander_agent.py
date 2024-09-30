@@ -6,8 +6,7 @@ from generals.config import DIRECTIONS
 
 class ExpanderAgent(Agent):
     def __init__(self, name="Expander", color=(0, 130, 255)):
-        self.name = name
-        self.color = color
+        super().__init__(name, color)
 
     def play(self, observation):
         """
