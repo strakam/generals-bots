@@ -1,7 +1,7 @@
 import pickle
 import time
 from generals.map import Mapper
-from generals.rendering import Renderer
+from generals.gui import GUI
 from generals.game import Game
 from copy import deepcopy
 
@@ -33,14 +33,15 @@ class Replay:
         map = Mapper.numpify_map(self.map)
         agents = [agent for agent in self.agent_data.keys()]
         game = Game(map, agents)
-        renderer = Renderer(game, self.agent_data, from_replay=True)
+        gui = GUI(game, self.agent_data, from_replay=True)
+        renderer = gui.renderer
 
         game_step, last_input_time, last_move_time = 0, 0, 0
         while 1:
             _t = time.time()
             # Check inputs
             if _t - last_input_time > 0.008:  # check for input every 8ms
-                control_events = renderer.render()
+                control_events = gui.tick()
                 last_input_time = _t
             else:
                 control_events = {"time_change": 0}
