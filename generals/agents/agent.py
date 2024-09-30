@@ -6,11 +6,12 @@ class Agent:
     Base class for all agents.
     """
 
-    def __init__(self):
-        pass
+    def __init__(self, name, color):
+        self.name = name
+        self.color = color
 
     @abstractmethod
-    def play(self):
+    def play(self, observation):
         """
         This method should be implemented by the child class.
         It should receive an observation and return an action.
