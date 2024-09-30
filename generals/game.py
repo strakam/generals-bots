@@ -10,10 +10,9 @@ from scipy.ndimage import maximum_filter
 class Game:
     def __init__(self, map: np.ndarray, agents: List[str]):
         self.agents = agents
-        self.time = 0
-
         self.grid_dims = (map.shape[0], map.shape[1])
         self.map = map
+        self.time = 0
 
         self.general_positions = {
             agent: np.argwhere(map == chr(ord("A") + i))[0]
@@ -49,40 +48,50 @@ class Game:
         }
 
         # City costs are 40 + digit in the cell
-        base_cost = 40
         city_costs = np.where(np.char.isdigit(map), map, "0").astype(np.float32)
-        self.channels["army"] += base_cost * self.channels["city"] + city_costs
+        self.channels["army"] += 40 * self.channels["city"] + city_costs
 
         ##########
         # Spaces #
         ##########
+        max_value = 100_000
         grid_multi_binary = gym.spaces.MultiBinary(self.grid_dims)
         self.observation_space = gym.spaces.Dict(
             {
-                "army": gym.spaces.Box(
-                    low=0, high=1e5, shape=self.grid_dims, dtype=np.float32
+                "observation": gym.spaces.Dict(
+                    {
+                        "army": gym.spaces.Box(
+                            low=0,
+                            high=max_value,
+                            shape=self.grid_dims,
+                            dtype=np.float32,
+                        ),
+                        "general": grid_multi_binary,
+                        "city": grid_multi_binary,
+                        "owned_cells": grid_multi_binary,
+                        "opponent_cells": grid_multi_binary,
+                        "neutral_cells": grid_multi_binary,
+                        "visibile_cells": grid_multi_binary,
+                        "structure": grid_multi_binary,
+                        "owned_land_count": gym.spaces.Discrete(max_value),
+                        "owned_army_count": gym.spaces.Discrete(max_value),
+                        "opponent_land_count": gym.spaces.Discrete(max_value),
+                        "opponent_army_count": gym.spaces.Discrete(max_value),
+                        "is_winner": gym.spaces.MultiBinary(1),
+                        "timestep": gym.spaces.Discrete(np.iinfo(np.int64).max),
+                    }
                 ),
-                "general": grid_multi_binary,
-                "city": grid_multi_binary,
-                "owned_cells": grid_multi_binary,
-                "opponent_cells": grid_multi_binary,
-                "neutral_cells": grid_multi_binary,
-                "visibile_cells": grid_multi_binary,
-                "structure": grid_multi_binary,
-                "action_mask": gym.spaces.MultiBinary(
-                    (self.grid_dims[0], self.grid_dims[1], 4)
-                ),
-                "owned_land_count": gym.spaces.Discrete(np.iinfo(np.int64).max),
-                "owned_army_count": gym.spaces.Discrete(np.iinfo(np.int64).max),
-                "opponent_land_count": gym.spaces.Discrete(np.iinfo(np.int64).max),
-                "opponent_army_count": gym.spaces.Discrete(np.iinfo(np.int64).max),
-                "is_winner": gym.spaces.MultiBinary(1),
-                "timestep": gym.spaces.Discrete(np.iinfo(np.int64).max),
+                "action_mask": gym.spaces.MultiBinary(self.grid_dims + (4,)),
             }
         )
 
-        self.action_space = gym.spaces.MultiDiscrete(
-            [2, self.grid_dims[0], self.grid_dims[1], 4, 2]
+        self.action_space = gym.spaces.Tuple(
+            (
+                gym.spaces.Discrete(2),  # Pass or Play
+                gym.spaces.MultiDiscrete(self.grid_dims),  # Cell indices
+                gym.spaces.Discrete(4),  # Direction
+                gym.spaces.Discrete(2),  # Send half army or all
+            )
         )
 
     def action_mask(self, agent: str) -> np.ndarray:
@@ -154,7 +163,7 @@ class Game:
         """
         return maximum_filter(ownership_channel, size=3)
 
-    def step(self, actions: Dict[str, np.ndarray]):
+    def step(self, actions: Dict[str, gym.spaces.Tuple]) -> Dict[str, gym.spaces.Dict]:
         """
         Perform one step of the game
 
@@ -166,7 +175,7 @@ class Game:
         # and calculate intended amount of army to move (all available or split)
         moves = {}
         for agent, move in actions.items():
-            pass_turn, i, j, direction, split_army = move
+            pass_turn, (i, j), direction, split_army = move
             # Skip if agent wants to pass the turn
             if pass_turn == 1:
                 continue
@@ -241,7 +250,7 @@ class Game:
         else:
             self._global_game_update()
 
-        observations = {agent: self._agent_observation(agent) for agent in self.agents}
+        observations = self.get_all_observations()
         infos = {agent: {} for agent in self.agents}
         return observations, infos
 
@@ -306,7 +315,7 @@ class Game:
         info = self.get_infos()
         opponent = self.agents[0] if agent == self.agents[1] else self.agents[1]
         visibility = self.visibility_channel(self.channels[f"ownership_{agent}"])
-        observation = {
+        _observation = {
             "army": self.channels["army"] * visibility,
             "general": self.channels["general"] * visibility,
             "city": self.channels["city"] * visibility,
@@ -315,13 +324,16 @@ class Game:
             "neutral_cells": self.channels["ownership_neutral"] * visibility,
             "visibile_cells": visibility,
             "structure": self.channels["mountain"] + self.channels["city"],
-            "action_mask": self.action_mask(agent),
             "owned_land_count": info[agent]["land"],
             "owned_army_count": info[agent]["army"],
             "opponent_land_count": info[opponent]["land"],
             "opponent_army_count": info[opponent]["army"],
             "is_winner": np.array([info[agent]["is_winner"]], dtype=np.bool),
             "timestep": self.time,
+        }
+        observation = {
+            "observation": _observation,
+            "action_mask": self.action_mask(agent)
         }
         return observation
 

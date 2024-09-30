@@ -15,9 +15,11 @@ class ExpanderAgent(Agent):
         Prioritizes capturing opponent and then neutral cells.
         """
         mask = observation["action_mask"]
+        observation = observation["observation"]
+
         valid_actions = np.argwhere(mask == 1)
         if len(valid_actions) == 0:  # No valid actions
-            return np.array([1, 0, 0, 0, 0])  # pass the move
+            return (1, np.array([0, 0]), 0, 0)
 
         army = observation["army"]
         opponent = observation["opponent_cells"]
@@ -45,9 +47,12 @@ class ExpanderAgent(Agent):
             action_index = np.random.choice(len(valid_actions))
             action = valid_actions[action_index]
 
-        # pass=[0] to indicate we want to move, split=[0] to indicate we want to move all troops
-        action = np.concatenate(([0], action, [0]))
+        pass_turn = 0  # 0 for not passing the turn, 1 for passing the turn
+        split_army = 0  # 0 for not splitting the army, 1 for splitting the army
+        cell = np.array([action[0], action[1]])
+        direction = action[2]
 
+        action = (pass_turn, cell, direction, split_army)
         return action
 
     def reset(self):
