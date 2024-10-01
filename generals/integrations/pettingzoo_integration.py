@@ -8,8 +8,8 @@ from copy import deepcopy
 from ..game import Game, Observation
 from ..grid import GridFactory
 from ..agents import Agent
+from ..gui import GUI
 from ..replay import Replay
-from ..rendering import Renderer
 
 
 # Type aliases
@@ -54,7 +54,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
 
     def render(self, fps=6):
         if self.render_mode == "human":
-            self.renderer.render(fps=fps)
+            self.gui.tick(fps=fps)
 
     def reset(self, seed=None, options={}):
         self.agents = deepcopy(self.possible_agents)
@@ -67,7 +67,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         self.game = Game(grid, self.agents)
 
         if self.render_mode == "human":
-            self.renderer = Renderer(self.game, self.agent_data)
+            self.gui = GUI(self.game, self.agent_data)
 
         if "replay_file" in options:
             self.replay = Replay(

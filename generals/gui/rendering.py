@@ -1,33 +1,32 @@
 import pygame
 import numpy as np
-import generals.game as game
 import generals.config as c
-from typing import Any
+
+from .properties import Properties
 
 
 class Renderer:
-    def __init__(
-        self, game: game.Game, agent_data: dict[str, dict[str, Any]], from_replay=False
-    ):
+    def __init__(self, properties: Properties):
         """
         Initialize the pygame GUI
-
-        Args:
-            game: game object
-            from_replay: bool, whether the game is from a replay
         """
         pygame.init()
         pygame.display.set_caption("Generals")
         pygame.key.set_repeat(500, 64)
 
-        self.game = game
-        self.from_replay = from_replay
-        self.agent_data = agent_data
-        self.grid_height = self.game.grid_dims[0]
-        self.grid_width = self.game.grid_dims[1]
-        self.display_grid_width = c.SQUARE_SIZE * self.grid_width
-        self.display_grid_height = c.SQUARE_SIZE * self.grid_height
-        self.right_panel_width = 4 * c.GUI_CELL_WIDTH
+        self.properties = properties
+
+        self.game = self.properties.game
+
+        self.agent_data = self.properties.agent_data
+        self.agent_fov = self.properties.agent_fov
+
+        self.grid_height = self.properties.grid_height
+        self.grid_width = self.properties.grid_width
+        self.display_grid_width = self.properties.display_grid_width
+        self.display_grid_height = self.properties.display_grid_height
+        self.right_panel_width = self.properties.right_panel_width
+
         ############
         # Surfaces #
         ############
@@ -63,12 +62,6 @@ class Renderer:
             for _ in range(self.grid_height)
         ]
 
-        self.clock = pygame.time.Clock()
-
-        self.agent_fov = {name: True for name in self.agent_data.keys()}
-        self.game_speed = 1
-        self.paused = False
-
         self._mountain_img = pygame.image.load(
             str(c.MOUNTAIN_PATH), "png"
         ).convert_alpha()
@@ -79,64 +72,12 @@ class Renderer:
 
         self._font = pygame.font.Font(c.FONT_PATH, c.FONT_SIZE)
 
-    def handle_events(self):
-        """
-        Handle pygame GUI events
-        """
-        agents = self.game.agents
-        control_events = {
-            "time_change": 0,
-        }
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT or (
-                event.type == pygame.KEYDOWN and event.key == pygame.K_q
-            ):
-                pygame.quit()
-                quit()
-
-            # Control game speed, pause, and replay frames if the game is from a replay
-            if event.type == pygame.KEYDOWN and self.from_replay:
-                # Speed up game right arrow is pressed
-                if event.key == pygame.K_RIGHT:
-                    self.game_speed = max(1 / 128, self.game_speed / 2)
-                # Slow down game left arrow is pressed
-                if event.key == pygame.K_LEFT:
-                    self.game_speed = min(32, self.game_speed * 2)
-                # Toggle play/pause
-                if event.key == pygame.K_SPACE:
-                    self.paused = not self.paused
-                if event.key == pygame.K_r:
-                    control_events["restart"] = True
-                # Control replay frames
-                if event.key == pygame.K_h:
-                    control_events["time_change"] = -1
-                    self.paused = True
-                if event.key == pygame.K_l:
-                    control_events["time_change"] = 1
-                    self.paused = True
-
-            # GUI clicks
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                x, y = pygame.mouse.get_pos()
-                for i, agent in enumerate(agents):
-                    # if clicked agents row in the right panel
-                    if (
-                        x >= self.display_grid_width
-                        and y >= (i + 1) * c.GUI_ROW_HEIGHT
-                        and y < (i + 2) * c.GUI_ROW_HEIGHT
-                    ):
-                        self.agent_fov[agent] = not self.agent_fov[agent]
-                        break
-        return control_events
-
     def render(self, fps=None):
-        control_events = self.handle_events()
         self.render_grid()
         self.render_stats()
         pygame.display.flip()
         if fps:
-            self.clock.tick(fps)
-        return control_events
+            self.properties.clock.tick(fps)
 
     def render_cell_text(self, cell, text, fg_color=c.BLACK, bg_color=c.WHITE):
         """
@@ -199,7 +140,7 @@ class Renderer:
 
         info_text = {
             "time": f"Time: {str(self.game.time // 2) + ('.' if self.game.time % 2 == 1 else '')}",
-            "speed": "Paused" if self.paused else f"Speed: {str(1 / self.game_speed)}x",
+            "speed": "Paused" if self.properties.paused else f"Speed: {str(1 / self.properties.game_speed)}x",
         }
 
         # Write additional info
