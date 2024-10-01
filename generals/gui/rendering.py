@@ -1,34 +1,32 @@
 import pygame
 import numpy as np
-import generals.game as game
 import generals.config as c
-from typing import Any
 
 from .properties import Properties
 
 
 class Renderer:
-    def __init__(
-        self, game: game.Game, properties: Properties, agent_data: dict[str, dict[str, Any]]
-    ):
+    def __init__(self, properties: Properties):
         """
         Initialize the pygame GUI
-
-        Args:
-            game: game object
         """
         pygame.init()
         pygame.display.set_caption("Generals")
         pygame.key.set_repeat(500, 64)
 
-        self.game = game
         self.properties = properties
-        self.agent_data = agent_data
-        self.grid_height = self.game.grid_dims[0]
-        self.grid_width = self.game.grid_dims[1]
-        self.display_grid_width = c.SQUARE_SIZE * self.grid_width
-        self.display_grid_height = c.SQUARE_SIZE * self.grid_height
-        self.right_panel_width = 4 * c.GUI_CELL_WIDTH
+
+        self.game = self.properties.game
+
+        self.agent_data = self.properties.agent_data
+        self.agent_fov = self.properties.agent_fov
+
+        self.grid_height = self.properties.grid_height
+        self.grid_width = self.properties.grid_width
+        self.display_grid_width = self.properties.display_grid_width
+        self.display_grid_height = self.properties.display_grid_height
+        self.right_panel_width = self.properties.right_panel_width
+
         ############
         # Surfaces #
         ############
@@ -63,8 +61,6 @@ class Renderer:
             ]
             for _ in range(self.grid_height)
         ]
-
-        self.agent_fov = {name: True for name in self.agent_data.keys()}
 
         self._mountain_img = pygame.image.load(
             str(c.MOUNTAIN_PATH), "png"

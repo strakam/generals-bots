@@ -1,21 +1,17 @@
 import pygame
 
-from generals import config as c
 from .properties import Properties
-from .rendering import Renderer
 
 
 class EventHandler:
-    def __init__(self, renderer: Renderer, properties: Properties, from_replay=False):
+    def __init__(self, properties: Properties, from_replay=False):
         """
         Initialize the event handler.
 
         Args:
-            renderer: the Renderer object
             properties: the Properties object
             from_replay: bool, whether the game is from a replay
         """
-        self.renderer = renderer
         self.properties = properties
         self.from_replay = from_replay
 
@@ -71,15 +67,11 @@ class EventHandler:
         """
         Handle mouse click event.
         """
-        agents = self.renderer.game.agents
+        agents = self.properties.game.agents
+        agent_fov = self.properties.agent_fov
 
         x, y = pygame.mouse.get_pos()
         for i, agent in enumerate(agents):
-            # if clicked agents row in the right panel
-            if (
-                    x >= self.renderer.display_grid_width
-                    and y >= (i + 1) * c.GUI_ROW_HEIGHT
-                    and y < (i + 2) * c.GUI_ROW_HEIGHT
-            ):
-                self.renderer.agent_fov[agent] = not self.renderer.agent_fov[agent]
+            if self.properties.is_click_on_agents_row(x, y, i):
+                agent_fov[agent] = not agent_fov[agent]
                 break

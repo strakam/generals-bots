@@ -10,9 +10,9 @@ class GUI:
     def __init__(
             self, game: Game, agent_data: dict[str, dict[str, Any]], from_replay=False
     ):
-        self.properties = Properties()
-        self.__renderer = Renderer(game, self.properties, agent_data)
-        self.__event_handler = EventHandler(self.__renderer, self.properties, from_replay)
+        self.properties = Properties(game, agent_data)
+        self.__renderer = Renderer(self.properties)
+        self.__event_handler = EventHandler(self.properties, from_replay)
 
     def tick(self, fps=None):
         control_events = self.__event_handler.handle_events()
