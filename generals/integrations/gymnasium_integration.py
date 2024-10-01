@@ -7,9 +7,9 @@ from copy import deepcopy
 
 from ..agents import Agent
 from ..game import Game, Observation
+from ..gui import GUI
 from ..map import Mapper
 from ..replay import Replay
-from ..rendering import Renderer
 
 # Type aliases
 from generals.game import Info
@@ -55,7 +55,7 @@ class Gym_Generals(gym.Env):
 
     def render(self, fps: int = 6) -> None:
         if self.render_mode == "human":
-            self.renderer.render(fps=fps)
+            self.gui.tick(fps=fps)
 
     def reset(self, seed=None, options=None):
         if options is None:
@@ -75,7 +75,7 @@ class Gym_Generals(gym.Env):
         self.action_space = self.game.action_space
 
         if self.render_mode == "human":
-            self.renderer = Renderer(self.game, self.agent_data)
+            self.gui = GUI(self.game, self.agent_data)
 
         if "replay_file" in options:
             self.replay = Replay(

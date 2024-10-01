@@ -1,7 +1,7 @@
 import pickle
 import time
 from generals.map import Mapper
-from generals.rendering import Renderer
+from generals.gui import GUI
 from generals.game import Game
 from copy import deepcopy
 
@@ -33,14 +33,15 @@ class Replay:
         map = Mapper.numpify_map(self.map)
         agents = [agent for agent in self.agent_data.keys()]
         game = Game(map, agents)
-        renderer = Renderer(game, self.agent_data, from_replay=True)
+        gui = GUI(game, self.agent_data, from_replay=True)
+        gui_properties = gui.properties
 
         game_step, last_input_time, last_move_time = 0, 0, 0
         while 1:
             _t = time.time()
             # Check inputs
             if _t - last_input_time > 0.008:  # check for input every 8ms
-                control_events = renderer.render()
+                control_events = gui.tick()
                 last_input_time = _t
             else:
                 control_events = {"time_change": 0}
@@ -50,19 +51,19 @@ class Replay:
             game_step = max(
                 0, min(len(self.game_states) - 1, game_step + control_events["time_change"])
             )
-            if renderer.paused and game_step != game.time:
+            if gui_properties.paused and game_step != game.time:
                 game.channels = deepcopy(self.game_states[game_step])
                 game.time = game_step
                 last_move_time = _t
             # If we are not paused, play the game
             elif (
-                _t - last_move_time > renderer.game_speed * 0.512
-                and not renderer.paused
+                _t - last_move_time > gui_properties.game_speed * 0.512
+                and not gui_properties.paused
             ):
                 if game.is_done():
-                    renderer.paused = True
+                    gui_properties.paused = True
                 game_step = min(len(self.game_states) - 1, game_step + 1)
                 game.channels = deepcopy(self.game_states[game_step])
                 game.time = game_step
                 last_move_time = _t
-            renderer.clock.tick(60)
+            gui_properties.clock.tick(60)
