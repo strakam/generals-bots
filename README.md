@@ -154,7 +154,7 @@ The `observation` is a `Dict`. Values are either `numpy` matrices with shape `(N
 | `army`               | `(N,M)`   | Number of units in a cell regardless of owner                                |
 | `general`            | `(N,M)`   | Mask of cells that are visible to the agent                                  |
 | `city`               | `(N,M)`   | Mask saying whether a city is in a cell                                      |
-| `visibile_cells`     | `(N,M)`   | Mask indicating cells that are visible to the agent                          |
+| `visible_cells`      | `(N,M)`   | Mask indicating cells that are visible to the agent                          |
 | `owned_cells`        | `(N,M)`   | Mask indicating cells controlled by the agent                                |
 | `opponent_cells`     | `(N,M)`   | Mask indicating cells owned by the opponent                                  |
 | `neutral_cells`      | `(N,M)`   | Mask indicating cells that are not owned by agents                           |
