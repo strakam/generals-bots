@@ -2,7 +2,6 @@ import pickle
 import time
 
 from generals.grid import Grid
-from generals.rendering import Renderer
 from generals.gui import GUI
 from generals.game import Game
 from copy import deepcopy

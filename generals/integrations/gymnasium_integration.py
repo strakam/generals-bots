@@ -8,6 +8,7 @@ from copy import deepcopy
 from ..agents import Agent
 from ..game import Game, Observation
 from ..grid import GridFactory
+from ..gui import GUI
 from ..replay import Replay
 
 # Type aliases
