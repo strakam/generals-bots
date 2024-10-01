@@ -1,6 +1,6 @@
 from generals.env import pz_generals
 from generals.agents import RandomAgent, ExpanderAgent
-from generals.map import Mapper
+from generals.grid import GridFactory
 
 # Initialize agents - their names are then called for actions
 randomer = RandomAgent("Random1", color=(255, 125, 0))
@@ -11,7 +11,7 @@ agents = {
     expander.name: expander,
 }
 
-mapper = Mapper(
+mapper = GridFactory(
     grid_dims=(4, 8), # height x width
     mountain_density=0.2,
     city_density=0.05,

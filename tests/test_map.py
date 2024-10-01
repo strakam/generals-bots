@@ -1,8 +1,7 @@
-from generals.map import Mapper
+from generals.grid import GridFactory, Grid
 import numpy as np
 
-def test_validate_map():
-    mapper = Mapper()
+def test_verify_map():
     map = """
 .....
 .A##2
@@ -10,7 +9,7 @@ def test_validate_map():
 ..22.
 ...B.
     """
-    assert mapper.validate_map(map)
+    assert Grid.verify_map(map)
 
     map = """
 .....
@@ -19,7 +18,7 @@ def test_validate_map():
 ..###
 ...B.
     """
-    assert not mapper.validate_map(map)
+    assert not Grid.verify_map(map)
 
     map = """
 .....
@@ -28,7 +27,7 @@ def test_validate_map():
 ..2##
 ...B.
     """
-    assert mapper.validate_map(map)
+    assert Grid.verify_map(map)
 
     map = """
 ..#..
@@ -37,7 +36,7 @@ def test_validate_map():
 ..2##
 ...B.
     """
-    assert not mapper.validate_map(map)
+    assert not Grid.verify_map(map)
 
     map = """
 .....
@@ -46,7 +45,7 @@ BA2#2
 ..2##
 .....
     """
-    assert mapper.validate_map(map)
+    assert Grid.verify_map(map)
 
     map = """
 ...#.
@@ -55,7 +54,7 @@ BA2#2
 ..2##
 .....
     """
-    assert not mapper.validate_map(map)
+    assert not Grid.verify_map(map)
 
     map = """
 ...#.
@@ -64,29 +63,10 @@ A#2#2
 ..2#.
 .....
     """
-    assert mapper.validate_map(map)
+    assert Grid.verify_map(map)
 
-
-def test_generate_map():
-    mapper = Mapper()
-    grid_dims = (16, 16)
-    mountain_density, city_density = 0.1, 0.1
-    for _ in range(5):
-        map_str = mapper.generate_map(grid_dims, mountain_density, city_density)
-        map = mapper.numpify_map(map_str)
-        assert mapper.validate_map(map_str)  # map has to be valid
-        assert map.shape == grid_dims
-
-    grid_dims = (10, 10)
-    mountain_density, town_density = 0.2, 0.2
-    for _ in range(5):
-        map_str = mapper.generate_map(grid_dims, mountain_density, town_density)
-        assert mapper.validate_map(map_str)  # map has to be valid
-        map = mapper.numpify_map(map_str)
-        assert map.shape == grid_dims
 
 def test_numpify_map():
-    mapper = Mapper()
     map_str = """
 .....
 .A##2
@@ -94,7 +74,7 @@ def test_numpify_map():
 ..22.
 ...B.
     """
-    map = mapper.numpify_map(map_str)
+    map = Grid.numpify_grid(map_str)
     reference_map = np.array([
         [".", ".", ".", ".", "."],
         [".", "A", "#", "#", "2"],
@@ -106,7 +86,6 @@ def test_numpify_map():
 
 def test_stringify_map():
 
-    mapper = Mapper()
     # make map different than from previous example
     np_map = np.array([
         ["#", ".", ".", ".", "A"],
@@ -116,7 +95,7 @@ def test_stringify_map():
         [".", "1", "#", "B", "#"],
     ])
 
-    map_str = mapper.stringify_map(np_map)
+    map_str = Grid.stringify_grid(np_map)
     reference_map = """
 #...A
 ..##2

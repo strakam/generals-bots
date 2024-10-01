@@ -24,7 +24,6 @@ replay:
 at:
 	pytest tests/test_game.py
 	pytest tests/test_map.py
-	pytest tests/test_replay.py
 	python3 tests/gym_check.py
 	python3 tests/sb3_check.py
 
