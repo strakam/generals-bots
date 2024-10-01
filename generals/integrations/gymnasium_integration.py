@@ -80,7 +80,7 @@ class Gym_Generals(gym.Env):
             self.replay = Replay(
                 name=options["replay_file"],
                 grid=grid,
-                agent_data=self.agent_colors,
+                agent_data=self.agent_data,
             )
             self.replay.add_state(deepcopy(self.game.channels))
         elif hasattr(self, "replay"):
@@ -108,7 +108,7 @@ class Gym_Generals(gym.Env):
 
         if terminated:
             if hasattr(self, "replay"):
-                self.replay.save()
+                self.replay.store()
 
         return observation, reward, terminated, truncated, info
 
