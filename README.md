@@ -23,15 +23,6 @@ Highlights:
 * 🔧 Easy customization of environments
 * 🔬 Analysis tools such as replays
 
-<br>
-
-Generals.io has several interesting properties:
-* 👀 Partial observability
-* 🏃‍♂️ Long action sequences and large action spaces
-* 🧠 Requires strategical planning
-* ⏱️ Real-time gameplay 
-
-
 ## 📦 Installation
 Stable release version is available through pip:
 ```bash
@@ -78,7 +69,9 @@ Creating your first agent is very simple.
 - When creating an environment, you can choose out of two `render_modes`:
      - `None` that omits rendering and is suitable for training,
      - `"human"` where you can see the game roll out.
-- Also check `Makefile` that runs examples so you can get a feel for the repo 🤗.
+
+> [!TIP]
+> Check out `Makefile` and run some examples to get a feel for the game 🤗.
 
 ## 🎨 Custom maps
 Maps are handled via `Mapper` class. You can instantiate the class with desired map properties, and it will generate
@@ -176,21 +169,25 @@ The `observation` is a `Dict`. Values are either `numpy` matrices with shape `(N
 `action_mask` is a mask with shape `(N,M,4)` where value `[i,j,d]` says whether you can move from cell `[i,j]` in a direction `d`.
    
 ### ⚡ Action
-Action is a `Tuple(pass, cell, direction, split)`, where:
+Action is a `tuple(pass, cell, direction, split)`, where:
 - `pass` indicates whether you want to `1 (pass)` or `0 (play)`.
 - `cell` is an `np.array([i,j])` where `i,j` are indices of the cell you want to move from
 - `direction` indicates whether you want to move `0 (up)`, `1 (down)`, `2 (left)`, or `3 (right)`
 - `split` indicates whether you want to `1 (split)` units (send half of them) or `0 (no split)`, which sends all possible units to the next cell.
 
+> [!TIP]
+> You can see how actions and observations look like by printing a sample form the environment:
+> ```python
+> print(env.observation_space.sample())
+> print(env.action_space.sample())
+> ```
+
 ### 🎁 Reward
 It is possible to implement custom reward function. The default is `1` for winner and `-1` for loser, otherwise `0`.
 ```python
-def custom_reward_fn(observations):
+def custom_reward_fn(observation, action, done, info):
     # Give agent a reward based on the number of cells they own
-    return {
-        agent: observations[agent]["owned_land_count"]
-        for agent in observations.keys()
-    }
+    return observation["observation"]["owned_land_count"]
 
 env = generals_v0(reward_fn=custom_reward_fn)
 observations, info = env.reset()

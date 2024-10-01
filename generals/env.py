@@ -1,6 +1,6 @@
 from .agents import Agent
-from .integrations.gymnasium_integration import Gym_Generals, RewardFn as RewardFnGym
-from .integrations.pettingzoo_integration import PZ_Generals, RewardFn as RewardFnPz
+from .integrations.gymnasium_integration import Gym_Generals, RewardFn
+from .integrations.pettingzoo_integration import PZ_Generals
 
 from .map import Mapper
 
@@ -8,7 +8,7 @@ from .map import Mapper
 def pz_generals(
     mapper: Mapper = Mapper(),
     agents: dict[str, Agent] = None,
-    reward_fn: RewardFnPz=None,
+    reward_fn: RewardFn=None,
     render_mode=None,
 ):
     """
@@ -24,7 +24,7 @@ def gym_generals(
     mapper: Mapper = Mapper(),
     agent: Agent = None,
     npc: Agent = None,
-    reward_fn: RewardFnGym=None,
+    reward_fn: RewardFn=None,
     render_mode=None,
 ):
     """
