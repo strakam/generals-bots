@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.5.1](https://github.com/strakam/Generals-RL/compare/v0.5.0...v0.5.1) (2024-10-01)
+
+
+### 🐛 Bug Fixes
+
+* fix broken imports after merge ([aa7147f](https://github.com/strakam/Generals-RL/commit/aa7147fe99a588afa40eb586b492a36c61718727))
+* fix broken variables and methods ([5b3533c](https://github.com/strakam/Generals-RL/commit/5b3533cc9bd2dfcf34c9196b29e5ff296bec88ce))
+
+
+### 🛠️ Refactor
+
+* abstract GUI handling ([f3552fc](https://github.com/strakam/Generals-RL/commit/f3552fc8d93e2c729cefae554586c0baf553f489))
+* add more typing ([71e72ab](https://github.com/strakam/Generals-RL/commit/71e72ab3699deff36f08944c4259a9766d6aded2))
+* fix RewardFn type alias ([0c30cb7](https://github.com/strakam/Generals-RL/commit/0c30cb7c14692bb97765ef114bdfd0986789be9a))
+* From Map to GridFactory ([075eb0f](https://github.com/strakam/Generals-RL/commit/075eb0f1a49355617b30a5f8958aacfe0388aea1))
+* Improve Grid class ([aa8438e](https://github.com/strakam/Generals-RL/commit/aa8438e5d56c9e0527df842a4f70350fc416e6f9))
+* improve GUI handling ([7020813](https://github.com/strakam/Generals-RL/commit/7020813ab5a634c79ccc781235beca235b7897b9))
+* move all GUI properties to Properties class ([669b8a3](https://github.com/strakam/Generals-RL/commit/669b8a3f628c2d48fdc71f484e82c9743a3e44a3))
+
 ## [0.5.0](https://github.com/strakam/Generals-RL/compare/v0.4.0...v0.5.0) (2024-10-01)
 
 
