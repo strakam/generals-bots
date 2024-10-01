@@ -26,6 +26,10 @@ class Gym_Generals(gym.Env):
         reward_fn: RewardFn = None,
         render_mode=None,
     ):
+        self.game = None
+        self.gui = None
+        self.replay = None
+
         self.render_mode = render_mode
         self.reward_fn = self.default_reward if reward_fn is None else reward_fn
         self.grid_factory = grid_factory

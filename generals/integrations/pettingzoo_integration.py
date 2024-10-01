@@ -30,6 +30,10 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         reward_fn: RewardFn = None,
         render_mode=None,
     ):
+        self.game = None
+        self.gui = None
+        self.replay = None
+
         self.render_mode = render_mode
         self.grid_factory = grid_factory
 

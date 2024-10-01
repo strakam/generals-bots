@@ -18,7 +18,7 @@ class ExpanderAgent(Agent):
 
         valid_actions = np.argwhere(mask == 1)
         if len(valid_actions) == 0:  # No valid actions
-            return (1, np.array([0, 0]), 0, 0)
+            return 1, np.array([0, 0]), 0, 0
 
         army = observation["army"]
         opponent = observation["opponent_cells"]
