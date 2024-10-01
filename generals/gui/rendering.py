@@ -4,10 +4,12 @@ import generals.game as game
 import generals.config as c
 from typing import Any
 
+from .properties import Properties
+
 
 class Renderer:
     def __init__(
-        self, game: game.Game, agent_data: dict[str, dict[str, Any]]
+        self, game: game.Game, properties: Properties, agent_data: dict[str, dict[str, Any]]
     ):
         """
         Initialize the pygame GUI
@@ -20,6 +22,7 @@ class Renderer:
         pygame.key.set_repeat(500, 64)
 
         self.game = game
+        self.properties = properties
         self.agent_data = agent_data
         self.grid_height = self.game.grid_dims[0]
         self.grid_width = self.game.grid_dims[1]
@@ -61,11 +64,7 @@ class Renderer:
             for _ in range(self.grid_height)
         ]
 
-        self.clock = pygame.time.Clock()
-
         self.agent_fov = {name: True for name in self.agent_data.keys()}
-        self.game_speed = 1
-        self.paused = False
 
         self._mountain_img = pygame.image.load(
             str(c.MOUNTAIN_PATH), "png"
@@ -82,7 +81,7 @@ class Renderer:
         self.render_stats()
         pygame.display.flip()
         if fps:
-            self.clock.tick(fps)
+            self.properties.clock.tick(fps)
 
     def render_cell_text(self, cell, text, fg_color=c.BLACK, bg_color=c.WHITE):
         """
@@ -145,7 +144,7 @@ class Renderer:
 
         info_text = {
             "time": f"Time: {str(self.game.time // 2) + ('.' if self.game.time % 2 == 1 else '')}",
-            "speed": "Paused" if self.paused else f"Speed: {str(1 / self.game_speed)}x",
+            "speed": "Paused" if self.properties.paused else f"Speed: {str(1 / self.properties.game_speed)}x",
         }
 
         # Write additional info
