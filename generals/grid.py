@@ -4,8 +4,8 @@ from generals.config import PASSABLE, MOUNTAIN
 
 class Grid:
     def __init__(self, grid: str):
-        if not Grid.verify_map(grid):
-            raise ValueError("Invalid map layout - generals cannot reach each other.")
+        if not Grid.verify_grid(grid):
+            raise ValueError("Invalid grid layout - generals cannot reach each other.")
         self._grid_string = grid.strip()
 
     @property
@@ -15,8 +15,8 @@ class Grid:
     @grid.setter
     def grid(self, grid: str):
         grid = grid.strip()
-        if not Grid.verify_map(grid):
-            raise ValueError("Invalid map layout - generals cannot reach each other.")
+        if not Grid.verify_grid(grid):
+            raise ValueError("Invalid grid layout - generals cannot reach each other.")
         self._grid_string = grid
 
     @property
@@ -32,34 +32,34 @@ class Grid:
         return "\n".join(["".join(row) for row in grid])
 
     @staticmethod
-    def verify_map(map: str) -> bool:
+    def verify_grid(grid: str) -> bool:
         """
-        Verify map layout (can generals reach each other?)
-        Returns True if map is valid, False otherwise
+        Verify grid layout (can generals reach each other?)
+        Returns True if grid is valid, False otherwise
         """
 
-        def dfs(map, visited, square):
+        def dfs(grid, visited, square):
             i, j = square
             if (
                 i < 0
-                or i >= map.shape[0]
+                or i >= grid.shape[0]
                 or j < 0
-                or j >= map.shape[1]
+                or j >= grid.shape[1]
                 or visited[i, j]
             ):
                 return
-            if map[i, j] == MOUNTAIN:
+            if grid[i, j] == MOUNTAIN:
                 return
             visited[i, j] = True
             for di, dj in [[-1, 0], [1, 0], [0, -1], [0, 1]]:
                 new_square = (i + di, j + dj)
-                dfs(map, visited, new_square)
+                dfs(grid, visited, new_square)
 
-        map = Grid.numpify_grid(map)
-        generals = np.argwhere(np.isin(map, ["A", "B"]))
+        grid = Grid.numpify_grid(grid)
+        generals = np.argwhere(np.isin(grid, ["A", "B"]))
         start, end = generals[0], generals[1]
-        visited = np.zeros_like(map, dtype=bool)
-        dfs(map, visited, start)
+        visited = np.zeros_like(grid, dtype=bool)
+        dfs(grid, visited, start)
         return visited[end[0], end[1]]
 
     def __str__(self):

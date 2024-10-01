@@ -1,7 +1,7 @@
 from generals.grid import GridFactory, Grid
 import numpy as np
 
-def test_verify_map():
+def test_verify_grid():
     map = """
 .....
 .A##2
@@ -9,7 +9,7 @@ def test_verify_map():
 ..22.
 ...B.
     """
-    assert Grid.verify_map(map)
+    assert Grid.verify_grid(map)
 
     map = """
 .....
@@ -18,7 +18,7 @@ def test_verify_map():
 ..###
 ...B.
     """
-    assert not Grid.verify_map(map)
+    assert not Grid.verify_grid(map)
 
     map = """
 .....
@@ -27,7 +27,7 @@ def test_verify_map():
 ..2##
 ...B.
     """
-    assert Grid.verify_map(map)
+    assert Grid.verify_grid(map)
 
     map = """
 ..#..
@@ -36,7 +36,7 @@ def test_verify_map():
 ..2##
 ...B.
     """
-    assert not Grid.verify_map(map)
+    assert not Grid.verify_grid(map)
 
     map = """
 .....
@@ -45,7 +45,7 @@ BA2#2
 ..2##
 .....
     """
-    assert Grid.verify_map(map)
+    assert Grid.verify_grid(map)
 
     map = """
 ...#.
@@ -54,7 +54,7 @@ BA2#2
 ..2##
 .....
     """
-    assert not Grid.verify_map(map)
+    assert not Grid.verify_grid(map)
 
     map = """
 ...#.
@@ -63,7 +63,7 @@ A#2#2
 ..2#.
 .....
     """
-    assert Grid.verify_map(map)
+    assert Grid.verify_grid(map)
 
 
 def test_numpify_map():

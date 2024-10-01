@@ -35,9 +35,11 @@ class Game:
         # Ownership_i - ownership mask for player i (1 if player i owns cell, 0 otherwise)
         # Ownerhsip_0 - ownership mask for neutral cells that are passable (1 if cell is neutral, 0 otherwise)
         # Initialize channels
+
+        valid_generals = ["A", "B"] # Generals are represented by A and B
         self.channels = {
-            "army": np.where(np.isin(map, ["A", "B"]), 1, 0).astype(int),
-            "general": np.where(np.isin(map, ["A", "B"]), 1, 0).astype(bool),
+            "army": np.where(np.isin(map, valid_generals), 1, 0).astype(int),
+            "general": np.where(np.isin(map, valid_generals), 1, 0).astype(bool),
             "mountain": np.where(map == MOUNTAIN, 1, 0).astype(bool),
             "city": np.where(np.char.isdigit(map), 1, 0).astype(bool),
             "passable": (map != MOUNTAIN).astype(bool),
