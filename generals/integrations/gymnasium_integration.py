@@ -14,7 +14,7 @@ from ..replay import Replay
 # Type aliases
 from generals.game import Info
 Reward: TypeAlias = float
-RewardFn: TypeAlias = Callable[[dict[str, Observation]], Reward]
+RewardFn: TypeAlias = Callable[[dict[str, Observation], gym.Space, bool, Info], Reward]
 
 
 class Gym_Generals(gym.Env):

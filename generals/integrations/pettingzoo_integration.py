@@ -15,8 +15,8 @@ from ..replay import Replay
 # Type aliases
 from generals.game import Info
 
-Reward: TypeAlias = dict[str, float]
-RewardFn: TypeAlias = Callable[[dict[str, Observation]], Reward]
+Reward: TypeAlias = float
+RewardFn: TypeAlias = Callable[[dict[str, Observation], spaces.Tuple, bool, Info], Reward]
 
 
 class PZ_Generals(pettingzoo.ParallelEnv):
