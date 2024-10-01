@@ -18,7 +18,7 @@ Info: TypeAlias = dict[str, Any]
 class Game:
     def __init__(self, grid: Grid, agents: list[str]):
         self.agents = agents
-        map = grid.numpified_grid
+        map = grid.grid
         self.grid_dims = (map.shape[0], map.shape[1])
         self.time = 0
 
