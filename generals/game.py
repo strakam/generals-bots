@@ -1,6 +1,7 @@
 import warnings
 from typing import Any
 
+from generals.grid import Grid
 import numpy as np
 import gymnasium as gym
 from typing_extensions import TypeAlias
@@ -14,18 +15,16 @@ Info: TypeAlias = dict[str, Any]
 
 
 class Game:
-    def __init__(self, map: np.ndarray, agents: list[str]):
+    def __init__(self, grid: Grid, agents: list[str]):
         self.agents = agents
+        map = grid.numpified_grid
         self.grid_dims = (map.shape[0], map.shape[1])
-        self.map = map
         self.time = 0
 
         self.general_positions = {
             agent: np.argwhere(map == chr(ord("A") + i))[0]
             for i, agent in enumerate(self.agents)
         }
-
-        valid_generals = ["A", "B"]  # because generals are represented as letters
 
         # Initialize channels
         # Army - army size in each cell
@@ -36,6 +35,8 @@ class Game:
         # Ownership_i - ownership mask for player i (1 if player i owns cell, 0 otherwise)
         # Ownerhsip_0 - ownership mask for neutral cells that are passable (1 if cell is neutral, 0 otherwise)
         # Initialize channels
+
+        valid_generals = ["A", "B"] # Generals are represented by A and B
         self.channels = {
             "army": np.where(np.isin(map, valid_generals), 1, 0).astype(int),
             "general": np.where(np.isin(map, valid_generals), 1, 0).astype(bool),
@@ -80,7 +81,7 @@ class Game:
                         "opponent_land_count": gym.spaces.Discrete(max_value),
                         "opponent_army_count": gym.spaces.Discrete(max_value),
                         "is_winner": gym.spaces.Discrete(2),
-                        "timestep": gym.spaces.Discrete(max_value)
+                        "timestep": gym.spaces.Discrete(max_value),
                     }
                 ),
                 "action_mask": gym.spaces.MultiBinary(self.grid_dims + (4,)),
@@ -335,9 +336,9 @@ class Game:
         }
         observation = {
             "observation": _observation,
-            "action_mask": self.action_mask(agent)
+            "action_mask": self.action_mask(agent),
         }
-            
+
         return observation
 
     def agent_won(self, agent: str) -> bool:

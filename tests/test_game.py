@@ -2,22 +2,20 @@ import numpy as np
 import pytest
 
 import generals.game as game
-from generals.map import Mapper
+from generals.grid import GridFactory, Grid
 import itertools
 
 
-def get_game(map=None):
-    if map is not None:
-        map = Mapper.numpify_map(map)
-    else:
-        mapper = Mapper(
+def get_game(grid=None):
+    if grid is None:
+        grid_factory = GridFactory(
             grid_dims=(4, 4),
             mountain_density=0.1,
             city_density=0.1,
             general_positions=[[3, 3], [1, 3]],
         )
-        map = mapper.get_map(numpify=True)
-    return game.Game(map, ["red", "blue"])
+        grid = grid_factory.grid_from_generator()
+    return game.Game(grid, ["red", "blue"])
 
 
 def test_grid_creation():
@@ -26,7 +24,7 @@ def test_grid_creation():
     """
     for _ in range(10):
         game = get_game()
-        assert game.map.shape == (4, 4)
+        assert game.grid_dims == (4, 4)
 
         # mountain and city should be disjoint
         assert (
@@ -56,7 +54,8 @@ def test_channel_to_indices():
 #..#
 .#.B
 """
-    game = get_game(map)
+    grid = Grid(map)
+    game = get_game(grid)
 
     channel = np.array([[1, 0, 1], [0, 1, 0], [1, 0, 1]])
     reference = np.array([(0, 0), (0, 2), (1, 1), (2, 0), (2, 2)])
@@ -107,7 +106,7 @@ def test_action_mask():
     For given ownership mask and passable mask, we should get NxNx4 mask of valid actions.
     """
     game = get_game()
-    game.grid_size = 4
+    game.grid_dims = (4, 4)
     game.channels["army"] = np.array(
         [
             [3, 0, 1, 0],
@@ -186,7 +185,8 @@ def test_observations():
 #..#
 .#.B
 """
-    game = get_game(map)
+    grid = Grid(map)
+    game = get_game(grid)
     game.channels["ownership_red"] = np.array(
         [
             [0, 0, 0, 0],
@@ -352,7 +352,8 @@ def test_game_step():
 #..#
 .#.B
 """
-    game = get_game(map)
+    grid = Grid(map)
+    game = get_game(grid)
     game.channels["ownership_red"] = np.array(
         [
             [0, 0, 0, 0],

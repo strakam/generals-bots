@@ -1,15 +1,17 @@
 import pickle
 import time
-from generals.map import Mapper
+
+from generals.grid import Grid
+from generals.rendering import Renderer
 from generals.gui import GUI
 from generals.game import Game
 from copy import deepcopy
 
 
 class Replay:
-    def __init__(self, name, map, agent_data):
+    def __init__(self, name: str, grid: Grid, agent_data: dict[str, any]):
         self.name = name
-        self.map = map
+        self.grid = grid
         self.agent_data = agent_data
 
         self.game_states = []
@@ -30,9 +32,8 @@ class Replay:
             return pickle.load(f)
 
     def play(self):
-        map = Mapper.numpify_map(self.map)
         agents = [agent for agent in self.agent_data.keys()]
-        game = Game(map, agents)
+        game = Game(self.grid, agents)
         gui = GUI(game, self.agent_data, from_replay=True)
         gui_properties = gui.properties
 

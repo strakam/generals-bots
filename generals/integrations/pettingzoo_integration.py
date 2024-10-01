@@ -6,6 +6,7 @@ import pettingzoo
 from gymnasium import spaces
 from copy import deepcopy
 from ..game import Game, Observation
+from ..grid import GridFactory
 from ..agents import Agent
 from ..gui import GUI
 from ..replay import Replay
@@ -21,13 +22,13 @@ RewardFn: TypeAlias = Callable[[dict[str, Observation]], Reward]
 class PZ_Generals(pettingzoo.ParallelEnv):
     def __init__(
         self,
-        mapper,
+        grid_factory: GridFactory,
         agents: dict[str, Agent],
         reward_fn: RewardFn = None,
         render_mode=None,
     ):
         self.render_mode = render_mode
-        self.mapper = mapper
+        self.grid_factory = grid_factory
 
         self.agent_data = {
             agents[agent].name: {"color": agents[agent].color}
@@ -42,11 +43,13 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         self.reward_fn = self.default_reward if reward_fn is None else reward_fn
 
     @functools.lru_cache(maxsize=None)
-    def observation_space(self):
+    def observation_space(self, agent):
+        assert agent in self.possible_agents, f"Agent {agent} not in possible agents"
         return self.game.observation_space
 
     @functools.lru_cache(maxsize=None)
-    def action_space(self):
+    def action_space(self, agent):
+        assert agent in self.possible_agents, f"Agent {agent} not in possible agents"
         return self.game.action_space
 
     def render(self, fps=6):
@@ -56,13 +59,12 @@ class PZ_Generals(pettingzoo.ParallelEnv):
     def reset(self, seed=None, options={}):
         self.agents = deepcopy(self.possible_agents)
 
-        if "map" in options:
-            map = options["map"]
+        if "grid" in options:
+            grid = self.grid_factory.grid_from_string(options["grid"])
         else:
-            self.mapper.reset()  # Generate new map
-            map = self.mapper.get_map()
+            grid = self.grid_factory.grid_from_generator(seed=seed)
 
-        self.game = Game(self.mapper.numpify_map(map), self.agents)
+        self.game = Game(grid, self.agents)
 
         if self.render_mode == "human":
             self.gui = GUI(self.game, self.agent_data)
@@ -70,7 +72,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         if "replay_file" in options:
             self.replay = Replay(
                 name=options["replay_file"],
-                map=map,
+                grid=grid,
                 agent_data=self.agent_data,
             )
             self.replay.add_state(deepcopy(self.game.channels))

@@ -7,8 +7,7 @@ from copy import deepcopy
 
 from ..agents import Agent
 from ..game import Game, Observation
-from ..gui import GUI
-from ..map import Mapper
+from ..grid import GridFactory
 from ..replay import Replay
 
 # Type aliases
@@ -20,7 +19,7 @@ RewardFn: TypeAlias = Callable[[dict[str, Observation]], Reward]
 class Gym_Generals(gym.Env):
     def __init__(
         self,
-        mapper: Mapper,
+        grid_factory: GridFactory,
         agent: Agent,
         npc: Agent,
         reward_fn: RewardFn = None,
@@ -28,7 +27,7 @@ class Gym_Generals(gym.Env):
     ):
         self.render_mode = render_mode
         self.reward_fn = self.default_reward if reward_fn is None else reward_fn
-        self.mapper = mapper
+        self.grid_factory = grid_factory
 
         self.agent_name = agent.name
         self.npc = npc
@@ -40,8 +39,8 @@ class Gym_Generals(gym.Env):
             agent.name != npc.name
         ), "Agent names must be unique - you can pass custom names to agent constructors."
 
-        map = self.mapper.get_map(numpify=True)
-        game = Game(map, [self.agent_name, self.npc.name])
+        grid = self.grid_factory.grid_from_generator()
+        game = Game(grid, [self.agent_name, self.npc.name])
         self.observation_space = game.observation_space
         self.action_space = game.action_space
 
@@ -62,13 +61,12 @@ class Gym_Generals(gym.Env):
             options = {}
         super().reset(seed=seed)
         # If map is not provided, generate a new one
-        if "map" in options:
-            map = options["map"]
+        if "grid" in options:
+            grid = self.grid_factory.grid_from_string(options["grid"])
         else:
-            self.mapper.reset()  # Generate new map
-            map = self.mapper.get_map()
+            grid = self.grid_factory.grid_from_generator()
 
-        self.game = Game(self.mapper.numpify_map(map), [self.agent_name, self.npc.name])
+        self.game = Game(grid, [self.agent_name, self.npc.name])
         self.npc.reset()
 
         self.observation_space = self.game.observation_space
@@ -80,7 +78,7 @@ class Gym_Generals(gym.Env):
         if "replay_file" in options:
             self.replay = Replay(
                 name=options["replay_file"],
-                map=map,
+                grid=grid,
                 agent_data=self.agent_colors,
             )
             self.replay.add_state(deepcopy(self.game.channels))
