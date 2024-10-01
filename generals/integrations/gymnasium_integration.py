@@ -1,12 +1,12 @@
 from collections.abc import Callable
-from typing import TypeAlias
+from typing import TypeAlias, Any, SupportsFloat
 
 import gymnasium as gym
 import functools
 from copy import deepcopy
 
 from ..agents import Agent
-from ..game import Game, Observation
+from ..game import Game, Action, Observation
 from ..grid import GridFactory
 from ..gui import GUI
 from ..replay import Replay
@@ -14,7 +14,7 @@ from ..replay import Replay
 # Type aliases
 from generals.game import Info
 Reward: TypeAlias = float
-RewardFn: TypeAlias = Callable[[dict[str, Observation], gym.Space, bool, Info], Reward]
+RewardFn: TypeAlias = Callable[[dict[str, Observation], Action, bool, Info], Reward]
 
 
 class Gym_Generals(gym.Env):
@@ -46,18 +46,20 @@ class Gym_Generals(gym.Env):
         self.action_space = game.action_space
 
     @functools.lru_cache(maxsize=None)
-    def observation_space(self):
+    def observation_space(self) -> gym.Space:
         return self.game.observation_space
 
     @functools.lru_cache(maxsize=None)
-    def action_space(self):
+    def action_space(self) -> gym.Space:
         return self.game.action_space
 
     def render(self, fps: int = 6) -> None:
         if self.render_mode == "human":
             self.gui.tick(fps=fps)
 
-    def reset(self, seed=None, options=None):
+    def reset(self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[
+        Observation, dict[str, Any]
+    ]:
         if options is None:
             options = {}
         super().reset(seed=seed)
@@ -90,7 +92,7 @@ class Gym_Generals(gym.Env):
         info = {}
         return observation, info
 
-    def step(self, action):
+    def step(self, action: Action) -> tuple[Observation, SupportsFloat, bool, bool, dict[str, Any]]:
         # get action of NPC
         npc_action = self.npc.play(self.game._agent_observation(self.npc.name))
         actions = {self.agent_name: action, self.npc.name: npc_action}
@@ -114,7 +116,7 @@ class Gym_Generals(gym.Env):
 
     def default_reward(
         self, observation: dict[str, Observation],
-        action: gym.Space,
+        action: Action,
         done: bool,
         info: Info,
     ) -> Reward:

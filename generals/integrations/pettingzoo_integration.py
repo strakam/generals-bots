@@ -1,11 +1,14 @@
 import functools
 from collections.abc import Callable
-from typing import TypeAlias
+from typing import TypeAlias, Any
 
 import pettingzoo
 from gymnasium import spaces
 from copy import deepcopy
-from ..game import Game, Observation
+
+from pettingzoo.utils.env import AgentID
+
+from ..game import Game, Action, Observation
 from ..grid import GridFactory
 from ..agents import Agent
 from ..gui import GUI
@@ -16,7 +19,7 @@ from ..replay import Replay
 from generals.game import Info
 
 Reward: TypeAlias = float
-RewardFn: TypeAlias = Callable[[dict[str, Observation], spaces.Tuple, bool, Info], Reward]
+RewardFn: TypeAlias = Callable[[dict[str, Observation], Action, bool, Info], Reward]
 
 
 class PZ_Generals(pettingzoo.ParallelEnv):
@@ -43,20 +46,24 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         self.reward_fn = self.default_reward if reward_fn is None else reward_fn
 
     @functools.lru_cache(maxsize=None)
-    def observation_space(self, agent):
+    def observation_space(self, agent: AgentID) -> spaces.Space:
         assert agent in self.possible_agents, f"Agent {agent} not in possible agents"
         return self.game.observation_space
 
     @functools.lru_cache(maxsize=None)
-    def action_space(self, agent):
+    def action_space(self, agent: AgentID) -> spaces.Space:
         assert agent in self.possible_agents, f"Agent {agent} not in possible agents"
         return self.game.action_space
 
-    def render(self, fps=6):
+    def render(self, fps=6) -> None:
         if self.render_mode == "human":
             self.gui.tick(fps=fps)
 
-    def reset(self, seed=None, options={}):
+    def reset(self, seed: int | None = None, options: dict | None = None) -> tuple[
+        dict[AgentID, Observation], dict[AgentID, dict]
+    ]:
+        if options is None:
+            options = {}
         self.agents = deepcopy(self.possible_agents)
 
         if "grid" in options:
@@ -83,8 +90,10 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         infos = {agent: {} for agent in self.agents}
         return observations, infos
 
-    def step(self, action):
-        observations, infos = self.game.step(action)
+    def step(self, actions: dict[AgentID, Action]) -> tuple[
+        dict[AgentID, Observation], dict[AgentID, float], dict[AgentID, bool], dict[AgentID, bool], dict[AgentID, Info]
+    ]:
+        observations, infos = self.game.step(actions)
 
         truncated = {agent: False for agent in self.agents}  # no truncation
         terminated = {
@@ -94,7 +103,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         rewards = {
             agent: self.reward_fn(
                 observations[agent],
-                action,
+                actions[agent],
                 terminated[agent] or truncated[agent],
                 infos[agent],
             )
@@ -116,7 +125,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
     def default_reward(
         self,
         observation: dict[str, Observation],
-        action: spaces.Tuple,
+        action: Action,
         done: bool,
         info: Info,
     ) -> Reward:

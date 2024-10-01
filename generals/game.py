@@ -11,6 +11,7 @@ from generals.config import DIRECTIONS, PASSABLE, MOUNTAIN, INCREMENT_RATE
 from scipy.ndimage import maximum_filter
 
 Observation: TypeAlias = dict[str, gym.Space | dict[str, gym.Space]]
+Action: TypeAlias = gym.Space
 Info: TypeAlias = dict[str, Any]
 
 
@@ -166,7 +167,7 @@ class Game:
         """
         return maximum_filter(ownership_channel, size=3)
 
-    def step(self, actions: dict[str, gym.spaces.Tuple]) -> dict[str, gym.spaces.Dict]:
+    def step(self, actions: dict[str, Action]) -> tuple[dict[str, Observation], dict[str, dict]]:
         """
         Perform one step of the game
 
