@@ -3,25 +3,24 @@ from generals.config import PASSABLE, MOUNTAIN
 
 
 class Grid:
-    def __init__(self, grid: str):
-        if not Grid.verify_grid(grid):
-            raise ValueError("Invalid grid layout - generals cannot reach each other.")
-        self._grid_string = grid.strip()
+    def __init__(self, grid: str | np.ndarray):
+        self.grid = grid
 
     @property
     def grid(self):
-        return self._grid_string
+        return self._grid
 
     @grid.setter
-    def grid(self, grid: str):
-        grid = grid.strip()
+    def grid(self, grid: str | np.ndarray):
+        assert isinstance(
+            grid, (str, np.ndarray)
+        ), "Grid must be encoded as a string or a numpy array."
+        if isinstance(grid, str):
+            grid = grid.strip()
+            grid = Grid.numpify_grid(grid)
         if not Grid.verify_grid(grid):
             raise ValueError("Invalid grid layout - generals cannot reach each other.")
-        self._grid_string = grid
-
-    @property
-    def numpified_grid(self):
-        return Grid.numpify_grid(self._grid_string)
+        self._grid = grid
 
     @staticmethod
     def numpify_grid(grid: str) -> np.ndarray:
@@ -32,7 +31,7 @@ class Grid:
         return "\n".join(["".join(row) for row in grid])
 
     @staticmethod
-    def verify_grid(grid: str) -> bool:
+    def verify_grid(grid: np.ndarray) -> bool:
         """
         Verify grid layout (can generals reach each other?)
         Returns True if grid is valid, False otherwise
@@ -55,7 +54,6 @@ class Grid:
                 new_square = (i + di, j + dj)
                 dfs(grid, visited, new_square)
 
-        grid = Grid.numpify_grid(grid)
         generals = np.argwhere(np.isin(grid, ["A", "B"]))
         start, end = generals[0], generals[1]
         visited = np.zeros_like(grid, dtype=bool)
@@ -63,7 +61,7 @@ class Grid:
         return visited[end[0], end[1]]
 
     def __str__(self):
-        return self._grid_string
+        return Grid.stringify_grid(self._grid)
 
 
 class GridFactory:
