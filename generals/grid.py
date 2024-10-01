@@ -4,7 +4,9 @@ from generals.config import PASSABLE, MOUNTAIN
 
 class Grid:
     def __init__(self, grid: str):
-        self._grid_string = grid
+        if not Grid.verify_map(grid):
+            raise ValueError("Invalid map layout - generals cannot reach each other.")
+        self._grid_string = grid.strip()
 
     @property
     def grid(self):
@@ -12,6 +14,7 @@ class Grid:
 
     @grid.setter
     def grid(self, grid: str):
+        grid = grid.strip()
         if not Grid.verify_map(grid):
             raise ValueError("Invalid map layout - generals cannot reach each other.")
         self._grid_string = grid

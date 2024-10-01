@@ -1,7 +1,7 @@
 from __future__ import annotations
 from generals.env import pz_generals
 from generals.agents import RandomAgent
-from generals.map import Mapper
+from generals.grid import GridFactory
 import warnings
 
 import numpy as np
@@ -28,13 +28,12 @@ def sample_action(
         # pick random index of the mask with a 1, it should be 3 numbers
         valid_actions = np.argwhere(mask == 1)
         if len(valid_actions) == 0:
-            return np.array([1, 0, 0, 0, 0])
+            return (1, np.array([0,0]), 0, 0)
         action_index = np.random.choice(len(valid_actions))
-        action = np.array([1])
-        action = np.append(action, valid_actions[action_index])
-        # append 1 or 0 randomly to the action (to say whether to send half of troops or all troops)
-        action = np.append(action, np.random.choice([0, 1]))
-        return action
+        action = valid_actions[action_index]
+        cell = action[:2]
+        direction = action[2]
+        return (0, cell, direction, 0)
     return env.action_space(agent).sample()
 
 
@@ -141,7 +140,7 @@ def parallel_api_test(par_env: ParallelEnv, num_cycles=1000):
     print("Passed Parallel API test")
 
 if __name__ == "__main__":
-    mapper = Mapper()
+    mapper = GridFactory()
     agent1 = RandomAgent(name="A")
     agent2 = RandomAgent(name="B")
     agents = {

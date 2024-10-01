@@ -43,11 +43,13 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         self.reward_fn = self.default_reward if reward_fn is None else reward_fn
 
     @functools.lru_cache(maxsize=None)
-    def observation_space(self):
+    def observation_space(self, agent):
+        assert agent in self.possible_agents, f"Agent {agent} not in possible agents"
         return self.game.observation_space
 
     @functools.lru_cache(maxsize=None)
-    def action_space(self):
+    def action_space(self, agent):
+        assert agent in self.possible_agents, f"Agent {agent} not in possible agents"
         return self.game.action_space
 
     def render(self, fps=6):

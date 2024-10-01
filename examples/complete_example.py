@@ -11,7 +11,7 @@ agents = {
     expander.name: expander,
 }
 
-mapper = GridFactory(
+gf = GridFactory(
     grid_dims=(4, 8), # height x width
     mountain_density=0.2,
     city_density=0.05,
@@ -27,7 +27,7 @@ A..#
 """
 
 # Create environment
-env = pz_generals(mapper, agents, render_mode=None) # Disable rendering
+env = pz_generals(gf, agents, render_mode=None) # Disable rendering
 
 options = {
     "map": map,
