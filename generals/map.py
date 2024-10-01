@@ -1,15 +1,14 @@
 import numpy as np
-from typing import List, Tuple
 from generals.config import PASSABLE, MOUNTAIN
 
 
 class Mapper:
     def __init__(
         self,
-        grid_dims: Tuple[int, int] = (10, 10),
+        grid_dims: tuple[int, int] = (10, 10),
         mountain_density: float = 0.2,
         city_density: float = 0.05,
-        general_positions: List[Tuple[int, int]] = None,
+        general_positions: list[tuple[int, int]] = None,
         seed: int = None,
     ):
         self.grid_height = grid_dims[0]
@@ -32,7 +31,7 @@ class Mapper:
             return self.numpify_map(self.map)
         return self.map  # Return map as string
 
-    def reset(self):
+    def reset(self) -> None:
         self.map = self.generate_map(
             grid_dims=(self.grid_height, self.grid_width),
             mountain_density=self.mountain_density,
@@ -43,10 +42,10 @@ class Mapper:
 
     @staticmethod
     def generate_map(
-        grid_dims: Tuple[int, int] = (10, 10),
+        grid_dims: tuple[int, int] = (10, 10),
         mountain_density: float = 0.2,
         city_density: float = 0.05,
-        general_positions: List[Tuple[int, int]] = None,
+        general_positions: list[tuple[int, int]] = None,
         seed: int = None,
     ) -> np.ndarray:
 

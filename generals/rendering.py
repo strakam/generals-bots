@@ -2,12 +2,12 @@ import pygame
 import numpy as np
 import generals.game as game
 import generals.config as c
-from typing import Tuple, Dict, Any
+from typing import Any
 
 
 class Renderer:
     def __init__(
-        self, game: game.Game, agent_data: Dict[str, Dict[str, Any]], from_replay=False
+        self, game: game.Game, agent_data: dict[str, dict[str, Any]], from_replay=False
     ):
         """
         Initialize the pygame GUI
@@ -295,7 +295,7 @@ class Renderer:
             )
         self.screen.blit(self.game_area, (0, 0))
 
-    def draw_channel(self, channel, color: Tuple[int, int, int]):
+    def draw_channel(self, channel, color: tuple[int, int, int]):
         """
         Draw background and borders (left and top) for grid tiles of a given channel
         """

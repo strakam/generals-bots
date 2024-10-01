@@ -1,16 +1,21 @@
 import functools
+from collections.abc import Callable
+from typing import TypeAlias
+
 import pettingzoo
 from copy import deepcopy
-from ..game import Game
+from ..game import Game, Observation
 from ..agents import Agent
 from ..replay import Replay
 from ..rendering import Renderer
-from typing import Dict
+
+Reward: TypeAlias = dict[str, float]
+RewardFn: TypeAlias = Callable[[dict[str, Observation]], Reward]
 
 
 class PZ_Generals(pettingzoo.ParallelEnv):
     def __init__(
-        self, mapper, agents: Dict[str, Agent], reward_fn=None, render_mode=None
+        self, mapper, agents: dict[str, Agent], reward_fn: RewardFn=None, render_mode=None
     ):
         self.render_mode = render_mode
         self.mapper = mapper
@@ -88,7 +93,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
 
         return observations, rewards, terminated, truncated, infos
 
-    def default_rewards(self, observations):
+    def default_rewards(self, observations: dict[str, Observation]) -> Reward:
         """
         Calculate rewards for each agent.
         Give 0 if game still running, otherwise 1 for winner and -1 for loser.

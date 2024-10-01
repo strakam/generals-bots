@@ -1,16 +1,22 @@
-import numpy as np
+from collections.abc import Callable
+from typing import TypeAlias
+
 import gymnasium
 import functools
 from copy import deepcopy
 
-from ..game import Game
+from ..agents import Agent
+from ..game import Game, Observation
+from ..map import Mapper
 from ..replay import Replay
 from ..rendering import Renderer
-from collections import OrderedDict
+
+Reward: TypeAlias = float
+RewardFn: TypeAlias = Callable[[dict[str, Observation]], Reward]
 
 
 class Gym_Generals(gymnasium.Env):
-    def __init__(self, mapper, agent, npc, reward_fn=None, render_mode=None):
+    def __init__(self, mapper: Mapper, agent: Agent, npc: Agent, reward_fn: RewardFn=None, render_mode=None):
         self.render_mode = render_mode
         self.reward_fn = self.default_rewards if reward_fn is None else reward_fn
         self.mapper = mapper
@@ -38,11 +44,13 @@ class Gym_Generals(gymnasium.Env):
     def action_space(self):
         return self.game.action_space
 
-    def render(self, fps=6):
+    def render(self, fps: int=6) -> None:
         if self.render_mode == "human":
             self.renderer.render(fps=fps)
 
-    def reset(self, seed=None, options={}):
+    def reset(self, seed=None, options=None):
+        if options is None:
+            options = {}
         super().reset(seed=seed)
         # If map is not provided, generate a new one
         if "map" in options:
@@ -95,7 +103,7 @@ class Gym_Generals(gymnasium.Env):
 
         return observation, reward, terminated, truncated, info
 
-    def default_rewards(self, observations):
+    def default_rewards(self, observations: dict[str, Observation]) -> Reward:
         """
         Calculate rewards for each agent.
         Give 0 if game still running, otherwise 1 for winner and -1 for loser.

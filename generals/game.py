@@ -1,14 +1,20 @@
 import warnings
+from typing import Any
+
 import numpy as np
 import gymnasium as gym
-from typing import Dict, List
+from typing_extensions import TypeAlias
+
 from generals.config import DIRECTIONS, PASSABLE, MOUNTAIN, INCREMENT_RATE
 
 from scipy.ndimage import maximum_filter
 
+Observation: TypeAlias = dict[str, gym.Space | dict[str, gym.Space]]
+Info: TypeAlias = dict[str, Any]
+
 
 class Game:
-    def __init__(self, map: np.ndarray, agents: List[str]):
+    def __init__(self, map: np.ndarray, agents: list[str]):
         self.agents = agents
         self.grid_dims = (map.shape[0], map.shape[1])
         self.map = map
@@ -159,7 +165,7 @@ class Game:
         """
         return maximum_filter(ownership_channel, size=3)
 
-    def step(self, actions: Dict[str, gym.spaces.Tuple]) -> Dict[str, gym.spaces.Dict]:
+    def step(self, actions: dict[str, gym.spaces.Tuple]) -> dict[str, gym.spaces.Dict]:
         """
         Perform one step of the game
 
@@ -250,13 +256,13 @@ class Game:
         infos = {agent: {} for agent in self.agents}
         return observations, infos
 
-    def get_all_observations(self):
+    def get_all_observations(self) -> dict[str, Observation]:
         """
         Returns observations for all agents.
         """
         return {agent: self._agent_observation(agent) for agent in self.agents}
 
-    def _global_game_update(self):
+    def _global_game_update(self) -> None:
         """
         Update game state globally.
         """
@@ -276,13 +282,13 @@ class Game:
                     update_mask * self.channels[f"ownership_{owner}"]
                 )
 
-    def is_done(self):
+    def is_done(self) -> bool:
         """
         Returns True if the game is over, False otherwise.
         """
         return any(self.agent_won(agent) for agent in self.agents)
 
-    def get_infos(self):
+    def get_infos(self) -> dict[str, Info]:
         """
         Returns a dictionary of player statistics.
         Keys and values are as follows:
@@ -302,7 +308,7 @@ class Game:
             }
         return players_stats
 
-    def _agent_observation(self, agent: str) -> Dict[str, np.ndarray]:
+    def _agent_observation(self, agent: str) -> Observation:
         """
         Returns an observation for a given agent.
         Args:
