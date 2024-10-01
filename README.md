@@ -176,7 +176,7 @@ The `observation` is a `Dict`. Values are either `numpy` matrices with shape `(N
 `action_mask` is a mask with shape `(N,M,4)` where value `[i,j,d]` says whether you can move from cell `[i,j]` in a direction `d`.
    
 ### ⚡ Action
-Action is a `Tuple(pass, cell, direction, split)`, where:
+Action is a `tuple(pass, cell, direction, split)`, where:
 - `pass` indicates whether you want to `1 (pass)` or `0 (play)`.
 - `cell` is an `np.array([i,j])` where `i,j` are indices of the cell you want to move from
 - `direction` indicates whether you want to move `0 (up)`, `1 (down)`, `2 (left)`, or `3 (right)`
@@ -185,12 +185,9 @@ Action is a `Tuple(pass, cell, direction, split)`, where:
 ### 🎁 Reward
 It is possible to implement custom reward function. The default is `1` for winner and `-1` for loser, otherwise `0`.
 ```python
-def custom_reward_fn(observations):
+def custom_reward_fn(observation, action, done, info):
     # Give agent a reward based on the number of cells they own
-    return {
-        agent: observations[agent]["owned_land_count"]
-        for agent in observations.keys()
-    }
+    return observation["observation"]["owned_land_count"]
 
 env = generals_v0(reward_fn=custom_reward_fn)
 observations, info = env.reset()

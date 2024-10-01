@@ -3,11 +3,16 @@ from collections.abc import Callable
 from typing import TypeAlias
 
 import pettingzoo
+from gymnasium import spaces
 from copy import deepcopy
 from ..game import Game, Observation
 from ..agents import Agent
 from ..replay import Replay
 from ..rendering import Renderer
+
+
+# Type aliases
+from generals.game import Info
 
 Reward: TypeAlias = dict[str, float]
 RewardFn: TypeAlias = Callable[[dict[str, Observation]], Reward]
@@ -15,7 +20,11 @@ RewardFn: TypeAlias = Callable[[dict[str, Observation]], Reward]
 
 class PZ_Generals(pettingzoo.ParallelEnv):
     def __init__(
-        self, mapper, agents: dict[str, Agent], reward_fn: RewardFn=None, render_mode=None
+        self,
+        mapper,
+        agents: dict[str, Agent],
+        reward_fn: RewardFn = None,
+        render_mode=None,
     ):
         self.render_mode = render_mode
         self.mapper = mapper
@@ -30,7 +39,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
             len(self.possible_agents) == len(set(self.possible_agents))
         ), "Agent names must be unique - you can pass custom names to agent constructors."
 
-        self.reward_fn = self.default_rewards if reward_fn is None else reward_fn
+        self.reward_fn = self.default_reward if reward_fn is None else reward_fn
 
     @functools.lru_cache(maxsize=None)
     def observation_space(self):
@@ -79,7 +88,16 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         terminated = {
             agent: True if self.game.is_done() else False for agent in self.agents
         }
-        rewards = self.reward_fn(observations)
+
+        rewards = {
+            agent: self.reward_fn(
+                observations[agent],
+                action,
+                terminated[agent] or truncated[agent],
+                infos[agent],
+            )
+            for agent in self.agents
+        }
 
         if hasattr(self, "replay"):
             self.replay.add_state(deepcopy(self.game.channels))
@@ -93,23 +111,21 @@ class PZ_Generals(pettingzoo.ParallelEnv):
 
         return observations, rewards, terminated, truncated, infos
 
-    def default_rewards(self, observations: dict[str, Observation]) -> Reward:
+    def default_reward(
+        self,
+        observation: dict[str, Observation],
+        action: spaces.Tuple,
+        done: bool,
+        info: Info,
+    ) -> Reward:
         """
-        Calculate rewards for each agent.
         Give 0 if game still running, otherwise 1 for winner and -1 for loser.
         """
-        rewards = {agent: 0 for agent in self.agents}
-
-        # Extract only observation, ignore action mask
-        observations = {agent: observations[agent]['observation'] for agent in self.agents}
-        game_ended = any(observations[agent]["is_winner"] for agent in self.agents)
-        if game_ended:
-            for agent in self.agents:
-                if observations[agent]["is_winner"]:
-                    rewards[agent] = 1
-                else:
-                    rewards[agent] = -1
-        return rewards
+        if done:
+            reward = 1 if observation["observation"]["is_winner"] else -1
+        else:
+            reward = 0
+        return reward
 
     def close(self):
         print("Closing environment")

@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from typing import TypeAlias
 
-import gymnasium
+import gymnasium as gym
 import functools
 from copy import deepcopy
 
@@ -11,14 +11,23 @@ from ..map import Mapper
 from ..replay import Replay
 from ..rendering import Renderer
 
+# Type aliases
+from generals.game import Info
 Reward: TypeAlias = float
 RewardFn: TypeAlias = Callable[[dict[str, Observation]], Reward]
 
 
-class Gym_Generals(gymnasium.Env):
-    def __init__(self, mapper: Mapper, agent: Agent, npc: Agent, reward_fn: RewardFn=None, render_mode=None):
+class Gym_Generals(gym.Env):
+    def __init__(
+        self,
+        mapper: Mapper,
+        agent: Agent,
+        npc: Agent,
+        reward_fn: RewardFn = None,
+        render_mode=None,
+    ):
         self.render_mode = render_mode
-        self.reward_fn = self.default_rewards if reward_fn is None else reward_fn
+        self.reward_fn = self.default_reward if reward_fn is None else reward_fn
         self.mapper = mapper
 
         self.agent_name = agent.name
@@ -44,7 +53,7 @@ class Gym_Generals(gymnasium.Env):
     def action_space(self):
         return self.game.action_space
 
-    def render(self, fps: int=6) -> None:
+    def render(self, fps: int = 6) -> None:
         if self.render_mode == "human":
             self.renderer.render(fps=fps)
 
@@ -56,7 +65,7 @@ class Gym_Generals(gymnasium.Env):
         if "map" in options:
             map = options["map"]
         else:
-            self.mapper.reset() # Generate new map
+            self.mapper.reset()  # Generate new map
             map = self.mapper.get_map()
 
         self.game = Game(self.mapper.numpify_map(map), [self.agent_name, self.npc.name])
@@ -95,7 +104,8 @@ class Gym_Generals(gymnasium.Env):
         info = infos[self.agent_name]
         truncated = False
         terminated = True if self.game.is_done() else False
-        reward = self.reward_fn(observations)
+        done = terminated or truncated
+        reward = self.reward_fn(observation, action, done, info)
 
         if terminated:
             if hasattr(self, "replay"):
@@ -103,16 +113,18 @@ class Gym_Generals(gymnasium.Env):
 
         return observation, reward, terminated, truncated, info
 
-    def default_rewards(self, observations: dict[str, Observation]) -> Reward:
+    def default_reward(
+        self, observation: dict[str, Observation],
+        action: gym.Space,
+        done: bool,
+        info: Info,
+    ) -> Reward:
         """
         Calculate rewards for each agent.
         Give 0 if game still running, otherwise 1 for winner and -1 for loser.
         """
-        reward = 0
-        game_ended = any(
-            observations[agent]["observation"]["is_winner"]
-            for agent in [self.agent_name, self.npc.name]
-        )
-        if game_ended:
-            reward = 1 if observations[self.agent_name]["observation"]["is_winner"] else -1
+        if done:
+            reward = 1 if observation["observation"]["is_winner"] else -1
+        else:
+            reward = 0
         return reward
