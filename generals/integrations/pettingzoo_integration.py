@@ -1,6 +1,6 @@
 import functools
 from collections.abc import Callable
-from typing import TypeAlias, Any
+from typing import TypeAlias
 
 import pettingzoo
 from gymnasium import spaces
