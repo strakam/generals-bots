@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.5.0](https://github.com/strakam/Generals-RL/compare/v0.4.0...v0.5.0) (2024-10-01)
+
+
+### 🚀 Features
+
+* Reset replay if 'r' is pressed ([0c2357f](https://github.com/strakam/Generals-RL/commit/0c2357f2f49493d7b17804dc1144ae1b1c1fba80))
+
+
+### 🐛 Bug Fixes
+
+* Accept map passed from options ([baf2021](https://github.com/strakam/Generals-RL/commit/baf202193686b9cd97e4dcca9a611b4e4af2fb08))
+* Create proper types for spaces ([f543663](https://github.com/strakam/Generals-RL/commit/f543663c0a8f332043fd8ec4ea86c11ab84893cf))
+
+
+### 🛠️ Refactor
+
+* add missing types ([960afae](https://github.com/strakam/Generals-RL/commit/960afae4080382fceffa06a66e882108a38f716a))
+* move common attributes to Agent class ([e48a39b](https://github.com/strakam/Generals-RL/commit/e48a39bd91fcd60c9053e925822d820e349ab94e))
+* New action space and observation space ([4979342](https://github.com/strakam/Generals-RL/commit/49793423e9039bae463d21f80c0d4923a7f44d4b))
+* Unify reward_fn design ([3039ace](https://github.com/strakam/Generals-RL/commit/3039aceb27d63cdbbfe8f8f8fee8d71451e6915e))
+
 ## [0.4.0](https://github.com/strakam/Generals-RL/compare/v0.3.2...v0.4.0) (2024-09-29)
 
 
