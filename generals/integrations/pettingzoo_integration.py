@@ -47,7 +47,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
             len(self.possible_agents) == len(set(self.possible_agents))
         ), "Agent names must be unique - you can pass custom names to agent constructors."
 
-        self.reward_fn = self.default_reward if reward_fn is None else reward_fn
+        self.reward_fn = self._default_reward if reward_fn is None else reward_fn
 
     @functools.lru_cache(maxsize=None)
     def observation_space(self, agent: AgentID) -> spaces.Space:
@@ -126,8 +126,8 @@ class PZ_Generals(pettingzoo.ParallelEnv):
 
         return observations, rewards, terminated, truncated, infos
 
-    def default_reward(
-        self,
+    @staticmethod
+    def _default_reward(
         observation: dict[str, Observation],
         action: Action,
         done: bool,
