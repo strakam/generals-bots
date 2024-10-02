@@ -6,18 +6,23 @@ class Grid:
     def __init__(self, grid: str | np.ndarray):
         self.grid = grid
 
+    def __eq__(self, other):
+        return np.array_equal(self.grid, other.grid)
+
     @property
     def grid(self):
         return self._grid
 
     @grid.setter
     def grid(self, grid: str | np.ndarray):
-        assert isinstance(
-            grid, (str, np.ndarray)
-        ), "Grid must be encoded as a string or a numpy array."
-        if isinstance(grid, str):
-            grid = grid.strip()
-            grid = Grid.numpify_grid(grid)
+        match grid:
+            case str(grid):
+                grid = grid.strip()
+                grid = Grid.numpify_grid(grid)
+            case np.ndarray():
+                pass
+            case _:
+                raise ValueError("Grid must be encoded as a string or a numpy array.")
         if not Grid.verify_grid(grid):
             raise ValueError("Invalid grid layout - generals cannot reach each other.")
         self._grid = grid
