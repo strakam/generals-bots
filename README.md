@@ -13,7 +13,7 @@
 [Installation](#-installation) • [Getting Started](#-getting-started) • [Customization](#-custom-maps) • [Environment](#-environment)
 </div>
 
-[Generals.io](https://generals.io/) is a real-time strategy game where players compete to conquer their opponents' generals on a 2D grid. While the goal is simple — capture the enemy general — the gameplay involves a lot of depth. Players need to employ strategic planning, deception, and manage both micro and macro mechanics throughout the game. The combination of these elements makes the game highly engaging and complex.
+Generals-RL is a real-time strategy game where players compete to conquer their opponents' generals on a 2D grid. While the goal is simple — capture the enemy general — the gameplay involves a lot of depth. Players need to employ strategic planning, deception, and manage both micro and macro mechanics throughout the game. The combination of these elements makes the game highly engaging and complex.
 
 This repository aims to make bot development more accessible, especially for Machine Learning based agents.
 
@@ -22,6 +22,10 @@ Highlights:
 * 🤝 Compatibility with Reinforcement-Learning API standards 🤸[Gymnasium](https://gymnasium.farama.org/) and 🦁[PettingZoo](https://pettingzoo.farama.org/)
 * 🔧 Easy customization of environments
 * 🔬 Analysis tools such as replays
+
+> [!NOTE]
+> This repository is based on the [generals.io](https://generals.io) game.
+> Check it out, its a lot of fun !
 
 ## 📦 Installation
 Stable release version is available through pip:
@@ -38,7 +42,7 @@ pip install -e .
 ## Usage example (🤸 Gymnasium)
 
 ```python
-from generals.env import gym_generals
+from generals import gym_generals
 from generals.agents import RandomAgent, ExpanderAgent
 
 # Initialize agents
@@ -73,14 +77,14 @@ Creating your first agent is very simple.
 > [!TIP]
 > Check out `Makefile` and run some examples to get a feel for the game 🤗.
 
-## 🎨 Custom maps
-Maps are handled via `Mapper` class. You can instantiate the class with desired map properties, and it will generate
-maps with these properties for each run.
+## 🎨 Custom grids
+Grids are generated via `GridFactory`. You can instantiate the class with desired grid properties, and it will generate
+grid with these properties for each run.
 ```python
-from generals.env import pz_generals
-from generals.map import Mapper
+from generals import pz_generals
+from generals import GridFactory
 
-mapper = Mapper(
+grid_factory = GridFactory(
     grid_dims=(10, 10),                    # Dimensions of the grid (height, width)
     mountain_density=0.2,                  # Probability of a mountain in a cell
     city_density=0.05,                     # Probability of a city in a cell
@@ -88,29 +92,29 @@ mapper = Mapper(
 )
 
 # Create environment
-env = pz_generals(mapper=mapper, ...)
+env = pz_generals(grid_factory=grid_factory, ...)
 ```
-You can also specify map manually, as a string via `options` dict:
+You can also specify grids manually, as a string via `options` dict:
 ```python
-from generals.env import pz_generals
-from generals.map import Mapper
+from generals import pz_generals
+from generals import GridFactory
 
-mapper = Mapper()
-env = pz_generals(mapper=mapper, ...)
+grid_factory = GridFactory()
+env = pz_generals(grid_factory=grid_factory, ...)
 
-map = """
+grid = """
 .3.#
 #..A
 #..#
 .#.B
 """
 
-options = {'map' : map}
+options = {"grid":grid}
 
-# Pass the new map to the environment (for the next game)
+# Pass the new grid to the environment (for the next game)
 env.reset(options=options)
 ```
-Maps are encoded using these symbols:
+Grids are encoded using these symbols:
 - `.` for cells where you can move your army
 - `#` for mountains (terrain that can not be passed)
 - `A,B` are positions of generals
@@ -120,7 +124,7 @@ Maps are encoded using these symbols:
 We can store replays and then analyze them. `Replay` class handles replay related functionality.
 ### Storing a replay
 ```python
-from generals.env import pz_generals
+from generals import pz_generals
 
 options = {"replay": "my_replay"}
 env = pz_generals(...)
@@ -130,7 +134,7 @@ env.reset(options=options) # The next game will be encoded in my_replay.pkl
 ### Loading a replay
 
 ```python
-from generals.replay import Replay
+from generals import Replay
 
 # Initialize Replay instance
 replay = Replay.load("my_replay")
@@ -189,6 +193,6 @@ def custom_reward_fn(observation, action, done, info):
     # Give agent a reward based on the number of cells they own
     return observation["observation"]["owned_land_count"]
 
-env = generals_v0(reward_fn=custom_reward_fn)
+env = pz_generals(reward_fn=custom_reward_fn)
 observations, info = env.reset()
 ```
