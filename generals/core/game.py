@@ -2,12 +2,12 @@ import warnings
 from typing import Any
 
 from .channels import Channels
-from generals.grid import Grid
+from .grid import Grid
 import numpy as np
 import gymnasium as gym
 from typing_extensions import TypeAlias
 
-from generals.config import DIRECTIONS, PASSABLE, MOUNTAIN, INCREMENT_RATE
+from .config import DIRECTIONS
 
 from scipy.ndimage import maximum_filter
 
@@ -15,6 +15,7 @@ Observation: TypeAlias = dict[str, gym.Space | dict[str, gym.Space]]
 Action: TypeAlias = gym.Space
 Info: TypeAlias = dict[str, Any]
 
+increment_rate = 50
 
 class Game:
     def __init__(self, grid: Grid, agents: list[str]):
@@ -138,7 +139,9 @@ class Game:
         """
         return maximum_filter(ownership_channel, size=3)
 
-    def step(self, actions: dict[str, Action]) -> tuple[dict[str, Observation], dict[str, dict]]:
+    def step(
+        self, actions: dict[str, Action]
+    ) -> tuple[dict[str, Observation], dict[str, dict]]:
         """
         Perform one step of the game
 
@@ -242,8 +245,8 @@ class Game:
 
         owners = self.agents
 
-        # every TICK_RATE steps, increase army size in each cell
-        if self.time % INCREMENT_RATE == 0:
+        # every `increment_rate` steps, increase army size in each cell
+        if self.time % increment_rate == 0:
             for owner in owners:
                 self.channels.army += self.channels.ownership[owner]
 
@@ -251,9 +254,7 @@ class Game:
         if self.time % 2 == 0 and self.time > 0:
             update_mask = self.channels.general + self.channels.city
             for owner in owners:
-                self.channels.army += (
-                    update_mask * self.channels.ownership[owner]
-                )
+                self.channels.army += update_mask * self.channels.ownership[owner]
 
     def is_done(self) -> bool:
         """

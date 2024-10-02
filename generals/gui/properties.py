@@ -3,8 +3,8 @@ from typing import Any
 
 from pygame.time import Clock
 
-from generals import config as c
-from generals.game import Game
+from generals.core import config as c
+from generals.core.game import Game
 
 
 @dataclass

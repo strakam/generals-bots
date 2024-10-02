@@ -1,8 +1,9 @@
-from .agents import Agent
-from .integrations.gymnasium_integration import Gym_Generals, RewardFn
-from .integrations.pettingzoo_integration import PZ_Generals
+from generals.agents import Agent
+from .gymnasium_integration import Gym_Generals, RewardFn
+from .pettingzoo_integration import PZ_Generals
 
-from .grid import GridFactory
+from generals import GridFactory
+
 
 
 def pz_generals(

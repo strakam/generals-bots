@@ -1,5 +1,5 @@
 import numpy as np
-from generals.config import PASSABLE, MOUNTAIN
+from .config import PASSABLE, MOUNTAIN
 
 
 class Grid:

@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-import generals.game as game
-from generals.grid import GridFactory, Grid
+import generals.core.game as game
+from generals.core.grid import GridFactory, Grid
 import itertools
 
 

@@ -1,7 +1,7 @@
 import numpy as np
 from .agent import Agent
 
-from generals.config import DIRECTIONS
+from generals.core.config import DIRECTIONS
 
 
 class ExpanderAgent(Agent):

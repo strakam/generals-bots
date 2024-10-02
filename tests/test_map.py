@@ -1,4 +1,4 @@
-from generals.grid import Grid
+from generals.core.grid import Grid
 import numpy as np
 
 

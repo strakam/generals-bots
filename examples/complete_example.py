@@ -1,6 +1,6 @@
-from generals.env import pz_generals
+from generals import pz_generals
 from generals.agents import RandomAgent, ExpanderAgent
-from generals.grid import GridFactory
+from generals.core.grid import GridFactory
 
 # Initialize agents - their names are then called for actions
 randomer = RandomAgent("Random1", color=(255, 125, 0))

@@ -28,7 +28,7 @@ at:
 	python3 tests/sb3_check.py
 
 test_performance:
-	python3 -m tests.parallel_api_test
+	python3 -m tests.parallel_api_check
 
 pytest:
 	pytest

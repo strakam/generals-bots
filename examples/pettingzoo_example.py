@@ -1,4 +1,4 @@
-from generals.env import pz_generals
+from generals import pz_generals
 from generals.agents import ExpanderAgent, RandomAgent
 
 # Initialize agents
