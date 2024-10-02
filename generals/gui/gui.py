@@ -1,6 +1,6 @@
 from typing import Any
 
-from ..game import Game
+from generals.core.game import Game
 from .properties import Properties
 from .event_handler import EventHandler
 from .rendering import Renderer

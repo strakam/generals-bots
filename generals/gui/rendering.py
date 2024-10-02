@@ -1,6 +1,6 @@
 import pygame
 import numpy as np
-import generals.config as c
+import generals.core.config as c
 
 from .properties import Properties
 

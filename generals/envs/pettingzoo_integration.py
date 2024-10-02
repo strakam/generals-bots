@@ -8,16 +8,14 @@ from copy import deepcopy
 
 from pettingzoo.utils.env import AgentID
 
-from ..game import Game, Action, Observation
-from ..grid import GridFactory
-from ..agents import Agent
-from ..gui import GUI
-from ..replay import Replay
+from generals.core.game import Game, Action, Observation, Info
+from generals.core.grid import GridFactory
+from generals.agents import Agent
+from generals.gui import GUI
+from generals.core.replay import Replay
 
 
 # Type aliases
-from generals.game import Info
-
 Reward: TypeAlias = float
 RewardFn: TypeAlias = Callable[[dict[str, Observation], Action, bool, Info], Reward]
 
@@ -63,9 +61,9 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         if self.render_mode == "human":
             self.gui.tick(fps=fps)
 
-    def reset(self, seed: int | None = None, options: dict | None = None) -> tuple[
-        dict[AgentID, Observation], dict[AgentID, dict]
-    ]:
+    def reset(
+        self, seed: int | None = None, options: dict | None = None
+    ) -> tuple[dict[AgentID, Observation], dict[AgentID, dict]]:
         if options is None:
             options = {}
         self.agents = deepcopy(self.possible_agents)
@@ -94,8 +92,14 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         infos = {agent: {} for agent in self.agents}
         return observations, infos
 
-    def step(self, actions: dict[AgentID, Action]) -> tuple[
-        dict[AgentID, Observation], dict[AgentID, float], dict[AgentID, bool], dict[AgentID, bool], dict[AgentID, Info]
+    def step(
+        self, actions: dict[AgentID, Action]
+    ) -> tuple[
+        dict[AgentID, Observation],
+        dict[AgentID, float],
+        dict[AgentID, bool],
+        dict[AgentID, bool],
+        dict[AgentID, Info],
     ]:
         observations, infos = self.game.step(actions)
 

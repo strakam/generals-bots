@@ -5,14 +5,13 @@ import gymnasium as gym
 import functools
 from copy import deepcopy
 
-from ..agents import Agent
-from ..game import Game, Action, Observation
-from ..grid import GridFactory
-from ..gui import GUI
-from ..replay import Replay
+from generals.agents import Agent
+from generals.core.game import Game, Action, Observation, Info
+from generals.core.grid import GridFactory
+from generals.gui import GUI
+from generals.core.replay import Replay
 
 # Type aliases
-from generals.game import Info
 Reward: TypeAlias = float
 RewardFn: TypeAlias = Callable[[dict[str, Observation], Action, bool, Info], Reward]
 

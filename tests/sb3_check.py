@@ -1,4 +1,4 @@
-from generals.env import gym_generals
+from generals import gym_generals
 import stable_baselines3.common.env_checker as env_checker
 from generals.agents import RandomAgent
 

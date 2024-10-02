@@ -1,9 +1,9 @@
 import pickle
 import time
 
-from generals.grid import Grid
+from generals.core.grid import Grid
+from generals.core.game import Game
 from generals.gui import GUI
-from generals.game import Game
 from copy import deepcopy
 
 

@@ -19,7 +19,6 @@ DIRECTIONS: list[tuple[int, int]] = [UP, DOWN, LEFT, RIGHT]
 ##################
 # Game constants #
 ##################
-INCREMENT_RATE: int = 50 # every 50 ticks, number of units increases
 GAME_SPEED: float = 8 # by default, every 8 ticks, actions are processed
 
 ########################

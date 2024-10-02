@@ -1,7 +1,7 @@
 from __future__ import annotations
-from generals.env import pz_generals
+from generals import pz_generals
 from generals.agents import RandomAgent
-from generals.grid import GridFactory
+from generals.core.grid import GridFactory
 import warnings
 
 import numpy as np

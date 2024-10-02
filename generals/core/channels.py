@@ -1,6 +1,6 @@
 import numpy as np
 
-from generals.config import MOUNTAIN, PASSABLE
+from .config import MOUNTAIN, PASSABLE
 
 valid_generals = ["A", "B"]  # Generals are represented by A and B
 
