@@ -6,6 +6,9 @@ class Grid:
     def __init__(self, grid: str | np.ndarray):
         self.grid = grid
 
+    def __eq__(self, other):
+        return np.array_equal(self.grid, other.grid)
+
     @property
     def grid(self):
         return self._grid
