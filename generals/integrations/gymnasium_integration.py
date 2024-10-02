@@ -26,8 +26,12 @@ class Gym_Generals(gym.Env):
         reward_fn: RewardFn = None,
         render_mode=None,
     ):
+        self.game = None
+        self.gui = None
+        self.replay = None
+
         self.render_mode = render_mode
-        self.reward_fn = self.default_reward if reward_fn is None else reward_fn
+        self.reward_fn = self._default_reward if reward_fn is None else reward_fn
         self.grid_factory = grid_factory
 
         self.agent_name = agent.name
@@ -114,8 +118,9 @@ class Gym_Generals(gym.Env):
 
         return observation, reward, terminated, truncated, info
 
-    def default_reward(
-        self, observation: dict[str, Observation],
+    @staticmethod
+    def _default_reward(
+        observation: dict[str, Observation],
         action: Action,
         done: bool,
         info: Info,

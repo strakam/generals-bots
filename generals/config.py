@@ -10,11 +10,11 @@ CITY: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9] = 0 # CITY can be any digit 0-9
 #########
 # Moves #
 #########
-UP: list[int] = [-1, 0]
-DOWN: list[int] = [1, 0]
-LEFT: list[int] = [0, -1]
-RIGHT: list[int] = [0, 1]
-DIRECTIONS: list[list[int]] = [UP, DOWN, LEFT, RIGHT]
+UP: tuple[int, int] = (-1, 0)
+DOWN: tuple[int, int] = (1, 0)
+LEFT: tuple[int, int] = (0, -1)
+RIGHT: tuple[int, int] = (0, 1)
+DIRECTIONS: list[tuple[int, int]] = [UP, DOWN, LEFT, RIGHT]
 
 ##################
 # Game constants #

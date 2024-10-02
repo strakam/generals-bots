@@ -20,7 +20,7 @@ class RandomAgent(Agent):
 
         valid_actions = np.argwhere(mask == 1)
         if len(valid_actions) == 0:  # No valid actions
-            return (1, (0, 0), 0, 0)
+            return 1, (0, 0), 0, 0
 
         pass_turn = 0 if np.random.rand() > self.idle_probability else 1
         split_army = 0 if np.random.rand() > self.split_probability else 1

@@ -110,7 +110,7 @@ class Renderer:
             )
             # add opacity to the color, where color is a tuple (r,g,b)
             if name in self.agent_fov and not self.agent_fov[name]:
-                color = tuple([int(0.5 * c) for c in color])
+                color = tuple([int(0.5 * rgb) for rgb in color])
             self.render_cell_text(self.score_cols["Agent"][i], name, bg_color=color)
 
         # Write other columns
