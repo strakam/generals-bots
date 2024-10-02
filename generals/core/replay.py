@@ -3,6 +3,7 @@ import time
 
 from generals.core.grid import Grid
 from generals.core.game import Game
+from generals.gui.event_handler import ReplayCommand
 from generals.gui import GUI
 from copy import deepcopy
 
@@ -33,7 +34,7 @@ class Replay:
     def play(self):
         agents = [agent for agent in self.agent_data.keys()]
         game = Game(self.grid, agents)
-        gui = GUI(game, self.agent_data, from_replay=True)
+        gui = GUI(game, self.agent_data, mode="replay")
         gui_properties = gui.properties
 
         game_step, last_input_time, last_move_time = 0, 0, 0
@@ -41,15 +42,15 @@ class Replay:
             _t = time.time()
             # Check inputs
             if _t - last_input_time > 0.008:  # check for input every 8ms
-                control_events = gui.tick()
+                command = gui.tick()
                 last_input_time = _t
             else:
-                control_events = {"time_change": 0}
-            if "restart" in control_events:
+                command = ReplayCommand()
+            if command.restart:
                 game_step = 0
             # If we control replay, change game state
             game_step = max(
-                0, min(len(self.game_states) - 1, game_step + control_events["time_change"])
+                0, min(len(self.game_states) - 1, game_step + command.frame_change)
             )
             if gui_properties.paused and game_step != game.time:
                 game.channels = deepcopy(self.game_states[game_step])
@@ -57,7 +58,7 @@ class Replay:
                 last_move_time = _t
             # If we are not paused, play the game
             elif (
-                _t - last_move_time > gui_properties.game_speed * 0.512
+                _t - last_move_time > (1/gui_properties.game_speed) * 0.512
                 and not gui_properties.paused
             ):
                 if game.is_done():

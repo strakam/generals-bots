@@ -58,11 +58,11 @@ class Gym_Generals(gym.Env):
 
     def render(self, fps: int = 6) -> None:
         if self.render_mode == "human":
-            self.gui.tick(fps=fps)
+            _ = self.gui.tick(fps=fps)
 
-    def reset(self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[
-        Observation, dict[str, Any]
-    ]:
+    def reset(
+        self, seed: int | None = None, options: dict[str, Any] | None = None
+    ) -> tuple[Observation, dict[str, Any]]:
         if options is None:
             options = {}
         super().reset(seed=seed)
@@ -95,7 +95,9 @@ class Gym_Generals(gym.Env):
         info = {}
         return observation, info
 
-    def step(self, action: Action) -> tuple[Observation, SupportsFloat, bool, bool, dict[str, Any]]:
+    def step(
+        self, action: Action
+    ) -> tuple[Observation, SupportsFloat, bool, bool, dict[str, Any]]:
         # get action of NPC
         npc_action = self.npc.play(self.game._agent_observation(self.npc.name))
         actions = {self.agent_name: action, self.npc.name: npc_action}
@@ -133,3 +135,6 @@ class Gym_Generals(gym.Env):
         else:
             reward = 0
         return reward
+
+    def close(self) -> None:
+        self.gui.close()

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 from pygame.time import Clock
 
@@ -11,7 +11,7 @@ from generals.core.game import Game
 class Properties:
     __game: Game
     __agent_data: dict[str, dict[str, Any]]
-    __paused: bool = False
+    __mode: Literal["train", "game", "replay"]
     __game_speed: int = 1
     __clock: Clock = Clock()
 
@@ -22,21 +22,11 @@ class Properties:
         self.__display_grid_height: int = c.SQUARE_SIZE * self.grid_height
         self.__right_panel_width: int = 4 * c.GUI_CELL_WIDTH
 
-        self.__agent_fov: dict[str, bool] = {name: True for name in self.agent_data.keys()}
+        self.__paused: bool = False
 
-    def is_click_on_agents_row(self, x: int, y: int, i: int) -> bool:
-        """
-        Check if the click is on an agent's row.
-
-        Args:
-            x: int, x-coordinate of the click
-            y: int, y-coordinate of the click
-            i: int, index of the row
-        """
-        return (
-                x >= self.display_grid_width
-                and (i + 1) * c.GUI_ROW_HEIGHT <= y < (i + 2) * c.GUI_ROW_HEIGHT
-        )
+        self.__agent_fov: dict[str, bool] = {
+            name: True for name in self.agent_data.keys()
+        }
 
     @property
     def game(self):
@@ -45,6 +35,10 @@ class Properties:
     @property
     def agent_data(self):
         return self.__agent_data
+
+    @property
+    def mode(self):
+        return self.__mode
 
     @property
     def paused(self):
@@ -59,8 +53,9 @@ class Properties:
         return self.__game_speed
 
     @game_speed.setter
-    def game_speed(self, value: int):
-        self.__game_speed = value
+    def game_speed(self, value: float):
+        new_speed = min(32.0, max(0.25, value))  # clip speed
+        self.__game_speed = new_speed
 
     @property
     def clock(self):
@@ -89,3 +84,8 @@ class Properties:
     @property
     def right_panel_width(self):
         return self.__right_panel_width
+
+    def update_speed(self, multiplier: float) -> None:
+        """multiplier: usually 2.0 or 0.5"""
+        new_speed = self.game_speed * multiplier
+        self.game_speed = new_speed
