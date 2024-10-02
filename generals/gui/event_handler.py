@@ -1,12 +1,11 @@
 import pygame
 from pygame.event import Event
+from abc import abstractmethod
 
 from .properties import Properties
 from generals.core import config as c
 
-######################
-# Replay keybindings #
-######################
+# keybindings #
 RIGHT = pygame.K_RIGHT
 LEFT = pygame.K_LEFT
 SPACE = pygame.K_SPACE
@@ -27,7 +26,7 @@ class ReplayCommand(Command):
         self.frame_change: int = 0
         self.speed_change: float = 1.0
         self.restart: bool = False
-        self.pause: bool = False
+        self.pause_toggle: bool = False
 
 
 class GameCommand(Command):
@@ -51,118 +50,19 @@ class EventHandler:
         """
         self.properties = properties
         self.mode = properties.mode
-        self.handler_fn = self.initialize_handler_fn()
-        self.command = self.initialize_command()
-
-    def initialize_handler_fn(self):
-        """
-        Initialize the handler function based on the mode.
-        """
-        if self.mode == "replay":
-            return self.__handle_replay_key_controls
-        elif self.mode == "game":
-            return self.__handle_game_key_controls
-        elif self.mode == "train":
-            return self.__handle_train_key_controls
-        raise ValueError("Invalid mode")
-
-    def initialize_command(self):
-        """
-        Initialize the command type based on the mode.
-        """
-        if self.mode == "replay":
-            return ReplayCommand
-        elif self.mode == "game":
-            return GameCommand
-        elif self.mode == "train":
-            return TrainCommand
-        raise ValueError("Invalid mode")
 
     def handle_events(self) -> Command:
         """
         Handle pygame GUI events
         """
-        command = self.command()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                command.quit = True
+                self.command.quit = True
             if event.type == pygame.KEYDOWN:
-                command = self.handler_fn(event, command)
+                self.handle_key_event(event)
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                self.__handle_mouse_click()
-        return command
-
-    def __handle_replay_key_controls(self, event: Event, command: Command) -> Command:
-        """
-        Handle key controls for replay mode.
-        Control game speed, pause, and replay frames.
-        """
-        if event.key == Q:
-            command.quit = True
-        elif event.key == RIGHT:
-            command.speed_change = 2.0
-        elif event.key == LEFT:
-            command.speed_change = 0.5
-        elif event.key == SPACE:
-            command.pause = True
-        elif event.key == R:
-            command.restart = True
-            command.pause = True
-        elif event.key == H:
-            command.frame_change = -1
-            command.pause = True
-        elif event.key == L:
-            command.frame_change = 1
-            self.properties.paused = True
-        return command
-
-    def __handle_game_key_controls(
-        self, event: Event, command: Command
-    ) -> dict[str, any]:
-        raise NotImplementedError
-
-    def __handle_train_key_controls(
-        self, event: Event, command: Command
-    ) -> dict[str, any]:
-        if event.key == Q:
-            command.quit = True
-        return command
-
-    def __handle_mouse_click(self):
-        """
-        Handle mouse click event.
-        """
-        if self.properties.mode == "replay":
-            self.__handle_replay_clicks()
-        elif self.properties.mode == "game":
-            self.__handle_game_clicks()
-        elif self.properties.mode == "train":
-            self.__handle_train_clicks()
-
-    def __handle_game_clicks(self):
-        """
-        Handle mouse clicks in game mode.
-        """
-        pass
-
-    def __handle_train_clicks(self):
-        """
-        Handle mouse clicks in training mode.
-        """
-        pass
-
-    def __handle_replay_clicks(self):
-        """
-        Handle mouse clicks in replay mode.
-        """
-        agents = self.properties.game.agents
-        agent_fov = self.properties.agent_fov
-
-        x, y = pygame.mouse.get_pos()
-        for i, agent in enumerate(agents):
-            if self.is_click_on_agents_row(x, y, i):
-                agent_fov[agent] = not agent_fov[agent]
-                break
+                self.handle_mouse_event()
+        return self.command
 
     def is_click_on_agents_row(self, x: int, y: int, i: int) -> bool:
         """
@@ -177,3 +77,73 @@ class EventHandler:
             x >= self.properties.display_grid_width
             and (i + 1) * c.GUI_ROW_HEIGHT <= y < (i + 2) * c.GUI_ROW_HEIGHT
         )
+
+    @abstractmethod
+    def handle_key_event(self, event: Event) -> Command:
+        raise NotImplementedError
+
+    @abstractmethod
+    def handle_mouse_event(self):
+        raise NotImplementedError
+
+
+class ReplayEventHandler(EventHandler):
+    def __init__(self, properties: Properties):
+        super().__init__(properties)
+        self.command = ReplayCommand()
+
+    def handle_key_event(self, event: Event) -> ReplayCommand:
+        if event.key == Q:
+            self.command.quit = True
+        elif event.key == RIGHT:
+            self.command.speed_change = 2.0
+        elif event.key == LEFT:
+            self.command.speed_change = 0.5
+        elif event.key == SPACE:
+            self.command.pause_toggle = True
+        elif event.key == R:
+            self.command.restart = True
+        elif event.key == H:
+            self.command.frame_change = -1
+        elif event.key == L:
+            self.command.frame_change = 1
+        return self.command
+
+    def handle_mouse_event(self) -> None:
+        """
+        Handle mouse clicks in replay mode.
+        """
+        agents = self.properties.game.agents
+        agent_fov = self.properties.agent_fov
+
+        x, y = pygame.mouse.get_pos()
+        for i, agent in enumerate(agents):
+            if self.is_click_on_agents_row(x, y, i):
+                agent_fov[agent] = not agent_fov[agent]
+                break
+
+
+class GameEventHandler(EventHandler):
+    def __init__(self, properties: Properties):
+        super().__init__(properties)
+        self.command = GameCommand()
+
+    def handle_key_event(self, event: Event) -> GameCommand:
+        raise NotImplementedError
+
+    def handle_mouse_event(self) -> None:
+        raise NotImplementedError
+
+
+class TrainEventHandler(EventHandler):
+    def __init__(self, properties: Properties):
+        super().__init__(properties)
+        self.command = TrainCommand()
+
+    def handle_key_event(self, event: Event) -> TrainCommand:
+        if event.key == Q:
+            self.command.quit = True
+        return self.command
+
+    def handle_mouse_event(self) -> None:
+        raise NotImplementedError

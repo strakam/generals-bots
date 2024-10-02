@@ -46,11 +46,6 @@ class Replay:
                 last_input_time = _t
             else:
                 command = ReplayCommand()
-            if command.quit:
-                import pygame
-
-                pygame.quit()
-                quit()
             if command.restart:
                 game_step = 0
             # If we control replay, change game state

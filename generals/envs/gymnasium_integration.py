@@ -58,9 +58,7 @@ class Gym_Generals(gym.Env):
 
     def render(self, fps: int = 6) -> None:
         if self.render_mode == "human":
-            command = self.gui.tick(fps=fps)
-            if command.quit:
-                self.close()
+            _ = self.gui.tick(fps=fps)
 
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
@@ -139,7 +137,4 @@ class Gym_Generals(gym.Env):
         return reward
 
     def close(self) -> None:
-        import pygame
-
-        pygame.quit()
-        quit()
+        self.gui.close()

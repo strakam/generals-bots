@@ -85,7 +85,7 @@ class Properties:
     def right_panel_width(self):
         return self.__right_panel_width
 
-    def update_speed(self, change: float) -> None:
-        """change: multiplier how much to change, usually 2.0 or 0.5"""
-        new_speed = self.game_speed * change
+    def update_speed(self, multiplier: float) -> None:
+        """multiplier: usually 2.0 or 0.5"""
+        new_speed = self.game_speed * multiplier
         self.game_speed = new_speed

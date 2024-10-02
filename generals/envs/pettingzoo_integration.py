@@ -59,9 +59,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
 
     def render(self, fps=6) -> None:
         if self.render_mode == "human":
-            command = self.gui.tick(fps=fps)
-            if command.quit:
-                self.close()
+            _ = self.gui.tick(fps=fps)
 
     def reset(
         self, seed: int | None = None, options: dict | None = None
@@ -149,7 +147,4 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         return reward
 
     def close(self) -> None:
-        import pygame
-
-        pygame.quit()
-        quit()
+        self.gui.close()
