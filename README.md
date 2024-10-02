@@ -112,7 +112,7 @@ grid = """
 .#.B
 """
 
-options = {"grid":grid}
+options = {"grid": grid}
 
 # Pass the new grid to the environment (for the next game)
 env.reset(options=options)
