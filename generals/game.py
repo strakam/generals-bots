@@ -1,6 +1,7 @@
 import warnings
 from typing import Any
 
+from .channels import Channels
 from generals.grid import Grid
 import numpy as np
 import gymnasium as gym
@@ -27,37 +28,7 @@ class Game:
             for i, agent in enumerate(self.agents)
         }
 
-        # Initialize channels
-        # Army - army size in each cell
-        # General - general mask (1 if general is in cell, 0 otherwise)
-        # Mountain - mountain mask (1 if cell is mountain, 0 otherwise)
-        # City - city mask (1 if cell is city, 0 otherwise)
-        # Passable - passable mask (1 if cell is passable, 0 otherwise)
-        # Ownership_i - ownership mask for player i (1 if player i owns cell, 0 otherwise)
-        # Ownerhsip_0 - ownership mask for neutral cells that are passable (1 if cell is neutral, 0 otherwise)
-        # Initialize channels
-
-        valid_generals = ["A", "B"] # Generals are represented by A and B
-        self.channels = {
-            "army": np.where(np.isin(map, valid_generals), 1, 0).astype(int),
-            "general": np.where(np.isin(map, valid_generals), 1, 0).astype(bool),
-            "mountain": np.where(map == MOUNTAIN, 1, 0).astype(bool),
-            "city": np.where(np.char.isdigit(map), 1, 0).astype(bool),
-            "passable": (map != MOUNTAIN).astype(bool),
-            "ownership_neutral": ((map == PASSABLE) | (np.char.isdigit(map))).astype(
-                bool
-            ),
-            **{
-                f"ownership_{agent}": np.where(map == chr(ord("A") + id), 1, 0).astype(
-                    bool
-                )
-                for id, agent in enumerate(self.agents)
-            },
-        }
-
-        # City costs are 40 + digit in the cell
-        city_costs = np.where(np.char.isdigit(map), map, "0").astype(int)
-        self.channels["army"] += 40 * self.channels["city"] + city_costs
+        self.channels = Channels(map, self.agents)
 
         ##########
         # Spaces #
@@ -115,8 +86,8 @@ class Game:
             I.e. valid_action_mask[i, j, k] is 1 if action k is valid in cell (i, j).
         """
 
-        ownership_channel = self.channels[f"ownership_{agent}"]
-        more_than_1_army = (self.channels["army"] > 1) * ownership_channel
+        ownership_channel = self.channels.ownership[agent]
+        more_than_1_army = (self.channels.army > 1) * ownership_channel
         owned_cells_indices = self.channel_to_indices(more_than_1_army)
         valid_action_mask = np.zeros(
             (self.grid_dims[0], self.grid_dims[1], 4), dtype=bool
@@ -138,7 +109,7 @@ class Game:
 
             # check if destination is road
             passable_cell_indices = (
-                self.channels["passable"][destinations[:, 0], destinations[:, 1]] == 1.0
+                self.channels.passable[destinations[:, 0], destinations[:, 1]] == 1
             )
             action_destinations = destinations[passable_cell_indices]
 
@@ -192,9 +163,9 @@ class Game:
                 )
                 continue
             if split_army == 1:  # Agent wants to split the army
-                army_to_move = self.channels["army"][i, j] // 2
+                army_to_move = self.channels.army[i, j] // 2
             else:  # Leave just one army in the source cell
-                army_to_move = self.channels["army"][i, j] - 1
+                army_to_move = self.channels.army[i, j] - 1
             if army_to_move < 1:  # Skip if army size to move is less than 1
                 continue
             moves[agent] = (i, j, direction, army_to_move)
@@ -204,11 +175,11 @@ class Game:
             si, sj, direction, army_to_move = moves[agent]
 
             # Cap the amount of army to move (previous moves may have lowered available army)
-            army_to_move = min(army_to_move, self.channels["army"][si, sj] - 1)
-            army_to_stay = self.channels["army"][si, sj] - army_to_move
+            army_to_move = min(army_to_move, self.channels.army[si, sj] - 1)
+            army_to_stay = self.channels.army[si, sj] - army_to_move
 
             # Check if the current agent still owns the source cell and has more than 1 army
-            if self.channels[f"ownership_{agent}"][si, sj] == 0 or army_to_move < 1:
+            if self.channels.ownership[agent][si, sj] == 0 or army_to_move < 1:
                 continue
 
             di, dj = (
@@ -217,28 +188,28 @@ class Game:
             )  # destination indices
 
             # Figure out the target square owner and army size
-            target_square_army = self.channels["army"][di, dj]
+            target_square_army = self.channels.army[di, dj]
             target_square_owner_idx = np.argmax(
                 [
-                    self.channels[f"ownership_{agent}"][di, dj]
+                    self.channels.ownership[agent][di, dj]
                     for agent in ["neutral"] + self.agents
                 ]
             )
             target_square_owner = (["neutral"] + self.agents)[target_square_owner_idx]
             if target_square_owner == agent:
-                self.channels["army"][di, dj] += army_to_move
-                self.channels["army"][si, sj] = army_to_stay
+                self.channels.army[di, dj] += army_to_move
+                self.channels.army[si, sj] = army_to_stay
             else:
                 # Calculate resulting army, winner and update channels
                 remaining_army = np.abs(target_square_army - army_to_move)
                 square_winner = (
                     agent if target_square_army < army_to_move else target_square_owner
                 )
-                self.channels["army"][di, dj] = remaining_army
-                self.channels["army"][si, sj] = army_to_stay
-                self.channels[f"ownership_{square_winner}"][di, dj] = 1
+                self.channels.army[di, dj] = remaining_army
+                self.channels.army[si, sj] = army_to_stay
+                self.channels.ownership[square_winner][di, dj] = 1
                 if square_winner != target_square_owner:
-                    self.channels[f"ownership_{target_square_owner}"][di, dj] = 0
+                    self.channels.ownership[target_square_owner][di, dj] = 0
 
         if not done_before_actions:
             self.time += 1
@@ -249,8 +220,8 @@ class Game:
                 self.agents[0] if self.agent_won(self.agents[0]) else self.agents[1]
             )
             loser = self.agents[1] if winner == self.agents[0] else self.agents[0]
-            self.channels[f"ownership_{winner}"] += self.channels[f"ownership_{loser}"]
-            self.channels[f"ownership_{loser}"] = self.channels["passable"] * 0
+            self.channels.ownership[winner] += self.channels.ownership[loser]
+            self.channels.ownership[loser] = self.channels.passable * 0
         else:
             self._global_game_update()
 
@@ -274,14 +245,14 @@ class Game:
         # every TICK_RATE steps, increase army size in each cell
         if self.time % INCREMENT_RATE == 0:
             for owner in owners:
-                self.channels["army"] += self.channels[f"ownership_{owner}"]
+                self.channels.army += self.channels.ownership[owner]
 
         # Increment armies on general and city cells, but only if they are owned by player
         if self.time % 2 == 0 and self.time > 0:
-            update_mask = self.channels["general"] + self.channels["city"]
+            update_mask = self.channels.general + self.channels.city
             for owner in owners:
-                self.channels["army"] += (
-                    update_mask * self.channels[f"ownership_{owner}"]
+                self.channels.army += (
+                    update_mask * self.channels.ownership[owner]
                 )
 
     def is_done(self) -> bool:
@@ -300,9 +271,9 @@ class Game:
         players_stats = {}
         for agent in self.agents:
             army_size = np.sum(
-                self.channels["army"] * self.channels[f"ownership_{agent}"]
+                self.channels.army * self.channels.ownership[agent]
             ).astype(int)
-            land_size = np.sum(self.channels[f"ownership_{agent}"]).astype(int)
+            land_size = np.sum(self.channels.ownership[agent]).astype(int)
             players_stats[agent] = {
                 "army": army_size,
                 "land": land_size,
@@ -318,16 +289,16 @@ class Game:
         """
         info = self.get_infos()
         opponent = self.agents[0] if agent == self.agents[1] else self.agents[1]
-        visibility = self.visibility_channel(self.channels[f"ownership_{agent}"])
+        visibility = self.visibility_channel(self.channels.ownership[agent])
         _observation = {
-            "army": self.channels["army"].astype(int) * visibility,
-            "general": self.channels["general"] * visibility,
-            "city": self.channels["city"] * visibility,
-            "owned_cells": self.channels[f"ownership_{agent}"] * visibility,
-            "opponent_cells": self.channels[f"ownership_{opponent}"] * visibility,
-            "neutral_cells": self.channels["ownership_neutral"] * visibility,
+            "army": self.channels.army.astype(int) * visibility,
+            "general": self.channels.general * visibility,
+            "city": self.channels.city * visibility,
+            "owned_cells": self.channels.ownership[agent] * visibility,
+            "opponent_cells": self.channels.ownership[opponent] * visibility,
+            "neutral_cells": self.channels.ownership_neutral * visibility,
             "visible_cells": visibility,
-            "structure": self.channels["mountain"] + self.channels["city"],
+            "structure": self.channels.mountain + self.channels.city,
             "owned_land_count": info[agent]["land"],
             "owned_army_count": info[agent]["army"],
             "opponent_land_count": info[opponent]["land"],
@@ -347,6 +318,6 @@ class Game:
         Returns True if the agent won the game, False otherwise.
         """
         return all(
-            self.channels[f"ownership_{agent}"][general[0], general[1]] == 1
+            self.channels.ownership[agent][general[0], general[1]] == 1
             for general in self.general_positions.values()
         )

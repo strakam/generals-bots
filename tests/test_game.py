@@ -28,21 +28,21 @@ def test_grid_creation():
 
         # mountain and city should be disjoint
         assert (
-            np.logical_and(game.channels["mountain"], game.channels["city"]).sum() == 0
+            np.logical_and(game.channels.mountain, game.channels.city).sum() == 0
         )
 
         owners = ["neutral"] + game.agents
         # for every pair of agents, the ownership channels should be disjoint
         pairs = itertools.combinations(owners, 2)
         for pair in pairs:
-            ownership_a = game.channels[f"ownership_{pair[0]}"]
-            ownership_b = game.channels[f"ownership_{pair[1]}"]
+            ownership_a = game.channels.ownership[pair[0]]
+            ownership_b = game.channels.ownership[pair[1]]
             assert np.logical_and(ownership_a, ownership_b).sum() == 0
 
         # but union of all ownerships should be equal to passable channel
-        ownerships = [game.channels[f"ownership_{owner}"] for owner in owners]
+        ownerships = [game.channels.ownership[owner] for owner in owners]
         union = np.logical_or.reduce(ownerships)
-        assert (union == game.channels["passable"]).all()
+        assert (union == game.channels.passable).all()
 
 
 def test_channel_to_indices():
@@ -107,7 +107,7 @@ def test_action_mask():
     """
     game = get_game()
     game.grid_dims = (4, 4)
-    game.channels["army"] = np.array(
+    game.channels.army = np.array(
         [
             [3, 0, 1, 0],
             [0, 3, 6, 2],
@@ -116,7 +116,7 @@ def test_action_mask():
         ],
         dtype=int,
     )
-    game.channels["passable"] = np.array(
+    game.channels._set_passable(np.array(
         [
             [1, 1, 1, 1],
             [1, 1, 0, 0],
@@ -124,9 +124,9 @@ def test_action_mask():
             [1, 0, 0, 0],
         ],
         dtype=bool,
-    )
+    ))
 
-    game.channels["ownership_red"] = np.array(
+    game.channels.ownership["red"] = np.array(
         [
             [0, 0, 1, 0],
             [0, 1, 0, 0],
@@ -187,7 +187,7 @@ def test_observations():
 """
     grid = Grid(map)
     game = get_game(grid)
-    game.channels["ownership_red"] = np.array(
+    game.channels.ownership["red"] = np.array(
         [
             [0, 0, 0, 0],
             [0, 0, 0, 0],
@@ -196,7 +196,7 @@ def test_observations():
         ],
         dtype=np.float32,
     )
-    game.channels["ownership_blue"] = np.array(
+    game.channels.ownership["blue"] = np.array(
         [
             [1, 0, 0, 0],
             [0, 1, 1, 1],
@@ -205,7 +205,7 @@ def test_observations():
         ],
         dtype=np.float32,
     )
-    game.channels["army"] = np.array(
+    game.channels.army = np.array(
         [
             [3, 0, 0, 0],
             [0, 3, 6, 2],
@@ -214,7 +214,7 @@ def test_observations():
         ],
         dtype=np.float32,
     )
-    game.channels["ownership_neutral"] = np.array(
+    game.channels.ownership["neutral"] = np.array(
         [
             [0, 1, 1, 0],
             [0, 0, 0, 0],
@@ -354,7 +354,7 @@ def test_game_step():
 """
     grid = Grid(map)
     game = get_game(grid)
-    game.channels["ownership_red"] = np.array(
+    game.channels.ownership["red"] = np.array(
         [
             [0, 0, 0, 0],
             [0, 0, 0, 0],
@@ -363,7 +363,7 @@ def test_game_step():
         ],
         dtype=int,
     )
-    game.channels["ownership_blue"] = np.array(
+    game.channels.ownership["blue"] = np.array(
         [
             [1, 0, 0, 0],
             [0, 1, 1, 1],
@@ -372,7 +372,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    game.channels["army"] = np.array(
+    game.channels.army = np.array(
         [
             [3, 0, 0, 0],
             [0, 3, 6, 2],
@@ -381,7 +381,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    game.channels["ownership_neutral"] = np.array(
+    game.channels.ownership["neutral"] = np.array(
         [
             [0, 1, 1, 0],
             [0, 0, 0, 0],
@@ -406,7 +406,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    assert (game.channels["army"] == reference_army).all()
+    assert (game.channels.army == reference_army).all()
 
     reference_ownership_red = np.array(
         [
@@ -417,7 +417,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    assert (game.channels["ownership_red"] == reference_ownership_red).all()
+    assert (game.channels.ownership["red"] == reference_ownership_red).all()
 
     reference_ownership_blue = np.array(
         [
@@ -428,7 +428,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    assert (game.channels["ownership_blue"] == reference_ownership_blue).all()
+    assert (game.channels.ownership["blue"] == reference_ownership_blue).all()
 
     reference_ownership_neutral = np.array(
         [
@@ -439,7 +439,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    assert (game.channels["ownership_neutral"] == reference_ownership_neutral).all()
+    assert (game.channels.ownership_neutral == reference_ownership_neutral).all()
 
     reference_total_army_red = 20
     stats = game.get_infos()
@@ -473,7 +473,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    assert (game.channels["army"] == reference_army).all()
+    assert (game.channels.army == reference_army).all()
 
     reference_ownership_red = np.array(
         [
@@ -484,7 +484,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    assert (game.channels["ownership_red"] == reference_ownership_red).all()
+    assert (game.channels.ownership["red"] == reference_ownership_red).all()
 
     reference_ownership_blue = np.array(
         [
@@ -495,7 +495,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    assert (game.channels["ownership_blue"] == reference_ownership_blue).all()
+    assert (game.channels.ownership["blue"] == reference_ownership_blue).all()
 
     reference_ownership_neutral = np.array(
         [
@@ -506,7 +506,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    assert (game.channels["ownership_neutral"] == reference_ownership_neutral).all()
+    assert (game.channels.ownership_neutral == reference_ownership_neutral).all()
 
     reference_total_army_red = 21
     stats = game.get_infos()
@@ -536,7 +536,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    assert (game.channels["army"] == reference_army).all()
+    assert (game.channels.army == reference_army).all()
 
     reference_ownership_red = np.array(
         [
@@ -547,7 +547,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    assert (game.channels["ownership_red"] == reference_ownership_red).all()
+    assert (game.channels.ownership["red"] == reference_ownership_red).all()
 
     reference_ownership_blue = np.array(
         [
@@ -558,7 +558,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    assert (game.channels["ownership_blue"] == reference_ownership_blue).all()
+    assert (game.channels.ownership["blue"] == reference_ownership_blue).all()
 
     reference_ownership_neutral = np.array(
         [
@@ -569,7 +569,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    assert (game.channels["ownership_neutral"] == reference_ownership_neutral).all()
+    assert (game.channels.ownership_neutral == reference_ownership_neutral).all()
 
     reference_total_army_red = 21
     stats = game.get_infos()
@@ -600,7 +600,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    assert (game.channels["army"] == reference_army).all()
+    assert (game.channels.army == reference_army).all()
 
     reference_ownership_red = np.array(
         [
@@ -611,7 +611,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    assert (game.channels["ownership_red"] == reference_ownership_red).all()
+    assert (game.channels.ownership["red"] == reference_ownership_red).all()
 
     reference_ownership_blue = np.array(
         [
@@ -622,7 +622,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    assert (game.channels["ownership_blue"] == reference_ownership_blue).all()
+    assert (game.channels.ownership["blue"] == reference_ownership_blue).all()
 
     reference_ownership_neutral = np.array(
         [
@@ -633,7 +633,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    assert (game.channels["ownership_neutral"] == reference_ownership_neutral).all()
+    assert (game.channels.ownership_neutral == reference_ownership_neutral).all()
 
     reference_total_army_red = 22
     stats = game.get_infos()
@@ -664,7 +664,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    assert (game.channels["army"] == reference_army).all()
+    assert (game.channels.army == reference_army).all()
 
     reference_ownership_red = np.array(
         [
@@ -675,7 +675,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    assert (game.channels["ownership_red"] == reference_ownership_red).all()
+    assert (game.channels.ownership["red"] == reference_ownership_red).all()
 
     reference_ownership_blue = np.array(
         [
@@ -686,7 +686,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    assert (game.channels["ownership_blue"] == reference_ownership_blue).all()
+    assert (game.channels.ownership["blue"] == reference_ownership_blue).all()
 
     reference_ownership_neutral = np.array(
         [
@@ -697,7 +697,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    assert (game.channels["ownership_neutral"] == reference_ownership_neutral).all()
+    assert (game.channels.ownership_neutral == reference_ownership_neutral).all()
 
     reference_total_army_red = 21
     stats = game.get_infos()
@@ -726,7 +726,7 @@ def test_game_step():
         ],
         dtype=np.float32,
     )
-    assert (game.channels["army"] == reference_army).all()
+    assert (game.channels.army == reference_army).all()
 
     reference_total_army_red = 29
     stats = game.get_infos()
@@ -750,7 +750,7 @@ def test_game_step():
 # """
 #     game = get_game(map)
 #     game.general_positions = {"red": [3, 3], "blue": [1, 3]}
-#     game.channels["ownership_red"] = np.array(
+#     game.channels.ownership["red"] = np.array(
 #         [
 #             [0, 0, 0, 0],
 #             [0, 0, 1, 0],
@@ -760,7 +760,7 @@ def test_game_step():
 #         dtype=np.float32,
 #     )
 #
-#     game.channels["ownership_blue"] = np.array(
+#     game.channels.ownership["blue"] = np.array(
 #         [
 #             [1, 1, 1, 0],
 #             [0, 1, 0, 1],
@@ -770,7 +770,7 @@ def test_game_step():
 #         dtype=np.float32,
 #     )
 #
-#     game.channels["army"] = np.array(
+#     game.channels.army = np.array(
 #         [
 #             [3, 2, 2, 0],
 #             [0, 3, 6, 2],
@@ -780,7 +780,7 @@ def test_game_step():
 #         dtype=np.float32,
 #     )
 #
-#     game.channels["ownership_neutral"] = np.array(
+#     game.channels.ownership_neutral = np.array(
 #         [
 #             [0, 0, 0, 0],
 #             [0, 0, 0, 0],
