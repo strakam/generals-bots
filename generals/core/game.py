@@ -1,12 +1,12 @@
 import warnings
 from typing import Any
+from typing_extensions import TypeAlias
+
+import numpy as np
+import gymnasium as gym
 
 from .channels import Channels
 from .grid import Grid
-import numpy as np
-import gymnasium as gym
-from typing_extensions import TypeAlias
-
 from .config import DIRECTIONS
 
 from scipy.ndimage import maximum_filter
@@ -16,6 +16,7 @@ Action: TypeAlias = gym.Space
 Info: TypeAlias = dict[str, Any]
 
 increment_rate = 50
+
 
 class Game:
     def __init__(self, grid: Grid, agents: list[str]):

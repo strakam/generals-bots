@@ -1,6 +1,6 @@
 from generals import pz_generals
 from generals.agents import RandomAgent, ExpanderAgent
-from generals.core.grid import GridFactory
+from generals import GridFactory
 
 # Initialize agents - their names are then called for actions
 randomer = RandomAgent("Random1", color=(255, 125, 0))
@@ -18,7 +18,7 @@ gf = GridFactory(
     general_positions=[(0, 0), (3, 3)],
 )
 
-# Custom map that will override mapper's map for next game
+# Custom map that will override GridFactory for this game
 map = """
 A..#
 .#3#
@@ -30,7 +30,7 @@ A..#
 env = pz_generals(gf, agents, render_mode=None) # Disable rendering
 
 options = {
-    "map": map,
+    "grid": map,
     "replay_file": "replay",
 }
 
