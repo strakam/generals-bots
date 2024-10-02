@@ -13,7 +13,10 @@
 [Installation](#-installation) • [Getting Started](#-getting-started) • [Customization](#-custom-maps) • [Environment](#-environment)
 </div>
 
-Generals-RL is a real-time strategy game where players compete to conquer their opponents' generals on a 2D grid. While the goal is simple — capture the enemy general — the gameplay involves a lot of depth. Players need to employ strategic planning, deception, and manage both micro and macro mechanics throughout the game. The combination of these elements makes the game highly engaging and complex.
+Generals-RL is a real-time strategy environment where players compete to conquer their opponents' generals on a 2D grid.
+While the goal is simple — capture the enemy general — the gameplay involves a lot of depth.
+Players need to employ strategic planning, deception, and manage both micro and macro mechanics throughout the game.
+The combination of these elements makes the game highly engaging and complex.
 
 This repository aims to make bot development more accessible, especially for Machine Learning based agents.
 
