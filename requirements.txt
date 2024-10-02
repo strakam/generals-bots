@@ -1,6 +1,8 @@
 numpy>=2.1.1
 pettingzoo>=1.24.3
+gymnasium>=0.29.1
 pydantic>=2.9.1
 pygame>=2.6.0
 pytest>=8.3.3
 scipy>=1.14.1
+typing_extensions>=4.12.2
