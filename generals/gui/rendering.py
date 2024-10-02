@@ -16,6 +16,7 @@ class Renderer:
 
         self.properties = properties
 
+        self.mode = self.properties.mode
         self.game = self.properties.game
 
         self.agent_data = self.properties.agent_data
@@ -140,7 +141,9 @@ class Renderer:
 
         info_text = {
             "time": f"Time: {str(self.game.time // 2) + ('.' if self.game.time % 2 == 1 else '')}",
-            "speed": "Paused" if self.properties.paused else f"Speed: {str(1 / self.properties.game_speed)}x",
+            "speed": "Paused"
+            if self.mode == "replay" and self.properties.paused
+            else f"Speed: {str(self.properties.game_speed)}x",
         }
 
         # Write additional info

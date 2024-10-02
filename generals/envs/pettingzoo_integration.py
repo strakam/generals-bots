@@ -59,7 +59,9 @@ class PZ_Generals(pettingzoo.ParallelEnv):
 
     def render(self, fps=6) -> None:
         if self.render_mode == "human":
-            self.gui.tick(fps=fps)
+            command = self.gui.tick(fps=fps)
+            if command.quit:
+                self.close()
 
     def reset(
         self, seed: int | None = None, options: dict | None = None
@@ -76,7 +78,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         self.game = Game(grid, self.agents)
 
         if self.render_mode == "human":
-            self.gui = GUI(self.game, self.agent_data)
+            self.gui = GUI(self.game, self.agent_data, "train")
 
         if "replay_file" in options:
             self.replay = Replay(
@@ -146,5 +148,8 @@ class PZ_Generals(pettingzoo.ParallelEnv):
             reward = 0
         return reward
 
-    def close(self):
-        print("Closing environment")
+    def close(self) -> None:
+        import pygame
+
+        pygame.quit()
+        quit()
