@@ -3,8 +3,8 @@ from typing import Any, Literal
 
 from pygame.time import Clock
 
-from generals.core import config as c
 from generals.core.game import Game
+from generals.core.config import Dimension
 
 
 @dataclass
@@ -14,13 +14,16 @@ class Properties:
     __mode: Literal["train", "game", "replay"]
     __game_speed: int = 1
     __clock: Clock = Clock()
+    __font_size = 18
 
     def __post_init__(self):
         self.__grid_height: int = self.__game.grid_dims[0]
         self.__grid_width: int = self.__game.grid_dims[1]
-        self.__display_grid_width: int = c.SQUARE_SIZE * self.grid_width
-        self.__display_grid_height: int = c.SQUARE_SIZE * self.grid_height
-        self.__right_panel_width: int = 4 * c.GUI_CELL_WIDTH
+        self.__display_grid_width: int = Dimension.SQUARE_SIZE.value * self.grid_width
+        self.__display_grid_height: int = (
+            Dimension.SQUARE_SIZE.value * self.grid_height
+        )
+        self.__right_panel_width: int = 4 * Dimension.GUI_CELL_WIDTH.value
 
         self.__paused: bool = False
 
@@ -84,6 +87,10 @@ class Properties:
     @property
     def right_panel_width(self):
         return self.__right_panel_width
+
+    @property
+    def font_size(self):
+        return self.__font_size
 
     def update_speed(self, multiplier: float) -> None:
         """multiplier: usually 2.0 or 0.5"""

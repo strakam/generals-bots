@@ -1,71 +1,33 @@
 from typing import Literal
 from importlib.resources import files
+from enum import Enum, IntEnum, StrEnum
+
 #################
 # Game Literals #
 #################
-PASSABLE: Literal['.'] = '.'
-MOUNTAIN: Literal['#'] = '#'
-CITY: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9] = 0 # CITY can be any digit 0-9
+PASSABLE: Literal["."] = "."
+MOUNTAIN: Literal["#"] = "#"
+CITY: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9] = 0  # CITY can be any digit 0-9
 
-#########
-# Moves #
-#########
-UP: tuple[int, int] = (-1, 0)
-DOWN: tuple[int, int] = (1, 0)
-LEFT: tuple[int, int] = (0, -1)
-RIGHT: tuple[int, int] = (0, 1)
-DIRECTIONS: list[tuple[int, int]] = [UP, DOWN, LEFT, RIGHT]
 
-##################
-# Game constants #
-##################
-GAME_SPEED: float = 8 # by default, every 8 ticks, actions are processed
+class Dimension(IntEnum):
+    SQUARE_SIZE = 50
+    GUI_CELL_HEIGHT = 30
+    GUI_CELL_WIDTH = 70
+    MINIMUM_WINDOW_SIZE = 700
 
-########################
-# Grid visual settings #
-########################
-SQUARE_SIZE: int = 50
-LINE_WIDTH: int = 1
-GUI_ROW_HEIGHT: int = 30
-GUI_CELL_WIDTH: int = 70
-MINIMUM_WINDOW_SIZE: int = 700
 
-##########
-# Colors #
-##########
-FOG_OF_WAR: tuple[int, int, int] = (70, 73, 76)
-NEUTRAL_CASTLE: tuple[int, int, int] = (128, 128, 128)
-VISIBLE_PATH: tuple[int, int, int] = (200, 200, 200)
-VISIBLE_MOUNTAIN: tuple[int, int, int] = (187, 187, 187)
-BLACK: tuple[int, int, int] = (0, 0, 0)
-WHITE: tuple[int, int, int] = (230, 230, 230)
-PLAYER_1_COLOR: tuple[int, int, int] = (255, 0, 0)
-PLAYER_2_COLOR: tuple[int, int, int] = (67, 99, 216)
-PLAYER_COLORS: list[tuple[int, int, int]] = [PLAYER_1_COLOR, PLAYER_2_COLOR]
+class Direction(Enum):
+    UP = (-1, 0)
+    DOWN = (1, 0)
+    LEFT = (0, -1)
+    RIGHT = (0, 1)
 
-#########
-# Fonts #
-#########
-FONT_TYPE = "Quicksand-Medium.ttf"  # Font options are Quicksand-SemiBold.ttf, Quicksand-Medium.ttf, Quicksand-Light.ttf
-FONT_SIZE = 18
-try:
-    file_ref = files("generals.assets.fonts") / FONT_TYPE
-    FONT_PATH = str(file_ref)
-except FileNotFoundError:
-    raise FileNotFoundError(f"Font file {FONT_TYPE} not found in the fonts directory")
 
-#########
-# Icons #
-#########
-try:
+class Path(StrEnum):
     GENERAL_PATH = str(files("generals.assets.images") / "crownie.png")
-except FileNotFoundError:
-    raise FileNotFoundError("Image not found")
-try:
     CITY_PATH = str(files("generals.assets.images") / "citie.png")
-except FileNotFoundError:
-    raise FileNotFoundError("Image not found")
-try:
     MOUNTAIN_PATH = str(files("generals.assets.images") / "mountainie.png")
-except FileNotFoundError:
-    raise FileNotFoundError("Image not found")
+
+    # Font options are Quicksand-SemiBold.ttf, Quicksand-Medium.ttf, Quicksand-Light.ttf
+    FONT_PATH = str(files("generals.assets.fonts") / "Quicksand-Medium.ttf")
