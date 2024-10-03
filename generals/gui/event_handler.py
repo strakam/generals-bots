@@ -3,7 +3,7 @@ from enum import Enum
 from pygame.event import Event
 from abc import ABC, abstractmethod
 
-from .properties import Properties
+from .properties import Properties, GuiMode
 from generals.core.config import Dimension
 
 
@@ -66,15 +66,16 @@ class EventHandler(ABC):
         raise NotImplementedError
 
     @staticmethod
-    def from_mode(mode: str, properties: Properties) -> "EventHandler":
-        if mode == "train":
-            return TrainEventHandler(properties)
-        elif mode == "game":
-            return GameEventHandler(properties)
-        elif mode == "replay":
-            return ReplayEventHandler(properties)
-        else:
-            raise ValueError(f"Invalid mode: {mode}")
+    def from_mode(mode: GuiMode, properties: Properties) -> "EventHandler":
+        match mode:
+            case GuiMode.TRAIN:
+                return TrainEventHandler(properties)
+            case GuiMode.GAME:
+                return GameEventHandler(properties)
+            case GuiMode.REPLAY:
+                return ReplayEventHandler(properties)
+            case _:
+                raise ValueError(f"Invalid mode: {mode}")
 
     def handle_events(self) -> Command:
         """

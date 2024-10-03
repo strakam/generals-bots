@@ -1,8 +1,8 @@
 import pygame
-from typing import Any, Literal
+from typing import Any
 
 from generals.core.game import Game
-from .properties import Properties
+from .properties import Properties, GuiMode
 from .event_handler import (
     EventHandler,
     ReplayCommand,
@@ -16,7 +16,7 @@ class GUI:
         self,
         game: Game,
         agent_data: dict[str, dict[str, Any]],
-        mode: Literal["train", "game", "replay"] = "train",
+        mode: GuiMode = GuiMode.TRAIN,
     ):
         pygame.init()
         pygame.display.set_caption("Generals")
