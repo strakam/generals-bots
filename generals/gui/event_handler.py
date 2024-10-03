@@ -1,18 +1,23 @@
 import pygame
+from enum import Enum
 from pygame.event import Event
 from abc import abstractmethod
 
 from .properties import Properties
 from generals.core import config as c
 
-# keybindings #
-RIGHT = pygame.K_RIGHT
-LEFT = pygame.K_LEFT
-SPACE = pygame.K_SPACE
-Q = pygame.K_q
-R = pygame.K_r
-H = pygame.K_h
-L = pygame.K_l
+
+class Keybindings(Enum):
+    ### General ###
+    Q = pygame.K_q  # Quit the game
+
+    ### Replay ###
+    RIGHT = pygame.K_RIGHT  # Increase speed
+    LEFT = pygame.K_LEFT  # Decrease speed
+    SPACE = pygame.K_SPACE  # Pause
+    R = pygame.K_r  # Restart
+    L = pygame.K_l  # Move forward one frame
+    H = pygame.K_h  # Move back one frame
 
 
 class Command:
@@ -103,20 +108,21 @@ class ReplayEventHandler(EventHandler):
         self.command = ReplayCommand()
 
     def handle_key_event(self, event: Event) -> ReplayCommand:
-        if event.key == Q:
-            self.command.quit = True
-        elif event.key == RIGHT:
-            self.command.speed_change = 2.0
-        elif event.key == LEFT:
-            self.command.speed_change = 0.5
-        elif event.key == SPACE:
-            self.command.pause_toggle = True
-        elif event.key == R:
-            self.command.restart = True
-        elif event.key == H:
-            self.command.frame_change = -1
-        elif event.key == L:
-            self.command.frame_change = 1
+        match event.key:
+            case Keybindings.Q.value:
+                self.command.quit = True
+            case Keybindings.RIGHT.value:
+                self.command.speed_change = 2.0
+            case Keybindings.LEFT.value:
+                self.command.speed_change = 0.5
+            case Keybindings.SPACE.value:
+                self.command.pause_toggle = True
+            case Keybindings.R.value:
+                self.command.restart = True
+            case Keybindings.H.value:
+                self.command.frame_change = -1
+            case Keybindings.L.value:
+                self.command.frame_change = 1
         return self.command
 
     def handle_mouse_event(self) -> None:
@@ -144,7 +150,7 @@ class TrainEventHandler(EventHandler):
         self.command = TrainCommand()
 
     def handle_key_event(self, event: Event) -> TrainCommand:
-        if event.key == Q:
+        if event.key == Keybindings.Q.value:
             self.command.quit = True
         return self.command
 
