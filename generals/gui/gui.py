@@ -7,6 +7,7 @@ from .event_handler import (
     TrainEventHandler,
     GameEventHandler,
     ReplayEventHandler,
+    ReplayCommand,
     Command,
 )
 from .rendering import Renderer
