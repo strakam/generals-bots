@@ -97,7 +97,7 @@ class Renderer:
 
     def render_cell_text(
         self,
-        cell,
+        cell: pygame.Surface,
         text: str,
         fg_color: Color = BLACK,
         bg_color: Color = WHITE,
@@ -257,7 +257,7 @@ class Renderer:
             self.game_area.blit(self.tiles[i][j], (j * square_size, i * square_size))
         self.screen.blit(self.game_area, (0, 0))
 
-    def draw_channel(self, channel, color: Color):
+    def draw_channel(self, channel: np.ndarray, color: Color):
         """
         Draw background and borders (left and top) for grid tiles of a given channel
         """
@@ -267,9 +267,10 @@ class Renderer:
             pygame.draw.line(self.tiles[i][j], BLACK, (0, 0), (0, square_size), 1)
             pygame.draw.line(self.tiles[i][j], BLACK, (0, 0), (square_size, 0), 1)
 
-    def draw_images(self, channel, image):
+    def draw_images(self, channel: np.ndarray, image: pygame.Surface):
         """
         Draw images on grid tiles of a given channel
         """
+        print(type(image))
         for i, j in self.game.channel_to_indices(channel):
             self.tiles[i][j].blit(image, (3, 2))
