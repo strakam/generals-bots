@@ -65,6 +65,17 @@ class EventHandler(ABC):
     def reset_command(self):
         raise NotImplementedError
 
+    @staticmethod
+    def from_mode(mode: str, properties: Properties) -> "EventHandler":
+        if mode == "train":
+            return TrainEventHandler(properties)
+        elif mode == "game":
+            return GameEventHandler(properties)
+        elif mode == "replay":
+            return ReplayEventHandler(properties)
+        else:
+            raise ValueError(f"Invalid mode: {mode}")
+
     def handle_events(self) -> Command:
         """
         Handle pygame GUI events

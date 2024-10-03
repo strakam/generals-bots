@@ -4,9 +4,7 @@ from typing import Any, Literal
 from generals.core.game import Game
 from .properties import Properties
 from .event_handler import (
-    TrainEventHandler,
-    GameEventHandler,
-    ReplayEventHandler,
+    EventHandler,
     ReplayCommand,
     Command,
 )
@@ -28,15 +26,7 @@ class GUI:
 
         self.properties = Properties(game, agent_data, mode)
         self.__renderer = Renderer(self.properties)
-        self.__event_handler = self.__initialize_event_handler()
-
-    def __initialize_event_handler(self):
-        if self.properties.mode == "train":
-            return TrainEventHandler(self.properties)
-        elif self.properties.mode == "game":
-            return GameEventHandler(self.properties)
-        elif self.properties.mode == "replay":
-            return ReplayEventHandler(self.properties)
+        self.__event_handler = EventHandler.from_mode(self.properties.mode, self.properties)
 
     def tick(self, fps=None) -> Command:
         command = self.__event_handler.handle_events()
