@@ -78,6 +78,16 @@ class EventHandler:
             and (i + 1) * c.GUI_ROW_HEIGHT <= y < (i + 2) * c.GUI_ROW_HEIGHT
         )
 
+    def toggle_player_fov(self):
+        agents = self.properties.game.agents
+        agent_fov = self.properties.agent_fov
+
+        x, y = pygame.mouse.get_pos()
+        for i, agent in enumerate(agents):
+            if self.is_click_on_agents_row(x, y, i):
+                agent_fov[agent] = not agent_fov[agent]
+                break
+
     @abstractmethod
     def handle_key_event(self, event: Event) -> Command:
         raise NotImplementedError
@@ -113,14 +123,7 @@ class ReplayEventHandler(EventHandler):
         """
         Handle mouse clicks in replay mode.
         """
-        agents = self.properties.game.agents
-        agent_fov = self.properties.agent_fov
-
-        x, y = pygame.mouse.get_pos()
-        for i, agent in enumerate(agents):
-            if self.is_click_on_agents_row(x, y, i):
-                agent_fov[agent] = not agent_fov[agent]
-                break
+        self.toggle_player_fov()
 
 
 class GameEventHandler(EventHandler):
@@ -132,7 +135,7 @@ class GameEventHandler(EventHandler):
         raise NotImplementedError
 
     def handle_mouse_event(self) -> None:
-        raise NotImplementedError
+        self.toggle_player_fov()
 
 
 class TrainEventHandler(EventHandler):
@@ -146,4 +149,4 @@ class TrainEventHandler(EventHandler):
         return self.command
 
     def handle_mouse_event(self) -> None:
-        raise NotImplementedError
+        self.toggle_player_fov()
