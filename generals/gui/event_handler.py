@@ -54,7 +54,6 @@ class EventHandler(ABC):
             properties: the Properties object
         """
         self.properties = properties
-        self.mode = properties.mode
 
     @property
     @abstractmethod
