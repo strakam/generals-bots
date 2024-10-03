@@ -32,15 +32,14 @@ class GUI:
 
     def __initialize_event_handler(self):
         if self.properties.mode == "train":
-            return TrainEventHandler
+            return TrainEventHandler(self.properties)
         elif self.properties.mode == "game":
-            return GameEventHandler
+            return GameEventHandler(self.properties)
         elif self.properties.mode == "replay":
-            return ReplayEventHandler
+            return ReplayEventHandler(self.properties)
 
     def tick(self, fps=None) -> Command:
-        handler = self.__event_handler(self.properties)
-        command = handler.handle_events()
+        command = self.__event_handler.handle_events()
         if command.quit:
             quit()
         if isinstance(command, ReplayCommand):

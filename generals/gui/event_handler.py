@@ -61,10 +61,15 @@ class EventHandler(ABC):
     def command(self) -> Command:
         raise NotImplementedError
 
+    @abstractmethod
+    def reset_command(self):
+        raise NotImplementedError
+
     def handle_events(self) -> Command:
         """
         Handle pygame GUI events
         """
+        self.reset_command()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.command.quit = True
@@ -118,6 +123,9 @@ class ReplayEventHandler(EventHandler):
     def command(self) -> ReplayCommand:
         return self._command
 
+    def reset_command(self):
+        self._command = ReplayCommand()
+
     def handle_key_event(self, event: Event) -> ReplayCommand:
         match event.key:
             case Keybindings.Q.value:
@@ -152,6 +160,9 @@ class GameEventHandler(EventHandler):
     def command(self) -> GameCommand:
         return self._command
 
+    def reset_command(self):
+        self._command = GameCommand()
+
     def handle_key_event(self, event: Event) -> GameCommand:
         raise NotImplementedError
 
@@ -167,6 +178,9 @@ class TrainEventHandler(EventHandler):
     @property
     def command(self) -> TrainCommand:
         return self._command
+
+    def reset_command(self):
+        self._command = TrainCommand()
 
     def handle_key_event(self, event: Event) -> TrainCommand:
         if event.key == Keybindings.Q.value:
