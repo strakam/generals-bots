@@ -1,7 +1,7 @@
 import pygame
 from enum import Enum
 from pygame.event import Event
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 from .properties import Properties
 from generals.core import config as c
@@ -45,7 +45,7 @@ class TrainCommand(Command):
         super().__init__()
 
 
-class EventHandler:
+class EventHandler(ABC):
     def __init__(self, properties: Properties):
         """
         Initialize the event handler.
@@ -55,6 +55,11 @@ class EventHandler:
         """
         self.properties = properties
         self.mode = properties.mode
+
+    @property
+    @abstractmethod
+    def command(self) -> Command:
+        raise NotImplementedError
 
     def handle_events(self) -> Command:
         """
@@ -105,7 +110,11 @@ class EventHandler:
 class ReplayEventHandler(EventHandler):
     def __init__(self, properties: Properties):
         super().__init__(properties)
-        self.command = ReplayCommand()
+        self._command = ReplayCommand()
+
+    @property
+    def command(self) -> ReplayCommand:
+        return self._command
 
     def handle_key_event(self, event: Event) -> ReplayCommand:
         match event.key:
@@ -135,7 +144,11 @@ class ReplayEventHandler(EventHandler):
 class GameEventHandler(EventHandler):
     def __init__(self, properties: Properties):
         super().__init__(properties)
-        self.command = GameCommand()
+        self._command = GameCommand()
+
+    @property
+    def command(self) -> GameCommand:
+        return self._command
 
     def handle_key_event(self, event: Event) -> GameCommand:
         raise NotImplementedError
@@ -147,7 +160,11 @@ class GameEventHandler(EventHandler):
 class TrainEventHandler(EventHandler):
     def __init__(self, properties: Properties):
         super().__init__(properties)
-        self.command = TrainCommand()
+        self._command = TrainCommand()
+
+    @property
+    def command(self) -> TrainCommand:
+        return self._command
 
     def handle_key_event(self, event: Event) -> TrainCommand:
         if event.key == Keybindings.Q.value:
