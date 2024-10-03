@@ -151,6 +151,10 @@ replay.play()
 - `spacebar` — toggle play/pause
 - `mouse` click on the player's row — toggle the FoV (Field of View) of the given player
 
+> [!WARNING]
+> We are using the [pickle](https://docs.python.org/3/library/pickle.html) module which is not safe!
+> Only open replays you trust.
+
 ## 🌍 Environment
 ### 🔭 Observation
 An observation for one agent is a dictionary `{"observation": observation, "action_mask": action_mask}`.
