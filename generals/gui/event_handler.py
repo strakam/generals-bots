@@ -1,7 +1,7 @@
 import pygame
 from enum import Enum
 from pygame.event import Event
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 from .properties import Properties
 from generals.core import config as c
@@ -45,7 +45,7 @@ class TrainCommand(Command):
         super().__init__()
 
 
-class EventHandler:
+class EventHandler(ABC):
     def __init__(self, properties: Properties):
         """
         Initialize the event handler.
