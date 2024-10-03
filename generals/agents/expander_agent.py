@@ -1,7 +1,7 @@
 import numpy as np
 from .agent import Agent
 
-from generals.core.config import DIRECTIONS
+from generals.core.config import Direction
 
 
 class ExpanderAgent(Agent):
@@ -27,8 +27,10 @@ class ExpanderAgent(Agent):
         # Find actions that capture opponent or neutral cells
         actions_capture_opponent = np.zeros(len(valid_actions))
         actions_capture_neutral = np.zeros(len(valid_actions))
+
+        directions = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
         for i, action in enumerate(valid_actions):
-            di, dj = action[:-1] + DIRECTIONS[action[-1]]  # Destination cell indices
+            di, dj = action[:-1] + directions[action[-1]].value  # Destination cell indices
             if army[action[0], action[1]] <= army[di, dj] + 1:  # Can't capture
                 continue
             elif opponent[di, dj]:

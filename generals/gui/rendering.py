@@ -1,8 +1,18 @@
 import pygame
 import numpy as np
-import generals.core.config as c
 
-from .properties import Properties
+from generals.gui.properties import Properties
+from generals.core.config import Dimension, Path
+
+from typing import TypeAlias
+
+Color: TypeAlias = tuple[int, int, int]
+FOG_OF_WAR: Color = (70, 73, 76)
+NEUTRAL_CASTLE: Color = (128, 128, 128)
+VISIBLE_PATH: Color = (200, 200, 200)
+VISIBLE_MOUNTAIN: Color = (187, 187, 187)
+BLACK: Color = (0, 0, 0)
+WHITE: Color = (230, 230, 230)
 
 
 class Renderer:
@@ -34,6 +44,9 @@ class Renderer:
         window_width = self.display_grid_width + self.right_panel_width
         window_height = self.display_grid_height + 1
 
+        width = Dimension.GUI_CELL_WIDTH.value
+        height = Dimension.GUI_CELL_HEIGHT.value
+
         # Main window
         self.screen = pygame.display.set_mode(
             (window_width, window_height), pygame.HWSURFACE | pygame.DOUBLEBUF
@@ -42,14 +55,14 @@ class Renderer:
         self.right_panel = pygame.Surface((self.right_panel_width, window_height))
         self.score_cols = {}
         for col in ["Agent", "Army", "Land"]:
-            size = (c.GUI_CELL_WIDTH, c.GUI_ROW_HEIGHT)
+            size = (width, height)
             if col == "Agent":
-                size = (2 * c.GUI_CELL_WIDTH, c.GUI_ROW_HEIGHT)
+                size = (2 * width, height)
             self.score_cols[col] = [pygame.Surface(size) for _ in range(3)]
 
         self.info_panel = {
-            "time": pygame.Surface((self.right_panel_width / 2, c.GUI_ROW_HEIGHT)),
-            "speed": pygame.Surface((self.right_panel_width / 2, c.GUI_ROW_HEIGHT)),
+            "time": pygame.Surface((self.right_panel_width / 2, height)),
+            "speed": pygame.Surface((self.right_panel_width / 2, height)),
         }
         # Game area and tiles
         self.game_area = pygame.Surface(
@@ -57,21 +70,23 @@ class Renderer:
         )
         self.tiles = [
             [
-                pygame.Surface((c.SQUARE_SIZE, c.SQUARE_SIZE))
+                pygame.Surface(
+                    (Dimension.SQUARE_SIZE.value, Dimension.SQUARE_SIZE.value)
+                )
                 for _ in range(self.grid_width)
             ]
             for _ in range(self.grid_height)
         ]
 
         self._mountain_img = pygame.image.load(
-            str(c.MOUNTAIN_PATH), "png"
+            str(Path.MOUNTAIN_PATH), "png"
         ).convert_alpha()
         self._general_img = pygame.image.load(
-            str(c.GENERAL_PATH), "png"
+            str(Path.GENERAL_PATH), "png"
         ).convert_alpha()
-        self._city_img = pygame.image.load(str(c.CITY_PATH), "png").convert_alpha()
+        self._city_img = pygame.image.load(Path.CITY_PATH, "png").convert_alpha()
 
-        self._font = pygame.font.Font(c.FONT_PATH, c.FONT_SIZE)
+        self._font = pygame.font.Font(Path.FONT_PATH, self.properties.font_size)
 
     def render(self, fps=None):
         self.render_grid()
@@ -80,7 +95,13 @@ class Renderer:
         if fps:
             self.properties.clock.tick(fps)
 
-    def render_cell_text(self, cell, text, fg_color=c.BLACK, bg_color=c.WHITE):
+    def render_cell_text(
+        self,
+        cell,
+        text: str,
+        fg_color: Color = BLACK,
+        bg_color: Color = WHITE,
+    ):
         """
         Draw a text in the middle of the cell with given foreground and background colors
 
@@ -103,13 +124,13 @@ class Renderer:
         """
         names = self.game.agents
         player_stats = self.game.get_infos()
+        gui_cell_height = Dimension.GUI_CELL_HEIGHT.value
+        gui_cell_width = Dimension.GUI_CELL_WIDTH.value
 
         # Write names
         for i, name in enumerate(["Agent"] + names):
-            color = (
-                self.agent_data[name]["color"] if name in self.agent_data else c.WHITE
-            )
-            # add opacity to the color, where color is a tuple (r,g,b)
+            color = self.agent_data[name]["color"] if name in self.agent_data else WHITE
+            # add opacity to the color, where color is a Color(r,g,b)
             if name in self.agent_fov and not self.agent_fov[name]:
                 color = tuple([int(0.5 * rgb) for rgb in color])
             self.render_cell_text(self.score_cols["Agent"][i], name, bg_color=color)
@@ -118,25 +139,23 @@ class Renderer:
         for i, col in enumerate(["Army", "Land"]):
             self.render_cell_text(self.score_cols[col][0], col)
             for j, name in enumerate(names):
-                # Give darkish color if agents FoV is off
-                color = c.WHITE
                 if name in self.agent_fov and not self.agent_fov[name]:
                     color = (128, 128, 128)
                 self.render_cell_text(
                     self.score_cols[col][j + 1],
                     str(player_stats[name][col.lower()]),
-                    bg_color=color,
+                    bg_color=WHITE,
                 )
 
         # Blit each right_panel cell to the right_panel surface
         for i, col in enumerate(["Agent", "Army", "Land"]):
             for j, cell in enumerate(self.score_cols[col]):
                 rect_dim = (0, 0, cell.get_width(), cell.get_height())
-                pygame.draw.rect(cell, c.BLACK, rect_dim, 1)
+                pygame.draw.rect(cell, BLACK, rect_dim, 1)
 
-                position = ((i + 1) * c.GUI_CELL_WIDTH, j * c.GUI_ROW_HEIGHT)
+                position = ((i + 1) * gui_cell_width, j * gui_cell_height)
                 if col == "Agent":
-                    position = (0, j * c.GUI_ROW_HEIGHT)
+                    position = (0, j * gui_cell_height)
                 self.right_panel.blit(cell, position)
 
         info_text = {
@@ -156,10 +175,10 @@ class Renderer:
                 self.info_panel[key].get_width(),
                 self.info_panel[key].get_height(),
             )
-            pygame.draw.rect(self.info_panel[key], c.BLACK, rect_dim, 1)
+            pygame.draw.rect(self.info_panel[key], BLACK, rect_dim, 1)
 
             self.right_panel.blit(
-                self.info_panel[key], (i * 2 * c.GUI_CELL_WIDTH, 3 * c.GUI_ROW_HEIGHT)
+                self.info_panel[key], (i * 2 * gui_cell_width, 3 * gui_cell_height)
             )
         # Render right_panel on the screen
         self.screen.blit(self.right_panel, (self.display_grid_width, 0))
@@ -195,14 +214,14 @@ class Renderer:
 
         # Draw background of visible but not owned squares
         visible_not_owned = np.logical_and(visible_map, not_owned_map)
-        self.draw_channel(visible_not_owned, c.WHITE)
+        self.draw_channel(visible_not_owned, WHITE)
 
         # Draw background of squares in fog of war
-        self.draw_channel(invisible_map, c.FOG_OF_WAR)
+        self.draw_channel(invisible_map, FOG_OF_WAR)
 
         # Draw background of visible mountains
         visible_mountain = np.logical_and(self.game.channels.mountain, visible_map)
-        self.draw_channel(visible_mountain, c.VISIBLE_MOUNTAIN)
+        self.draw_channel(visible_mountain, VISIBLE_MOUNTAIN)
 
         # Draw mountains (even if they are not visible)
         self.draw_images(self.game.channels.mountain, self._mountain_img)
@@ -212,7 +231,7 @@ class Renderer:
         visible_cities_neutral = np.logical_and(
             visible_cities, self.game.channels.ownership_neutral
         )
-        self.draw_channel(visible_cities_neutral, c.NEUTRAL_CASTLE)
+        self.draw_channel(visible_cities_neutral, NEUTRAL_CASTLE)
 
         # Draw invisible cities as mountains
         invisible_cities = np.logical_and(self.game.channels.city, invisible_map)
@@ -228,25 +247,25 @@ class Renderer:
             self.render_cell_text(
                 self.tiles[i][j],
                 str(int(visible_army[i, j])),
-                fg_color=c.WHITE,
+                fg_color=WHITE,
                 bg_color=None,  # Transparent background
             )
 
         # Blit tiles to the self.game_area
+        square_size = Dimension.SQUARE_SIZE.value
         for i, j in np.ndindex(self.grid_height, self.grid_width):
-            self.game_area.blit(
-                self.tiles[i][j], (j * c.SQUARE_SIZE, i * c.SQUARE_SIZE)
-            )
+            self.game_area.blit(self.tiles[i][j], (j * square_size, i * square_size))
         self.screen.blit(self.game_area, (0, 0))
 
-    def draw_channel(self, channel, color: tuple[int, int, int]):
+    def draw_channel(self, channel, color: Color):
         """
         Draw background and borders (left and top) for grid tiles of a given channel
         """
+        square_size = Dimension.SQUARE_SIZE.value
         for i, j in self.game.channel_to_indices(channel):
             self.tiles[i][j].fill(color)
-            pygame.draw.line(self.tiles[i][j], c.BLACK, (0, 0), (0, c.SQUARE_SIZE), 1)
-            pygame.draw.line(self.tiles[i][j], c.BLACK, (0, 0), (c.SQUARE_SIZE, 0), 1)
+            pygame.draw.line(self.tiles[i][j], BLACK, (0, 0), (0, square_size), 1)
+            pygame.draw.line(self.tiles[i][j], BLACK, (0, 0), (square_size, 0), 1)
 
     def draw_images(self, channel, image):
         """

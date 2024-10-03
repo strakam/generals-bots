@@ -7,7 +7,7 @@ import gymnasium as gym
 
 from .channels import Channels
 from .grid import Grid
-from .config import DIRECTIONS
+from .config import Direction
 
 from scipy.ndimage import maximum_filter
 
@@ -16,6 +16,7 @@ Action: TypeAlias = gym.Space
 Info: TypeAlias = dict[str, Any]
 
 increment_rate = 50
+DIRECTIONS = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
 
 
 class Game:
@@ -99,7 +100,7 @@ class Game:
             return valid_action_mask
 
         for channel_index, direction in enumerate(DIRECTIONS):
-            destinations = owned_cells_indices + direction
+            destinations = owned_cells_indices + direction.value
 
             # check if destination is in grid bounds
             in_first_boundary = np.all(destinations >= 0, axis=1)
@@ -116,7 +117,7 @@ class Game:
             action_destinations = destinations[passable_cell_indices]
 
             # get valid action mask for a given direction
-            valid_source_indices = action_destinations - direction
+            valid_source_indices = action_destinations - direction.value
             valid_action_mask[
                 valid_source_indices[:, 0], valid_source_indices[:, 1], channel_index
             ] = 1.0
@@ -187,8 +188,8 @@ class Game:
                 continue
 
             di, dj = (
-                si + DIRECTIONS[direction][0],
-                sj + DIRECTIONS[direction][1],
+                si + DIRECTIONS[direction].value[0],
+                sj + DIRECTIONS[direction].value[1],
             )  # destination indices
 
             # Figure out the target square owner and army size
