@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Any, Literal
+from enum import Enum
+from typing import Any
 
 from pygame.time import Clock
 
@@ -7,11 +8,17 @@ from generals.core.game import Game
 from generals.core.config import Dimension
 
 
+class GuiMode(Enum):
+    TRAIN = "train"
+    GAME = "game"
+    REPLAY = "replay"
+
+
 @dataclass
 class Properties:
     __game: Game
     __agent_data: dict[str, dict[str, Any]]
-    __mode: Literal["train", "game", "replay"]
+    __mode: GuiMode
     __game_speed: int = 1
     __clock: Clock = Clock()
     __font_size = 18

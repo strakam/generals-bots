@@ -4,6 +4,7 @@ import time
 from generals.core.grid import Grid
 from generals.core.game import Game
 from generals.gui.event_handler import ReplayCommand
+from generals.gui.properties import GuiMode
 from generals.gui import GUI
 from copy import deepcopy
 
@@ -34,7 +35,7 @@ class Replay:
     def play(self):
         agents = [agent for agent in self.agent_data.keys()]
         game = Game(self.grid, agents)
-        gui = GUI(game, self.agent_data, mode="replay")
+        gui = GUI(game, self.agent_data, mode=GuiMode.REPLAY)
         gui_properties = gui.properties
 
         game_step, last_input_time, last_move_time = 0, 0, 0

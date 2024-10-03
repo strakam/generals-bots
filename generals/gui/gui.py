@@ -1,12 +1,10 @@
 import pygame
-from typing import Any, Literal
+from typing import Any
 
 from generals.core.game import Game
-from .properties import Properties
+from .properties import Properties, GuiMode
 from .event_handler import (
-    TrainEventHandler,
-    GameEventHandler,
-    ReplayEventHandler,
+    EventHandler,
     ReplayCommand,
     Command,
 )
@@ -18,7 +16,7 @@ class GUI:
         self,
         game: Game,
         agent_data: dict[str, dict[str, Any]],
-        mode: Literal["train", "game", "replay"] = "train",
+        mode: GuiMode = GuiMode.TRAIN,
     ):
         pygame.init()
         pygame.display.set_caption("Generals")
@@ -28,19 +26,10 @@ class GUI:
 
         self.properties = Properties(game, agent_data, mode)
         self.__renderer = Renderer(self.properties)
-        self.__event_handler = self.__initialize_event_handler()
-
-    def __initialize_event_handler(self):
-        if self.properties.mode == "train":
-            return TrainEventHandler
-        elif self.properties.mode == "game":
-            return GameEventHandler
-        elif self.properties.mode == "replay":
-            return ReplayEventHandler
+        self.__event_handler = EventHandler.from_mode(self.properties.mode, self.properties)
 
     def tick(self, fps=None) -> Command:
-        handler = self.__event_handler(self.properties)
-        command = handler.handle_events()
+        command = self.__event_handler.handle_events()
         if command.quit:
             quit()
         if isinstance(command, ReplayCommand):

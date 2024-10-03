@@ -1,7 +1,7 @@
 import pygame
 import numpy as np
 
-from generals.gui.properties import Properties
+from generals.gui.properties import Properties, GuiMode
 from generals.core.config import Dimension, Path
 
 from typing import TypeAlias
@@ -161,7 +161,7 @@ class Renderer:
         info_text = {
             "time": f"Time: {str(self.game.time // 2) + ('.' if self.game.time % 2 == 1 else '')}",
             "speed": "Paused"
-            if self.mode == "replay" and self.properties.paused
+            if self.mode == GuiMode.REPLAY and self.properties.paused
             else f"Speed: {str(self.properties.game_speed)}x",
         }
 

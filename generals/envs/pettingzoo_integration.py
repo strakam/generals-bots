@@ -12,6 +12,7 @@ from generals.core.game import Game, Action, Observation, Info
 from generals.core.grid import GridFactory
 from generals.agents import Agent
 from generals.gui import GUI
+from generals.gui.properties import GuiMode
 from generals.core.replay import Replay
 
 
@@ -76,7 +77,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         self.game = Game(grid, self.agents)
 
         if self.render_mode == "human":
-            self.gui = GUI(self.game, self.agent_data, "train")
+            self.gui = GUI(self.game, self.agent_data, GuiMode.TRAIN)
 
         if "replay_file" in options:
             self.replay = Replay(

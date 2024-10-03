@@ -3,7 +3,7 @@ from enum import Enum
 from pygame.event import Event
 from abc import ABC, abstractmethod
 
-from .properties import Properties
+from .properties import Properties, GuiMode
 from generals.core.config import Dimension
 
 
@@ -54,17 +54,33 @@ class EventHandler(ABC):
             properties: the Properties object
         """
         self.properties = properties
-        self.mode = properties.mode
 
     @property
     @abstractmethod
     def command(self) -> Command:
         raise NotImplementedError
 
+    @abstractmethod
+    def reset_command(self):
+        raise NotImplementedError
+
+    @staticmethod
+    def from_mode(mode: GuiMode, properties: Properties) -> "EventHandler":
+        match mode:
+            case GuiMode.TRAIN:
+                return TrainEventHandler(properties)
+            case GuiMode.GAME:
+                return GameEventHandler(properties)
+            case GuiMode.REPLAY:
+                return ReplayEventHandler(properties)
+            case _:
+                raise ValueError(f"Invalid mode: {mode}")
+
     def handle_events(self) -> Command:
         """
         Handle pygame GUI events
         """
+        self.reset_command()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.command.quit = True
@@ -118,6 +134,9 @@ class ReplayEventHandler(EventHandler):
     def command(self) -> ReplayCommand:
         return self._command
 
+    def reset_command(self):
+        self._command = ReplayCommand()
+
     def handle_key_event(self, event: Event) -> ReplayCommand:
         match event.key:
             case Keybindings.Q.value:
@@ -152,6 +171,9 @@ class GameEventHandler(EventHandler):
     def command(self) -> GameCommand:
         return self._command
 
+    def reset_command(self):
+        self._command = GameCommand()
+
     def handle_key_event(self, event: Event) -> GameCommand:
         raise NotImplementedError
 
@@ -167,6 +189,9 @@ class TrainEventHandler(EventHandler):
     @property
     def command(self) -> TrainCommand:
         return self._command
+
+    def reset_command(self):
+        self._command = TrainCommand()
 
     def handle_key_event(self, event: Event) -> TrainCommand:
         if event.key == Keybindings.Q.value:
