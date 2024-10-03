@@ -271,6 +271,5 @@ class Renderer:
         """
         Draw images on grid tiles of a given channel
         """
-        print(type(image))
         for i, j in self.game.channel_to_indices(channel):
             self.tiles[i][j].blit(image, (3, 2))

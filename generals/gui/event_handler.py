@@ -4,7 +4,7 @@ from pygame.event import Event
 from abc import ABC, abstractmethod
 
 from .properties import Properties
-from generals.core import config as c
+from generals.core.config import Dimension
 
 
 class Keybindings(Enum):
@@ -85,7 +85,9 @@ class EventHandler(ABC):
         """
         return (
             x >= self.properties.display_grid_width
-            and (i + 1) * c.GUI_ROW_HEIGHT <= y < (i + 2) * c.GUI_ROW_HEIGHT
+            and (i + 1) * Dimension.GUI_CELL_HEIGHT.value
+            <= y
+            < (i + 2) * Dimension.GUI_CELL_HEIGHT.value
         )
 
     def toggle_player_fov(self):
