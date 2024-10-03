@@ -1,7 +1,7 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 
-class Agent:
+class Agent(ABC):
     """
     Base class for all agents.
     """

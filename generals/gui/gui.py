@@ -42,7 +42,7 @@ class GUI:
         command = handler.handle_events()
         if command.quit:
             quit()
-        if self.properties.mode == "replay":
+        if isinstance(command, ReplayCommand):
             self.properties.update_speed(command.speed_change)
             if command.frame_change != 0 or command.restart:
                 self.properties.paused = True
