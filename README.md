@@ -71,7 +71,7 @@ example [here](./examples/complete_example.py).
 Creating your first agent is very simple. 
 - Start by subclassing an `Agent` class just like [`RandomAgent`](./generals/agents/random_agent.py) or [`ExpanderAgent`](./generals/agents/expander_agent.py).
 - Every agent must have a name as it is his ID by which he is called for actions.
-- Every agent must implement `play(observation)` function that takes in `observation` and returns an [action](#-action).
+- Every agent must implement `play(observation)` function that takes in `observation` and returns an `action` (both defined below).
 - You can start by copying the [Usage Example](#usage-example--gymnasium) and replacing `agent` with your implementation.
 - When creating an environment, you can choose out of two `render_modes`:
      - `None` that omits rendering and is suitable for training,
