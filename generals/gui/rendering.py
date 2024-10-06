@@ -54,9 +54,9 @@ class Renderer:
         # Scoreboard
         self.right_panel = pygame.Surface((self.right_panel_width, window_height))
         self.score_cols = {}
-        for col in ["Agent", "Army", "Land"]:
+        for col in ["Player", "Army", "Land"]:
             size = (width, height)
-            if col == "Agent":
+            if col == "Player":
                 size = (2 * width, height)
             self.score_cols[col] = [pygame.Surface(size) for _ in range(3)]
 
@@ -128,12 +128,12 @@ class Renderer:
         gui_cell_width = Dimension.GUI_CELL_WIDTH.value
 
         # Write names
-        for i, name in enumerate(["Agent"] + names):
+        for i, name in enumerate(["Player"] + names):
             color = self.agent_data[name]["color"] if name in self.agent_data else WHITE
             # add opacity to the color, where color is a Color(r,g,b)
             if name in self.agent_fov and not self.agent_fov[name]:
                 color = tuple([int(0.5 * rgb) for rgb in color])
-            self.render_cell_text(self.score_cols["Agent"][i], name, bg_color=color)
+            self.render_cell_text(self.score_cols["Player"][i], name, bg_color=color)
 
         # Write other columns
         for i, col in enumerate(["Army", "Land"]):
@@ -148,13 +148,13 @@ class Renderer:
                 )
 
         # Blit each right_panel cell to the right_panel surface
-        for i, col in enumerate(["Agent", "Army", "Land"]):
+        for i, col in enumerate(["Player", "Army", "Land"]):
             for j, cell in enumerate(self.score_cols[col]):
                 rect_dim = (0, 0, cell.get_width(), cell.get_height())
                 pygame.draw.rect(cell, BLACK, rect_dim, 1)
 
                 position = ((i + 1) * gui_cell_width, j * gui_cell_height)
-                if col == "Agent":
+                if col == "Player":
                     position = (0, j * gui_cell_height)
                 self.right_panel.blit(cell, position)
 

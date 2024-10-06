@@ -1,18 +1,21 @@
-from generals import gym_generals
-from generals.agents import RandomAgent, ExpanderAgent
+import gymnasium as gym
+from generals import AgentFactory
 
 # Initialize agents
-agent = RandomAgent()
-npc = ExpanderAgent()
+agent = AgentFactory.make_agent("expander")
+npc = AgentFactory.make_agent("random")
 
-# Create environment -- render modes: {None, "human"}
-env = gym_generals(agent=agent, npc=npc, render_mode="human")
+env = gym.make(
+    "gym-generals-v0",
+    agent=agent,
+    npc=npc,
+    render_mode="human",
+)
+
 observation, info = env.reset()
 
-done = False
-
-while not done:
-    action = agent.play(observation)
+terminated = truncated = False
+while not (terminated or truncated):
+    action = agent.act(observation)
     observation, reward, terminated, truncated, info = env.step(action)
-    done = terminated or truncated
-    env.render(fps=6)
+    env.render()

@@ -11,12 +11,12 @@ gym:
 
 # Create new replay and run it
 make n_replay:
-	python3 -m examples.complete_example
-	python3 -m examples.replay_example
+	python3 -m examples.record_replay_example
+	python3 -m examples.show_replay_example
 
 # Run existing replay
 replay:
-	python3 -m examples.replay_example
+	python3 -m examples.show_replay_example
 
 ###################
 # Developer tools #
@@ -25,7 +25,6 @@ at:
 	pytest tests/test_game.py
 	pytest tests/test_map.py
 	python3 tests/gym_check.py
-	python3 tests/sb3_check.py
 
 test_performance:
 	python3 -m tests.parallel_api_check

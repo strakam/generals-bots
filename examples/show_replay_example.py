@@ -1,4 +1,4 @@
 from generals import Replay
 
-replay = Replay.load("replay.pkl")
+replay = Replay.load("my_replay.pkl")
 replay.play()
