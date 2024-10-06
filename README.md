@@ -67,8 +67,8 @@ while not (terminated or truncated):
     observation, reward, terminated, truncated, info = env.step(action)
     env.render()
 ```
-You can also check an example for 🦁[PettingZoo](./examples/pettingzoo_example.py) or a commented
-example showcasing features [here](./examples/complete_example.py).
+You can also check an example for 🦁[PettingZoo](./examples/pettingzoo_example.py) or
+an example with commentary showcasing various features [here](./examples/complete_example.py).
 
 ## 🚀 Getting Started
 Creating your first agent is very simple. 
