@@ -22,6 +22,11 @@ RewardFn: TypeAlias = Callable[[dict[str, Observation], Action, bool, Info], Rew
 
 
 class PZ_Generals(pettingzoo.ParallelEnv):
+    metadata = {
+        "render_modes": ["human"],
+        "render_fps": 6,
+    }
+
     def __init__(
         self,
         grid_factory: GridFactory,
@@ -58,7 +63,8 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         assert agent in self.possible_agents, f"Agent {agent} not in possible agents"
         return self.game.action_space
 
-    def render(self, fps=6) -> None:
+    def render(self, fps: int = None) -> None:
+        fps = self.metadata["render_fps"] if fps is None else fps
         if self.render_mode == "human":
             _ = self.gui.tick(fps=fps)
 

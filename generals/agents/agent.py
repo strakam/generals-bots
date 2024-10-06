@@ -6,7 +6,7 @@ class Agent(ABC):
     Base class for all agents.
     """
 
-    def __init__(self, name, color):
+    def __init__(self, name="Agent", color=(67, 70, 86)):
         self.name = name
         self.color = color
 
@@ -28,3 +28,11 @@ class Agent(ABC):
 
     def __str__(self):
         return self.name
+
+
+class EmptyAgent(Agent):
+    def play(self, observation):
+        return None
+
+    def reset(self):
+        pass

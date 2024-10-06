@@ -4,7 +4,7 @@ import numpy as np
 
 class RandomAgent(Agent):
     def __init__(
-        self, name="Random", color=(255, 0, 0), split_prob=0.25, idle_prob=0.05
+        self, name="Random", color=(242, 61, 106), split_prob=0.25, idle_prob=0.05
     ):
         super().__init__(name, color)
 
