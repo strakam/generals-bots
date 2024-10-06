@@ -45,27 +45,30 @@ pip install -e .
 ## Usage example (🤸 Gymnasium)
 
 ```python
-from generals import gym_generals
-from generals.agents import RandomAgent, ExpanderAgent
+import gymnasium as gym
+from generals import AgentFactory
 
 # Initialize agents
-agent = RandomAgent()
-npc = ExpanderAgent()
+agent = AgentFactory.make_agent("expander")
+npc = AgentFactory.make_agent("random")
 
-# Create environment -- render modes: {None, "human"}
-env = gym_generals(agent=agent, npc=npc, render_mode="human")
+env = gym.make(
+    "gym-generals-v0",
+    agent=agent,
+    npc=npc,
+    render_mode="human",
+)
+
 observation, info = env.reset()
 
-done = False
-
-while not done:
-    action = agent.play(observation)
+terminated = truncated = False
+while not (terminated or truncated):
+    action = agent.act(observation)
     observation, reward, terminated, truncated, info = env.step(action)
-    done = terminated or truncated
-    env.render(fps=6)
+    env.render()
 ```
-You can also check an example for 🦁[PettingZoo](./examples/pettingzoo_example.py) or more extensive
-example [here](./examples/complete_example.py).
+You can also check an example for 🦁[PettingZoo](./examples/pettingzoo_example.py) or a commented
+example showcasing features [here](./examples/complete_example.py).
 
 ## 🚀 Getting Started
 Creating your first agent is very simple. 
@@ -84,7 +87,7 @@ Creating your first agent is very simple.
 Grids are generated via `GridFactory`. You can instantiate the class with desired grid properties, and it will generate
 grid with these properties for each run.
 ```python
-from generals import pz_generals
+import gymnasium as gym
 from generals import GridFactory
 
 grid_factory = GridFactory(
@@ -95,16 +98,17 @@ grid_factory = GridFactory(
 )
 
 # Create environment
-env = pz_generals(grid_factory=grid_factory, ...)
+env = gym.make(
+    "gym-generals-v0",
+    grid_factory=grid_factory,
+    ...
+)
 ```
 You can also specify grids manually, as a string via `options` dict:
 ```python
-from generals import pz_generals
-from generals import GridFactory
+import gymnasium as gym
 
-grid_factory = GridFactory()
-env = pz_generals(grid_factory=grid_factory, ...)
-
+env = gym.make("gym-generals-v0", ...)
 grid = """
 .3.#
 #..A
@@ -127,10 +131,11 @@ Grids are encoded using these symbols:
 We can store replays and then analyze them. `Replay` class handles replay related functionality.
 ### Storing a replay
 ```python
-from generals import pz_generals
+import gymnasium as gym
+
+env = gym.make("gym-generals-v0", ...)
 
 options = {"replay": "my_replay"}
-env = pz_generals(...)
 env.reset(options=options) # The next game will be encoded in my_replay.pkl
 ```
 
@@ -200,6 +205,6 @@ def custom_reward_fn(observation, action, done, info):
     # Give agent a reward based on the number of cells they own
     return observation["observation"]["owned_land_count"]
 
-env = pz_generals(reward_fn=custom_reward_fn)
+env = gym.make(..., reward_fn=custom_reward_fn)
 observations, info = env.reset()
 ```
