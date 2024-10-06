@@ -28,7 +28,7 @@ Highlights:
 
 > [!NOTE]
 > This repository is based on the [generals.io](https://generals.io) game.
-> Check it out, its a lot of fun !
+> Check it out, it is a lot of fun!
 
 ## 📦 Installation
 Stable release version is available through pip:
@@ -78,7 +78,7 @@ Creating your first agent is very simple.
 - You can start by copying the [Usage Example](#usage-example--gymnasium) and replacing `agent` with your implementation.
 - When creating an environment, you can choose out of two `render_modes`:
      - `None` that omits rendering and is suitable for training,
-     - `"human"` where you can see the game roll out.
+     - `"human"` where you can see the game play out.
 
 > [!TIP]
 > Check out `Makefile` and run some examples to get a feel for the game 🤗.
@@ -166,21 +166,21 @@ An observation for one agent is a dictionary `{"observation": observation, "acti
 
 The `observation` is a `Dict`. Values are either `numpy` matrices with shape `(N,M)`, or simple `int` constants:
 | Key                  | Shape     | Description                                                                  |
-| ---                  | ---       | ---                                                                          |
-| `army`               | `(N,M)`   | Number of units in a cell regardless of owner                                |
-| `general`            | `(N,M)`   | Mask of cells that are visible to the agent                                  |
-| `city`               | `(N,M)`   | Mask saying whether a city is in a cell                                      |
+| -------------------- | --------- | ---------------------------------------------------------------------------- |
+| `army`               | `(N,M)`   | Number of units in a cell regardless of the owner                            |
+| `general`            | `(N,M)`   | Mask indicating cells containing a general                                   |
+| `city`               | `(N,M)`   | Mask indicating cells containing a city                                      |
 | `visible_cells`      | `(N,M)`   | Mask indicating cells that are visible to the agent                          |
-| `owned_cells`        | `(N,M)`   | Mask indicating cells controlled by the agent                                |
+| `owned_cells`        | `(N,M)`   | Mask indicating cells owned by the agent                                     |
 | `opponent_cells`     | `(N,M)`   | Mask indicating cells owned by the opponent                                  |
-| `neutral_cells`      | `(N,M)`   | Mask indicating cells that are not owned by agents                           |
+| `neutral_cells`      | `(N,M)`   | Mask indicating cells that are not owned by any agent                        |
 | `structure`          | `(N,M)`   | Mask indicating whether cells contain cities or mountains, even out of FoV   |
-| `owned_land_count`   |     —     | Number of cells an agent owns                                                |
-| `owned_army_count`   |     —     | Total number of units of an agent over all cells                             |
+| `owned_land_count`   |     —     | Number of cells the agent owns                                               |
+| `owned_army_count`   |     —     | Total number of units owned by the agent                                     |
 | `opponent_land_count`|     —     | Number of cells owned by the opponent                                        |
-| `opponent_army_count`|     —     | Int representing total number of units owned by the opponent                 |
-| `is_winner`          |     —     | Whether agent won                                                            |
-| `timestep`           |     —     | Timestep                                                                     |
+| `opponent_army_count`|     —     | Total number of units owned by the opponent                                  |
+| `is_winner`          |     —     | Indicates whether the agent won                                              |
+| `timestep`           |     —     | Current timestep of the game                                                 |
 
 `action_mask` is a mask with shape `(N,M,4)` where value `[i,j,d]` says whether you can move from cell `[i,j]` in a direction `d`.
    
