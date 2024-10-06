@@ -11,7 +11,7 @@ class RandomAgent(Agent):
         self.idle_probability = idle_prob
         self.split_probability = split_prob
 
-    def play(self, observation):
+    def act(self, observation):
         """
         Randomly selects a valid action.
         """

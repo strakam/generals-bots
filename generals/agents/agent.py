@@ -11,7 +11,7 @@ class Agent(ABC):
         self.color = color
 
     @abstractmethod
-    def play(self, observation):
+    def act(self, observation):
         """
         This method should be implemented by the child class.
         It should receive an observation and return an action.
@@ -31,7 +31,7 @@ class Agent(ABC):
 
 
 class EmptyAgent(Agent):
-    def play(self, observation):
+    def act(self, observation):
         return None
 
     def reset(self):

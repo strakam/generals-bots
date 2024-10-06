@@ -11,7 +11,7 @@ class AgentFactory:
         pass
 
     @staticmethod
-    def init_agent(agent_type: str, **kwargs) -> Agent:
+    def make_agent(agent_type: str, **kwargs) -> Agent:
         """
         Creates an agent of the specified type.
         """

@@ -25,6 +25,12 @@ class Grid:
                 raise ValueError("Grid must be encoded as a string or a numpy array.")
         if not Grid.verify_grid(grid):
             raise ValueError("Invalid grid layout - generals cannot reach each other.")
+        # check that exactly one 'A' and one 'B' are present in the grid
+        first_general = np.argwhere(np.isin(grid, ["A"]))
+        second_general = np.argwhere(np.isin(grid, ["B"]))
+        if len(first_general) != 1 or len(second_general) != 1:
+            raise ValueError("Exactly one 'A' and one 'B' should be present in the grid.")
+
         self._grid = grid
 
     @staticmethod

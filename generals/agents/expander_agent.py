@@ -8,7 +8,7 @@ class ExpanderAgent(Agent):
     def __init__(self, name="Expander", color=(0, 130, 255)):
         super().__init__(name, color)
 
-    def play(self, observation):
+    def act(self, observation):
         """
         Heuristically selects a valid (expanding) action.
         Prioritizes capturing opponent and then neutral cells.

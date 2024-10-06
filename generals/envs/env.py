@@ -21,6 +21,7 @@ def pz_generals_v0(
     reward_fn: RewardFn = None,
     render_mode=None,
 ):
+    assert len(agents) == 2, "Only 2 agents are supported in PZ_Generals."
     env = PZ_Generals(
         grid_factory=grid_factory,
         agents=agents,
@@ -31,12 +32,15 @@ def pz_generals_v0(
 
 
 def gym_generals_v0(
-    grid_factory: GridFactory = None,
+    grid_factory: GridFactory = GridFactory(),
     agent: Agent = None,
-    npc: str = None,
+    npc: Agent = None,
     reward_fn: RewardFn = None,
     render_mode=None,
 ):
+    if npc is None:
+        print("No npc provided, using RandomAgent.")
+        npc = AgentFactory.init_agent("random")
     env = Gym_Generals(
         grid_factory=grid_factory,
         agent=agent,
@@ -45,73 +49,3 @@ def gym_generals_v0(
         render_mode=render_mode,
     )
     return env
-
-
-def gym_s_v0(
-    agent: Agent = None,
-    npc: str = "random",
-    render_mode: str = None,
-    seed: float = None,
-):
-    grid_factory = GridFactory(
-        grid_dims=(4, 4),
-        mountain_density=0.2,
-        city_density=0.1,
-        seed=seed,
-    )
-    if agent is None:
-        agent = AgentFactory.init_agent("empty")
-    npc = AgentFactory.init_agent(npc)
-
-    return gym_generals_v0(
-        grid_factory=grid_factory,
-        agent=agent,
-        npc=npc,
-        render_mode=render_mode,
-    )
-
-
-def gym_m_v0(
-    agent: Agent = None,
-    npc: str = "random",
-    render_mode: str = None,
-    seed: float = None,
-):
-    grid_factory = GridFactory(
-        grid_dims=(8, 8),
-        mountain_density=0.2,
-        city_density=0.1,
-        seed=seed,
-    )
-    agent = AgentFactory.init_agent("empty")
-    npc = AgentFactory.init_agent(npc)
-
-    return gym_generals_v0(
-        grid_factory=grid_factory,
-        agent=agent,
-        npc=npc,
-        render_mode=render_mode,
-    )
-
-
-def gym_l_v0(
-    agent: Agent = None,
-    npc: str = "random",
-    render_mode: str = None,
-    seed: float = None,
-):
-    grid_factory = GridFactory(
-        grid_dims=(16, 16),
-        mountain_density=0.2,
-        city_density=0.1,
-        seed=seed,
-    )
-    agent = AgentFactory.init_agent("empty")
-    npc = AgentFactory.init_agent(npc)
-
-    return gym_generals_v0(
-        grid_factory=grid_factory,
-        agent=agent,
-        npc=npc,
-        render_mode=render_mode,
-    )

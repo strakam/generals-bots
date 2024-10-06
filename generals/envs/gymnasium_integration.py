@@ -30,10 +30,6 @@ class Gym_Generals(gym.Env):
         reward_fn: RewardFn = None,
         render_mode=None,
     ):
-        self.game = None
-        self.gui = None
-        self.replay = None
-
         self.render_mode = render_mode
         self.reward_fn = self._default_reward if reward_fn is None else reward_fn
         self.grid_factory = grid_factory
@@ -63,10 +59,9 @@ class Gym_Generals(gym.Env):
     def action_space(self) -> gym.Space:
         return self.game.action_space
 
-    def render(self, fps: int = None) -> None:
-        fps = self.metadata["render_fps"] if fps is None else fps
+    def render(self):
         if self.render_mode == "human":
-            _ = self.gui.tick(fps=fps)
+            _ = self.gui.tick(fps=self.metadata["render_fps"])
 
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
@@ -78,7 +73,7 @@ class Gym_Generals(gym.Env):
         if "grid" in options:
             grid = self.grid_factory.grid_from_string(options["grid"])
         else:
-            grid = self.grid_factory.grid_from_generator()
+            grid = self.grid_factory.grid_from_generator(seed=seed)
 
         self.game = Game(grid, [self.agent.name, self.npc.name])
         self.npc.reset()
@@ -107,11 +102,8 @@ class Gym_Generals(gym.Env):
         self, action: Action
     ) -> tuple[Observation, SupportsFloat, bool, bool, dict[str, Any]]:
         # get action of NPC
-        npc_action = self.npc.play(self.game._agent_observation(self.npc.name))
+        npc_action = self.npc.act(self.game._agent_observation(self.npc.name))
         actions = {self.agent.name: action, self.npc.name: npc_action}
-
-        if hasattr(self, "replay"):
-            self.replay.add_state(deepcopy(self.game.channels))
 
         observations, infos = self.game.step(actions)
         observation = observations[self.agent.name]
@@ -120,6 +112,9 @@ class Gym_Generals(gym.Env):
         terminated = True if self.game.is_done() else False
         done = terminated or truncated
         reward = self.reward_fn(observation, action, done, info)
+
+        if hasattr(self, "replay"):
+            self.replay.add_state(deepcopy(self.game.channels))
 
         if terminated:
             if hasattr(self, "replay"):
@@ -145,4 +140,5 @@ class Gym_Generals(gym.Env):
         return reward
 
     def close(self) -> None:
-        self.gui.close()
+        if hasattr(self, "gui"):
+            self.gui.close()
