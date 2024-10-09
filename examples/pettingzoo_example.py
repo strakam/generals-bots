@@ -6,13 +6,12 @@ random = AgentFactory.make_agent("random")
 expander = AgentFactory.make_agent("expander")
 
 agents = {
-    random.name: random,
-    expander.name: expander,
+    random.id: random,
+    expander.id: expander,
 }  # Environment calls agents by name
 
 # Create environment -- render modes: {None, "human"}
-# env = pz_generals(agents=agents, render_mode="human")D
-env = gym.make("pz-generals-v0", agents=agents, render_mode="human")
+env = gym.make("pz-generals-v0", agent_ids=list(agents.keys()), render_mode="human")
 observations, info = env.reset()
 
 done = False

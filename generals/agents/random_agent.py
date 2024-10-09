@@ -4,9 +4,9 @@ import numpy as np
 
 class RandomAgent(Agent):
     def __init__(
-        self, name="Random", color=(242, 61, 106), split_prob=0.25, idle_prob=0.05
+        self, id="Random", color=(242, 61, 106), split_prob=0.25, idle_prob=0.05
     ):
-        super().__init__(name, color)
+        super().__init__(id, color)
 
         self.idle_probability = idle_prob
         self.split_probability = split_prob

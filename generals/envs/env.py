@@ -1,4 +1,4 @@
-from .gymnasium_integration import Gym_Generals, RewardFn
+from .gymnasium_integration import Gym_Generals
 from .pettingzoo_integration import PZ_Generals
 from generals.agents import Agent, AgentFactory
 
@@ -17,15 +17,13 @@ static maps that are interesting to play on.
 
 def pz_generals_v0(
     grid_factory: GridFactory = GridFactory(),
-    agents: dict[str, Agent] = None,
-    reward_fn: RewardFn = None,
+    agent_ids: list[str] = None,
     render_mode=None,
 ):
-    assert len(agents) == 2, "Only 2 agents are supported in PZ_Generals."
+    assert len(agent_ids) == 2, "For now, only 2 agents are supported in PZ_Generals."
     env = PZ_Generals(
         grid_factory=grid_factory,
-        agents=agents,
-        reward_fn=reward_fn,
+        agent_ids=agent_ids,
         render_mode=render_mode,
     )
     return env
@@ -33,19 +31,21 @@ def pz_generals_v0(
 
 def gym_generals_v0(
     grid_factory: GridFactory = GridFactory(),
-    agent: Agent = None,
     npc: Agent = None,
-    reward_fn: RewardFn = None,
     render_mode=None,
+    agent_id: str = "Agent",
+    agent_color: tuple[int, int, int] = (67, 70, 86),
 ):
-    if npc is None:
-        print("No npc provided, using RandomAgent.")
+    if not isinstance(npc, Agent):
+        print(
+            "NPC must be an instance of Agent class, Creating random NPC as a fallback."
+        )
         npc = AgentFactory.init_agent("random")
     env = Gym_Generals(
         grid_factory=grid_factory,
-        agent=agent,
         npc=npc,
-        reward_fn=reward_fn,
         render_mode=render_mode,
+        agent_id=agent_id,
+        agent_color=agent_color,
     )
     return env

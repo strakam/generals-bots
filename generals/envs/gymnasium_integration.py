@@ -25,39 +25,43 @@ class Gym_Generals(gym.Env):
     def __init__(
         self,
         grid_factory: GridFactory = None,
-        agent: Agent = None,
         npc: Agent = None,
-        reward_fn: RewardFn = None,
         render_mode=None,
+        agent_id: str = "Agent",
+        agent_color: tuple[int, int, int] = (67, 70, 86),
     ):
         self.render_mode = render_mode
-        self.reward_fn = self._default_reward if reward_fn is None else reward_fn
-        self.grid_factory = grid_factory
 
-        assert isinstance(agent, Agent), "Agent must be an instance of Agent class."
+        # Agents
         assert isinstance(npc, Agent), "NPC must be an instance of Agent class."
-        self.agent = agent
         self.npc = npc
-
-        self.agent_data = {agent.name: {"color": agent.color} for agent in [agent, npc]}
-
-        # Check whether agents have unique names
+        self.agent_id = agent_id
+        self.agent_color = agent_color
+        self.agent_data = {
+            agent_id: {"color": agent_color},
+            self.npc.id: {"color": self.npc.color},
+        }
         assert (
-            agent.name != npc.name
-        ), "Agent names must be unique - you can pass custom names to agent constructors."
+            agent_id != npc.id
+        ), "Agent ids must be unique - you can pass custom ids to agent constructors."
 
+        # Reward function
+        self.reward_fn = self._default_reward
+
+        # Game
+        self.grid_factory = grid_factory
         grid = self.grid_factory.grid_from_generator()
-        game = Game(grid, [self.agent.name, self.npc.name])
+        game = Game(grid, [self.agent_id, self.npc.id])
         self.observation_space = game.observation_space
         self.action_space = game.action_space
 
     @functools.lru_cache(maxsize=None)
     def observation_space(self) -> gym.Space:
-        return self.game.observation_space
+        return self.observation_space
 
     @functools.lru_cache(maxsize=None)
     def action_space(self) -> gym.Space:
-        return self.game.action_space
+        return self.action_space
 
     def render(self):
         if self.render_mode == "human":
@@ -75,7 +79,7 @@ class Gym_Generals(gym.Env):
         else:
             grid = self.grid_factory.grid_from_generator(seed=seed)
 
-        self.game = Game(grid, [self.agent.name, self.npc.name])
+        self.game = Game(grid, [self.agent_id, self.npc.id])
         self.npc.reset()
 
         self.observation_space = self.game.observation_space
@@ -94,20 +98,20 @@ class Gym_Generals(gym.Env):
         elif hasattr(self, "replay"):
             del self.replay
 
-        observation = self.game._agent_observation(self.agent.name)
+        observation = self.game._agent_observation(self.agent_id)
         info = {}
         return observation, info
 
     def step(
         self, action: Action
     ) -> tuple[Observation, SupportsFloat, bool, bool, dict[str, Any]]:
-        # get action of NPC
-        npc_action = self.npc.act(self.game._agent_observation(self.npc.name))
-        actions = {self.agent.name: action, self.npc.name: npc_action}
+        # Get action of NPC
+        npc_action = self.npc.act(self.game._agent_observation(self.npc.id))
+        actions = {self.agent_id: action, self.npc.id: npc_action}
 
         observations, infos = self.game.step(actions)
-        observation = observations[self.agent.name]
-        info = infos[self.agent.name]
+        observation = observations[self.agent_id]
+        info = infos[self.agent_id]
         truncated = False
         terminated = True if self.game.is_done() else False
         done = terminated or truncated

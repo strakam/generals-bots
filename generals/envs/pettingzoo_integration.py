@@ -10,7 +10,6 @@ from pettingzoo.utils.env import AgentID
 
 from generals.core.game import Game, Action, Observation, Info
 from generals.core.grid import GridFactory
-from generals.agents import Agent
 from generals.gui import GUI
 from generals.gui.properties import GuiMode
 from generals.core.replay import Replay
@@ -26,32 +25,44 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         "render_modes": ["human"],
         "render_fps": 6,
     }
+    default_colors = [
+        (67, 70, 86),
+        (255, 0, 0),
+        (0, 255, 0),
+        (0, 0, 255),
+    ]  # Up for improvement (needs to be extended for multiple agents)
 
     def __init__(
         self,
         grid_factory: GridFactory,
-        agents: dict[str, Agent],
-        reward_fn: RewardFn = None,
+        agent_ids: list[str],
         render_mode=None,
     ):
-        self.game = None
-        self.gui = None
-        self.replay = None
-
         self.render_mode = render_mode
         self.grid_factory = grid_factory
 
         self.agent_data = {
-            agents[agent].name: {"color": agents[agent].color}
-            for agent in agents.keys()
+            agent_id: {"color": color}
+            for agent_id, color in zip(agent_ids, self.default_colors)
         }
-        self.possible_agents = list(agents.keys())
+        self.possible_agents = agent_ids
 
-        assert (
-            len(self.possible_agents) == len(set(self.possible_agents))
-        ), "Agent names must be unique - you can pass custom names to agent constructors."
+        assert len(self.possible_agents) == len(
+            set(self.possible_agents)
+        ), "Agent ids must be unique - you can pass custom ids to agent constructors."
 
-        self.reward_fn = self._default_reward if reward_fn is None else reward_fn
+        self.reward_fn = self._default_reward
+
+    @property
+    def reward_fn(self) -> RewardFn:
+        return self._reward_fn
+
+    @reward_fn.setter
+    def reward_fn(self, rew_fn: RewardFn):
+        self._reward_fn = rew_fn
+
+    def set_color(self, agent_id: str, color: tuple[int, int, int]) -> None:
+        self.agent_data[agent_id]["color"] = color
 
     @functools.lru_cache(maxsize=None)
     def observation_space(self, agent: AgentID) -> spaces.Space:
