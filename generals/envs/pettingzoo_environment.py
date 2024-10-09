@@ -6,21 +6,18 @@ import pettingzoo
 from gymnasium import spaces
 from copy import deepcopy
 
-from pettingzoo.utils.env import AgentID
-
-from generals.core.game import Game, Action, Observation, Info
+from generals.core.game import Action, Observation, Info
 from generals.core.grid import GridFactory
-from generals.gui import GUI
-from generals.gui.properties import GuiMode
-from generals.core.replay import Replay
 
+from generals.envs.common_environment import CommonEnv
 
 # Type aliases
 Reward: TypeAlias = float
 RewardFn: TypeAlias = Callable[[dict[str, Observation], Action, bool, Info], Reward]
+AgentID: TypeAlias = str
 
 
-class PZ_Generals(pettingzoo.ParallelEnv):
+class PettingZooGenerals(pettingzoo.ParallelEnv, CommonEnv):
     metadata = {
         "render_modes": ["human"],
         "render_fps": 6,
@@ -38,13 +35,13 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         agent_ids: list[str],
         render_mode=None,
     ):
-        self.render_mode = render_mode
-        self.grid_factory = grid_factory
+        CommonEnv.__init__(self, grid_factory, render_mode)
 
         self.agent_data = {
             agent_id: {"color": color}
             for agent_id, color in zip(agent_ids, self.default_colors)
         }
+        self.agent_ids = agent_ids
         self.possible_agents = agent_ids
 
         assert len(self.possible_agents) == len(
@@ -85,29 +82,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         if options is None:
             options = {}
         self.agents = deepcopy(self.possible_agents)
-
-        if "grid" in options:
-            grid = self.grid_factory.grid_from_string(options["grid"])
-        else:
-            grid = self.grid_factory.grid_from_generator(seed=seed)
-
-        self.game = Game(grid, self.agents)
-
-        if self.render_mode == "human":
-            self.gui = GUI(self.game, self.agent_data, GuiMode.TRAIN)
-
-        if "replay_file" in options:
-            self.replay = Replay(
-                name=options["replay_file"],
-                grid=grid,
-                agent_data=self.agent_data,
-            )
-            self.replay.add_state(deepcopy(self.game.channels))
-        elif hasattr(self, "replay"):
-            del self.replay
-
-        observations = self.game.get_all_observations()
-        infos = {agent: {} for agent in self.agents}
+        observations, infos = self._reset(seed, options)
         return observations, infos
 
     def step(
@@ -119,33 +94,7 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         dict[AgentID, bool],
         dict[AgentID, Info],
     ]:
-        observations, infos = self.game.step(actions)
-
-        truncated = {agent: False for agent in self.agents}  # no truncation
-        terminated = {
-            agent: True if self.game.is_done() else False for agent in self.agents
-        }
-
-        rewards = {
-            agent: self.reward_fn(
-                observations[agent],
-                actions[agent],
-                terminated[agent] or truncated[agent],
-                infos[agent],
-            )
-            for agent in self.agents
-        }
-
-        if hasattr(self, "replay"):
-            self.replay.add_state(deepcopy(self.game.channels))
-
-        # if any agent dies, all agents are terminated
-        terminate = any(terminated.values())
-        if terminate:
-            self.agents = []
-            if hasattr(self, "replay"):
-                self.replay.store()
-
+        observations, rewards, terminated, truncated, infos = self._step(actions)
         return observations, rewards, terminated, truncated, infos
 
     @staticmethod

@@ -1,5 +1,5 @@
-from .gymnasium_integration import Gym_Generals
-from .pettingzoo_integration import PZ_Generals
+from .gymnasium_environment import GymnasiumGenerals
+from .pettingzoo_environment import PettingZooGenerals
 from generals.agents import Agent, AgentFactory
 
 from generals import GridFactory
@@ -21,7 +21,7 @@ def pz_generals_v0(
     render_mode=None,
 ):
     assert len(agent_ids) == 2, "For now, only 2 agents are supported in PZ_Generals."
-    env = PZ_Generals(
+    env = PettingZooGenerals(
         grid_factory=grid_factory,
         agent_ids=agent_ids,
         render_mode=render_mode,
@@ -41,7 +41,7 @@ def gym_generals_v0(
             "NPC must be an instance of Agent class, Creating random NPC as a fallback."
         )
         npc = AgentFactory.init_agent("random")
-    env = Gym_Generals(
+    env = GymnasiumGenerals(
         grid_factory=grid_factory,
         npc=npc,
         render_mode=render_mode,
