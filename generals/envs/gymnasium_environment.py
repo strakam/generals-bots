@@ -46,9 +46,9 @@ class GymnasiumGenerals(CommonEnv):
 
         # Game
         grid = self.grid_factory.grid_from_generator()
-        game = Game(grid, [self.agent_id, self.npc.id])
-        self.observation_space = game.observation_space
-        self.action_space = game.action_space
+        self.game = Game(grid, [self.agent_id, self.npc.id])
+        self.observation_space = self.game.observation_space
+        self.action_space = self.game.action_space
 
     @functools.lru_cache(maxsize=None)
     def observation_space(self) -> gym.Space:

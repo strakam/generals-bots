@@ -24,7 +24,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv, CommonEnv):
     }
     default_colors = [
         (67, 70, 86),
-        (255, 0, 0),
+        (242, 61, 106),
         (0, 255, 0),
         (0, 0, 255),
     ]  # Up for improvement (needs to be extended for multiple agents)

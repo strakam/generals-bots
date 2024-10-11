@@ -15,7 +15,7 @@ Observation: TypeAlias = dict[str, gym.Space | dict[str, gym.Space]]
 Action: TypeAlias = gym.Space
 Info: TypeAlias = dict[str, Any]
 
-increment_rate = 50
+
 DIRECTIONS = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
 
 
@@ -33,12 +33,16 @@ class Game:
 
         self.channels = Channels(map, self.agents)
 
+        # Constants
+        self.increment_rate = 50
+        self.max_army_value = 10_000
+        self.max_land_value = np.prod(self.grid_dims)
+        self.max_timestep = 100_000
         ##########
         # Spaces #
         ##########
-        max_value = 100_000
         grid_multi_binary = gym.spaces.MultiBinary(self.grid_dims)
-        grid_discrete = np.ones(self.grid_dims, dtype=int) * max_value
+        grid_discrete = np.ones(self.grid_dims, dtype=int) * self.max_army_value
         self.observation_space = gym.spaces.Dict(
             {
                 "observation": gym.spaces.Dict(
@@ -51,12 +55,12 @@ class Game:
                         "neutral_cells": grid_multi_binary,
                         "visible_cells": grid_multi_binary,
                         "structure": grid_multi_binary,
-                        "owned_land_count": gym.spaces.Discrete(max_value),
-                        "owned_army_count": gym.spaces.Discrete(max_value),
-                        "opponent_land_count": gym.spaces.Discrete(max_value),
-                        "opponent_army_count": gym.spaces.Discrete(max_value),
+                        "owned_land_count": gym.spaces.Discrete(self.max_army_value),
+                        "owned_army_count": gym.spaces.Discrete(self.max_army_value),
+                        "opponent_land_count": gym.spaces.Discrete(self.max_army_value),
+                        "opponent_army_count": gym.spaces.Discrete(self.max_army_value),
                         "is_winner": gym.spaces.Discrete(2),
-                        "timestep": gym.spaces.Discrete(max_value),
+                        "timestep": gym.spaces.Discrete(self.max_timestep),
                     }
                 ),
                 "action_mask": gym.spaces.MultiBinary(self.grid_dims + (4,)),
@@ -248,7 +252,7 @@ class Game:
         owners = self.agents
 
         # every `increment_rate` steps, increase army size in each cell
-        if self.time % increment_rate == 0:
+        if self.time % self.increment_rate == 0:
             for owner in owners:
                 self.channels.army += self.channels.ownership[owner]
 

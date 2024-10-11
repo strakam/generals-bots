@@ -16,4 +16,5 @@ terminated = truncated = False
 while not (terminated or truncated):
     action = env.action_space.sample()
     observation, reward, terminated, truncated, info = env.step(action)
+    print(observation["observation"]["army"])
     env.render()

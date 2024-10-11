@@ -1,5 +1,6 @@
 from .gymnasium_environment import GymnasiumGenerals
 from .pettingzoo_environment import PettingZooGenerals
+from .wrappers.test_wrappers import NormalizeObservationWrapper
 from generals.agents import Agent, AgentFactory
 
 from generals import GridFactory
@@ -48,4 +49,5 @@ def gym_generals_v0(
         agent_id=agent_id,
         agent_color=agent_color,
     )
+    env = NormalizeObservationWrapper(env)
     return env
