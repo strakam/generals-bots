@@ -68,3 +68,36 @@ class NormalizeObservationWrapper(gym.ObservationWrapper):
         )
         observation["observation"] = _observation
         return observation
+
+
+class RemoveActionMaskWrapper(gym.ObservationWrapper):
+    def __init__(self, env):
+        super(RemoveActionMaskWrapper, self).__init__(env)
+        grid_multi_binary = gym.spaces.MultiBinary(self.game.grid_dims)
+        unit_box = gym.spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32)
+        self.observation_space = gym.spaces.Dict(
+            {
+                "army": gym.spaces.Box(
+                    low=0, high=1, shape=self.game.grid_dims, dtype=np.float32
+                ),
+                "general": grid_multi_binary,
+                "city": grid_multi_binary,
+                "owned_cells": grid_multi_binary,
+                "opponent_cells": grid_multi_binary,
+                "neutral_cells": grid_multi_binary,
+                "visible_cells": grid_multi_binary,
+                "structure": grid_multi_binary,
+                "owned_land_count": unit_box,
+                "owned_army_count": unit_box,
+                "opponent_land_count": unit_box,
+                "opponent_army_count": unit_box,
+                "is_winner": gym.spaces.Discrete(2),
+                "timestep": unit_box,
+            }
+        )
+
+    def observation(self, observation):
+        _observation = (
+            observation["observation"] if "observation" in observation else observation
+        )
+        return _observation
