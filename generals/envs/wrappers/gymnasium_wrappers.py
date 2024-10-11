@@ -20,7 +20,7 @@ class NormalizeObservationWrapper(gym.ObservationWrapper):
     def __init__(self, env):
         super(NormalizeObservationWrapper, self).__init__(env)
         grid_multi_binary = gym.spaces.MultiBinary(self.game.grid_dims)
-        unit_box = gym.spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32)
+        unit_box = gym.spaces.Box(low=0, high=1, dtype=np.float32)
         self.observation_space = gym.spaces.Dict(
             {
                 "observation": gym.spaces.Dict(
@@ -52,19 +52,25 @@ class NormalizeObservationWrapper(gym.ObservationWrapper):
         _observation = (
             observation["observation"] if "observation" in observation else observation
         )
-        _observation["army"] = _observation["army"] / game.max_army_value
-        _observation["timestep"] = _observation["timestep"] / game.max_timestep
-        _observation["owned_land_count"] = (
-            _observation["owned_land_count"] / game.max_land_value
+        _observation["army"] = np.array(
+            _observation["army"] / game.max_army_value, dtype=np.float32
         )
-        _observation["opponent_land_count"] = (
-            _observation["opponent_land_count"] / game.max_land_value
+        _observation["timestep"] = np.array(
+            [_observation["timestep"] / game.max_timestep], dtype=np.float32
         )
-        _observation["owned_army_count"] = (
-            _observation["owned_army_count"] / game.max_army_value
+        _observation["owned_land_count"] = np.array(
+            [_observation["owned_land_count"] / game.max_land_value], dtype=np.float32
         )
-        _observation["opponent_army_count"] = (
-            _observation["opponent_army_count"] / game.max_army_value
+        _observation["opponent_land_count"] = np.array(
+            [_observation["opponent_land_count"] / game.max_land_value],
+            dtype=np.float32,
+        )
+        _observation["owned_army_count"] = np.array(
+            [_observation["owned_army_count"] / game.max_army_value], dtype=np.float32
+        )
+        _observation["opponent_army_count"] = np.array(
+            [_observation["opponent_army_count"] / game.max_army_value],
+            dtype=np.float32,
         )
         observation["observation"] = _observation
         return observation
