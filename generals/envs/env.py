@@ -2,6 +2,8 @@ from .gymnasium_environment import GymnasiumGenerals
 from .pettingzoo_environment import PettingZooGenerals
 from .wrappers.gymnasium_wrappers import (
     NormalizeObservationWrapper,
+    RemoveActionMaskWrapper,
+    ObservationAsImageWrapper,
 )
 from generals.agents import Agent, AgentFactory
 
@@ -52,5 +54,6 @@ def gym_generals_v0(
         agent_color=agent_color,
     )
     env = NormalizeObservationWrapper(env)
-    # env = RemoveActionMaskWrapper(env)
+    env = RemoveActionMaskWrapper(env)
+    env = ObservationAsImageWrapper(env)
     return env
