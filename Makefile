@@ -21,15 +21,11 @@ replay:
 ###################
 # Developer tools #
 ###################
-at:
-	pytest tests/test_game.py
-	pytest tests/test_map.py
-	python3 tests/gym_check.py
 
 test_performance:
 	python3 -m tests.parallel_api_check
 
-pytest:
+test:
 	pytest
 
 build:
