@@ -242,7 +242,7 @@ class Game:
         """
         Returns observations for all agents.
         """
-        return {agent: self._agent_observation(agent) for agent in self.agents}
+        return {agent: self.agent_observation(agent) for agent in self.agents}
 
     def _global_game_update(self) -> None:
         """
@@ -288,7 +288,7 @@ class Game:
             }
         return players_stats
 
-    def _agent_observation(self, agent: str) -> Observation:
+    def agent_observation(self, agent: str) -> Observation:
         """
         Returns an observation for a given agent.
         Args:

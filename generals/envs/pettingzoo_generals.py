@@ -6,10 +6,11 @@ import pettingzoo
 from gymnasium import spaces
 from copy import deepcopy
 
-from generals.core.game import Action, Observation, Info
+from generals.core.game import Game, Action, Observation, Info
 from generals.core.grid import GridFactory
-
-from generals.envs.common_environment import CommonEnv
+from generals.core.replay import Replay
+from generals.gui import GUI
+from generals.gui.properties import GuiMode
 
 # Type aliases
 Reward: TypeAlias = float
@@ -17,7 +18,7 @@ RewardFn: TypeAlias = Callable[[dict[str, Observation], Action, bool, Info], Rew
 AgentID: TypeAlias = str
 
 
-class PettingZooGenerals(pettingzoo.ParallelEnv, CommonEnv):
+class PettingZooGenerals(pettingzoo.ParallelEnv):
     metadata = {
         "render_modes": ["human"],
         "render_fps": 6,
@@ -33,9 +34,15 @@ class PettingZooGenerals(pettingzoo.ParallelEnv, CommonEnv):
         self,
         grid_factory: GridFactory,
         agent_ids: list[str],
+        reward_fn: RewardFn = None,
         render_mode=None,
     ):
-        CommonEnv.__init__(self, grid_factory, render_mode)
+        self.render_mode = render_mode
+        self.grid_factory = grid_factory
+        if reward_fn is not None:
+            self.reward_fn = reward_fn
+        else:
+            self.reward_fn = PettingZooGenerals._default_reward
 
         self.agent_data = {
             agent_id: {"color": color}
@@ -49,17 +56,6 @@ class PettingZooGenerals(pettingzoo.ParallelEnv, CommonEnv):
         ), "Agent ids must be unique - you can pass custom ids to agent constructors."
 
         self.reward_fn = self._default_reward
-
-    @property
-    def reward_fn(self) -> RewardFn:
-        return self._reward_fn
-
-    @reward_fn.setter
-    def reward_fn(self, rew_fn: RewardFn):
-        self._reward_fn = rew_fn
-
-    def set_color(self, agent_id: str, color: tuple[int, int, int]) -> None:
-        self.agent_data[agent_id]["color"] = color
 
     @functools.lru_cache(maxsize=None)
     def observation_space(self, agent: AgentID) -> spaces.Space:
@@ -82,7 +78,28 @@ class PettingZooGenerals(pettingzoo.ParallelEnv, CommonEnv):
         if options is None:
             options = {}
         self.agents = deepcopy(self.possible_agents)
-        observations, infos = self._reset(seed, options)
+        if "grid" in options:
+            grid = self.grid_factory.grid_from_string(options["grid"])
+        else:
+            grid = self.grid_factory.grid_from_generator(seed=seed)
+
+        self.game = Game(grid, self.agent_ids)
+
+        if self.render_mode == "human":
+            self.gui = GUI(self.game, self.agent_data, GuiMode.TRAIN)
+
+        if "replay_file" in options:
+            self.replay = Replay(
+                name=options["replay_file"],
+                grid=grid,
+                agent_data=self.agent_data,
+            )
+            self.replay.add_state(deepcopy(self.game.channels))
+        elif hasattr(self, "replay"):
+            del self.replay
+
+        observations = self.game.get_all_observations()
+        infos = {agent: {} for agent in self.agent_ids}
         return observations, infos
 
     def step(
@@ -94,7 +111,30 @@ class PettingZooGenerals(pettingzoo.ParallelEnv, CommonEnv):
         dict[AgentID, bool],
         dict[AgentID, Info],
     ]:
-        observations, rewards, terminated, truncated, infos = self._step(actions)
+        observations, infos = self.game.step(actions)
+        truncated = {agent: False for agent in self.agent_ids}  # no truncation
+        terminated = {
+            agent: True if self.game.is_done() else False for agent in self.agent_ids
+        }
+        rewards = {
+            agent: self.reward_fn(
+                observations[agent],
+                actions[agent],
+                terminated[agent] or truncated[agent],
+                infos[agent],
+            )
+            for agent in self.agent_ids
+        }
+
+        if hasattr(self, "replay"):
+            self.replay.add_state(deepcopy(self.game.channels))
+
+        # if any agent dies, all agents are terminated
+        terminate = any(terminated.values())
+        if terminate:
+            self.agents_ids = []
+            if hasattr(self, "replay"):
+                self.replay.store()
         return observations, rewards, terminated, truncated, infos
 
     @staticmethod

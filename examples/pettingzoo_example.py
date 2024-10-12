@@ -24,4 +24,4 @@ while not done:
     # All agents perform their actions
     observations, rewards, terminated, truncated, info = env.step(actions)
     done = any(terminated.values()) or any(truncated.values())
-    env.render(fps=6)
+    env.render()

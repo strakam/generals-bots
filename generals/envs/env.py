@@ -1,6 +1,6 @@
-from .gymnasium_environment import GymnasiumGenerals
-from .pettingzoo_environment import PettingZooGenerals
-from .wrappers.gymnasium_wrappers import (
+from .gymnasium_generals import GymnasiumGenerals
+from .pettingzoo_generals import PettingZooGenerals
+from .gymnasium_wrappers import (
     NormalizeObservationWrapper,
     RemoveActionMaskWrapper,
     ObservationAsImageWrapper,
@@ -33,11 +33,11 @@ def pz_generals_v0(
     )
     return env
 
-
 def gym_generals_v0(
     grid_factory: GridFactory = GridFactory(),
     npc: Agent = None,
     render_mode=None,
+    reward_fn=None,
     agent_id: str = "Agent",
     agent_color: tuple[int, int, int] = (67, 70, 86),
 ):
@@ -45,15 +45,16 @@ def gym_generals_v0(
         print(
             "NPC must be an instance of Agent class, Creating random NPC as a fallback."
         )
-        npc = AgentFactory.init_agent("random")
+        npc = AgentFactory.make_agent("random")
     env = GymnasiumGenerals(
         grid_factory=grid_factory,
         npc=npc,
         render_mode=render_mode,
         agent_id=agent_id,
         agent_color=agent_color,
+        reward_fn=reward_fn,
     )
-    env = NormalizeObservationWrapper(env)
-    env = RemoveActionMaskWrapper(env)
-    env = ObservationAsImageWrapper(env)
+    # env = NormalizeObservationWrapper(env)
+    # env = RemoveActionMaskWrapper(env)
+    # env = ObservationAsImageWrapper(env)
     return env
