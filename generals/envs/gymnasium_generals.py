@@ -15,6 +15,10 @@ from generals.gui.properties import GuiMode
 Reward: TypeAlias = float
 RewardFn: TypeAlias = Callable[[dict[str, Observation], Action, bool, Info], Reward]
 AgentID: TypeAlias = str
+ObsType = TypeVar("ObsType")
+ActType = TypeVar("ActType")
+WrapperObsType = TypeVar("WrapperObsType")
+WrapperActType = TypeVar("WrapperActType")
 
 
 class GymnasiumGenerals(gym.Env):

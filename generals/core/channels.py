@@ -17,15 +17,21 @@ class Channels:
     """
 
     def __init__(self, map: np.ndarray, _agents: list[str]):
-        self._army: np.ndarray = np.where(np.isin(map, valid_generals), 1, 0).astype(int)
-        self._general: np.ndarray = np.where(np.isin(map, valid_generals), 1, 0).astype(bool)
+        self._army: np.ndarray = np.where(np.isin(map, valid_generals), 1, 0).astype(
+            int
+        )
+        self._general: np.ndarray = np.where(np.isin(map, valid_generals), 1, 0).astype(
+            bool
+        )
         self._mountain: np.ndarray = np.where(map == MOUNTAIN, 1, 0).astype(bool)
         self._city: np.ndarray = np.where(np.char.isdigit(map), 1, 0).astype(bool)
         self._passable: np.ndarray = (map != MOUNTAIN).astype(bool)
 
         self._ownership: dict[str, np.ndarray] = {"neutral": ((map == PASSABLE) | (np.char.isdigit(map))).astype(bool)}
         for i, agent in enumerate(_agents):
-            self._ownership[agent] = np.where(map == chr(ord("A") + i), 1, 0).astype(bool)
+            self._ownership[agent] = np.where(map == chr(ord("A") + i), 1, 0).astype(
+                bool
+            )
 
         # City costs are 40 + digit in the cell
         city_costs = np.where(np.char.isdigit(map), map, "0").astype(int)

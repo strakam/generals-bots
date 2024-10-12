@@ -1,6 +1,7 @@
 from setuptools import find_packages, setup
 
 
+
 def load_requirements():
     with open("requirements.txt") as f:
         return f.read().splitlines()

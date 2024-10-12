@@ -106,15 +106,17 @@ def parallel_api_test(par_env: ParallelEnv, num_cycles=1000):
                 warnings.warn("No agents present")
 
             for agent in par_env.agents:
-                assert par_env.observation_space(agent) is par_env.observation_space(
-                    agent
+                assert (
+                    par_env.observation_space(agent) is par_env.observation_space(agent)
                 ), "observation_space should return the exact same space object (not a copy) for an agent.\
                     Consider decorating your observation_space(self, agent) method with @functools.lru_cache(maxsize=None)"
-                assert par_env.action_space(agent) is par_env.action_space(
-                    agent
-                ), "action_space should return the exact same space object (not a copy) for an agent\
+                assert (
+                    par_env.action_space(agent) is par_env.action_space(agent)
+                ), (
+                    "action_space should return the exact same space object (not a copy) for an agent\
                 (ensures that action space seeding works as expected). Consider decorating your action_space(self, agent)\
                 method with @functools.lru_cache(maxsize=None)"
+                )
 
             agents_to_remove = {agent for agent in live_agents if terminated[agent] or truncated[agent]}
             live_agents -= agents_to_remove

@@ -11,7 +11,9 @@ def test_grid_creation():
 ..22.
 ...B.
     """
-    map_nd_array = np.ndarray((5, 5), buffer=np.array(list(map.replace("\n", ""))), dtype="U1")
+    map_nd_array = np.ndarray(
+        (5, 5), buffer=np.array(list(map.replace("\n", ""))), dtype="U1"
+    )
     grid_str = Grid(map)
     grid_nd_array = Grid(map_nd_array)
     assert grid_str == grid_nd_array
