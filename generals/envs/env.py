@@ -1,10 +1,5 @@
 from .gymnasium_generals import GymnasiumGenerals
 from .pettingzoo_generals import PettingZooGenerals
-from .gymnasium_wrappers import (
-    NormalizeObservationWrapper,
-    RemoveActionMaskWrapper,
-    ObservationAsImageWrapper,
-)
 from generals.agents import Agent, AgentFactory
 
 from generals import GridFactory
@@ -22,13 +17,13 @@ static maps that are interesting to play on.
 
 def pz_generals_v0(
     grid_factory: GridFactory = GridFactory(),
-    agent_ids: list[str] = None,
+    agents: list[str] = None,
     render_mode=None,
 ):
-    assert len(agent_ids) == 2, "For now, only 2 agents are supported in PZ_Generals."
+    assert len(agents) == 2, "For now, only 2 agents are supported in PZ_Generals."
     env = PettingZooGenerals(
         grid_factory=grid_factory,
-        agent_ids=agent_ids,
+        agents=agents,
         render_mode=render_mode,
     )
     return env
@@ -54,7 +49,4 @@ def gym_generals_v0(
         agent_color=agent_color,
         reward_fn=reward_fn,
     )
-    # env = NormalizeObservationWrapper(env)
-    # env = RemoveActionMaskWrapper(env)
-    # env = ObservationAsImageWrapper(env)
     return env

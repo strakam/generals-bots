@@ -1,10 +1,9 @@
 from __future__ import annotations
-from generals import pz_generals
-from generals.agents import RandomAgent
-from generals.core.grid import GridFactory
+from generals import GridFactory, AgentFactory
 import warnings
 
 import numpy as np
+import gymnasium as gym
 
 from pettingzoo.test.api_test import missing_attr_warning
 from pettingzoo.utils.conversions import (
@@ -141,13 +140,13 @@ def parallel_api_test(par_env: ParallelEnv, num_cycles=1000):
 
 if __name__ == "__main__":
     mapper = GridFactory()
-    agent1 = RandomAgent(name="A")
-    agent2 = RandomAgent(name="B")
+    agent1 = AgentFactory.make_agent("expander", id="A")
+    agent2 = AgentFactory.make_agent("random", id="B")
     agents = {
-        agent1.name: agent1,
-        agent2.name: agent2,
+        agent1.id: agent1,
+        agent2.id: agent2,
     }
-    env = pz_generals(mapper, agents)
+    env = gym.make("pz-generals-v0", agents=list(agents.keys()), grid_factory=mapper)
     # test the environment with parallel_api_test
     import time
     start = time.time()

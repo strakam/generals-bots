@@ -11,7 +11,7 @@ agents = {
 }  # Environment calls agents by name
 
 # Create environment -- render modes: {None, "human"}
-env = gym.make("pz-generals-v0", agent_ids=list(agents.keys()), render_mode="human")
+env = gym.make("pz-generals-v0", agents=list(agents.keys()), render_mode="human")
 observations, info = env.reset()
 
 done = False

@@ -33,7 +33,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
     def __init__(
         self,
         grid_factory: GridFactory,
-        agent_ids: list[str],
+        agents: list[str],
         reward_fn: RewardFn = None,
         render_mode=None,
     ):
@@ -46,10 +46,10 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
 
         self.agent_data = {
             agent_id: {"color": color}
-            for agent_id, color in zip(agent_ids, self.default_colors)
+            for agent_id, color in zip(agents, self.default_colors)
         }
-        self.agent_ids = agent_ids
-        self.possible_agents = agent_ids
+        self.agents = agents
+        self.possible_agents = agents
 
         assert len(self.possible_agents) == len(
             set(self.possible_agents)
@@ -83,7 +83,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         else:
             grid = self.grid_factory.grid_from_generator(seed=seed)
 
-        self.game = Game(grid, self.agent_ids)
+        self.game = Game(grid, self.agents)
 
         if self.render_mode == "human":
             self.gui = GUI(self.game, self.agent_data, GuiMode.TRAIN)
@@ -99,7 +99,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
             del self.replay
 
         observations = self.game.get_all_observations()
-        infos = {agent: {} for agent in self.agent_ids}
+        infos = {agent: {} for agent in self.agents}
         return observations, infos
 
     def step(
@@ -112,9 +112,9 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         dict[AgentID, Info],
     ]:
         observations, infos = self.game.step(actions)
-        truncated = {agent: False for agent in self.agent_ids}  # no truncation
+        truncated = {agent: False for agent in self.agents}  # no truncation
         terminated = {
-            agent: True if self.game.is_done() else False for agent in self.agent_ids
+            agent: True if self.game.is_done() else False for agent in self.agents
         }
         rewards = {
             agent: self.reward_fn(
@@ -123,7 +123,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
                 terminated[agent] or truncated[agent],
                 infos[agent],
             )
-            for agent in self.agent_ids
+            for agent in self.agents
         }
 
         if hasattr(self, "replay"):
@@ -132,7 +132,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         # if any agent dies, all agents are terminated
         terminate = any(terminated.values())
         if terminate:
-            self.agents_ids = []
+            self.agents = []
             if hasattr(self, "replay"):
                 self.replay.store()
         return observations, rewards, terminated, truncated, infos
@@ -154,4 +154,5 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         return reward
 
     def close(self) -> None:
-        self.gui.close()
+        if self.render_mode == "human":
+            self.gui.close()
