@@ -71,7 +71,7 @@ You can also check an example for 🦁[PettingZoo](./examples/pettingzoo_example
 an example with commentary showcasing various features [here](./examples/complete_example.py).
 
 ## 🚀 Getting Started
-Creating your first agent is very simple. 
+Creating your first agent is very simple.
 - Start by subclassing an `Agent` class just like [`RandomAgent`](./generals/agents/random_agent.py) or [`ExpanderAgent`](./generals/agents/expander_agent.py).
 - Every agent must have a name as it is his ID by which he is called for actions.
 - Every agent must implement `play(observation)` function that takes in `observation` and returns an `action` (both defined below).
@@ -183,7 +183,7 @@ The `observation` is a `Dict`. Values are either `numpy` matrices with shape `(N
 | `timestep`           |     —     | Current timestep of the game                                                 |
 
 `action_mask` is a mask with shape `(N,M,4)` where value `[i,j,d]` says whether you can move from cell `[i,j]` in a direction `d`.
-   
+
 ### ⚡ Action
 Action is a `tuple(pass, cell, direction, split)`, where:
 - `pass` indicates whether you want to `1 (pass)` or `0 (play)`.

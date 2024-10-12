@@ -1,8 +1,7 @@
 from collections.abc import Callable
-from typing import TypeAlias, Any, SupportsFloat
+from typing import TypeAlias, Any, SupportsFloat, TypeVar
 
 import gymnasium as gym
-import functools
 from copy import deepcopy
 
 from generals.core.game import Game, Action, Observation, Info
@@ -16,6 +15,10 @@ from generals.gui.properties import GuiMode
 Reward: TypeAlias = float
 RewardFn: TypeAlias = Callable[[dict[str, Observation], Action, bool, Info], Reward]
 AgentID: TypeAlias = str
+ObsType = TypeVar("ObsType")
+ActType = TypeVar("ActType")
+WrapperObsType = TypeVar("WrapperObsType")
+WrapperActType = TypeVar("WrapperActType")
 
 
 class GymnasiumGenerals(gym.Env):
@@ -26,8 +29,8 @@ class GymnasiumGenerals(gym.Env):
 
     def __init__(
         self,
-        grid_factory: GridFactory = None,
-        npc: Agent = None,
+        grid_factory: GridFactory,
+        npc: Agent,
         reward_fn=None,
         render_mode=None,
         agent_id: str = "Agent",
@@ -59,15 +62,7 @@ class GymnasiumGenerals(gym.Env):
         self.observation_space = self.game.observation_space
         self.action_space = self.game.action_space
 
-    @functools.lru_cache(maxsize=None)
-    def observation_space(self) -> gym.Space:
-        return self.observation_space
-
-    @functools.lru_cache(maxsize=None)
-    def action_space(self) -> gym.Space:
-        return self.action_space
-
-    def render(self, fps: int = None) -> None:
+    def render(self, fps: int | None = None):
         fps = self.metadata["render_fps"] if fps is None else fps
         if self.render_mode == "human":
             _ = self.gui.tick(fps=fps)
@@ -104,7 +99,7 @@ class GymnasiumGenerals(gym.Env):
         self.action_space = self.game.action_space
 
         observation = self.game.agent_observation(self.agent_id)
-        info = {}
+        info: dict[str, Any] = {}
         return observation, info
 
     def step(

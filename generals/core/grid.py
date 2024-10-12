@@ -29,7 +29,9 @@ class Grid:
         first_general = np.argwhere(np.isin(grid, ["A"]))
         second_general = np.argwhere(np.isin(grid, ["B"]))
         if len(first_general) != 1 or len(second_general) != 1:
-            raise ValueError("Exactly one 'A' and one 'B' should be present in the grid.")
+            raise ValueError(
+                "Exactly one 'A' and one 'B' should be present in the grid."
+            )
 
         self._grid = grid
 
@@ -81,8 +83,8 @@ class GridFactory:
         grid_dims: tuple[int, int] = (10, 10),
         mountain_density: float = 0.2,
         city_density: float = 0.05,
-        general_positions: list[tuple[int, int]] = None,
-        seed: int = None,
+        general_positions: list[tuple[int, int]] | None = None,
+        seed: int | None = None,
     ):
         self.grid_height = grid_dims[0]
         self.grid_width = grid_dims[1]
@@ -96,11 +98,11 @@ class GridFactory:
 
     def grid_from_generator(
         self,
-        grid_dims: tuple[int, int] = None,
-        mountain_density: float = None,
-        city_density: float = None,
-        general_positions: list[tuple[int, int]] = None,
-        seed: int = None,
+        grid_dims: tuple[int, int] | None = None,
+        mountain_density: float | None = None,
+        city_density: float | None = None,
+        general_positions: list[tuple[int, int]] | None = None,
+        seed: int | None = None,
     ) -> Grid:
         if grid_dims is None:
             grid_dims = (self.grid_height, self.grid_width)
@@ -120,7 +122,7 @@ class GridFactory:
         # Place cells on the map
         rng = np.random.default_rng(seed)
         map = rng.choice(
-            [PASSABLE, MOUNTAIN, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+            [PASSABLE, MOUNTAIN, "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
             size=grid_dims,
             p=probs,
         )

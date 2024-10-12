@@ -16,8 +16,8 @@ static maps that are interesting to play on.
 
 
 def pz_generals_v0(
+    agents: list[str],
     grid_factory: GridFactory = GridFactory(),
-    agents: list[str] = None,
     render_mode=None,
 ):
     assert len(agents) == 2, "For now, only 2 agents are supported in PZ_Generals."
@@ -28,9 +28,10 @@ def pz_generals_v0(
     )
     return env
 
+
 def gym_generals_v0(
     grid_factory: GridFactory = GridFactory(),
-    npc: Agent = None,
+    npc: Agent | None = None,
     render_mode=None,
     reward_fn=None,
     agent_id: str = "Agent",

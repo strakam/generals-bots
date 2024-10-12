@@ -27,9 +27,7 @@ def test_grid_creation():
         assert game.grid_dims == (4, 4)
 
         # mountain and city should be disjoint
-        assert (
-            np.logical_and(game.channels.mountain, game.channels.city).sum() == 0
-        )
+        assert np.logical_and(game.channels.mountain, game.channels.city).sum() == 0
 
         owners = ["neutral"] + game.agents
         # for every pair of agents, the ownership channels should be disjoint
@@ -116,15 +114,17 @@ def test_action_mask():
         ],
         dtype=int,
     )
-    game.channels._set_passable(np.array(
-        [
-            [1, 1, 1, 1],
-            [1, 1, 0, 0],
-            [1, 1, 1, 0],
-            [1, 0, 0, 0],
-        ],
-        dtype=bool,
-    ))
+    game.channels._set_passable(
+        np.array(
+            [
+                [1, 1, 1, 1],
+                [1, 1, 0, 0],
+                [1, 1, 1, 0],
+                [1, 0, 0, 0],
+            ],
+            dtype=bool,
+        )
+    )
 
     game.channels.ownership["red"] = np.array(
         [

@@ -4,6 +4,6 @@ from .env import (
 )
 
 __all__ = [
-    'pz_generals_v0',
-    'gym_generals_v0',
+    "pz_generals_v0",
+    "gym_generals_v0",
 ]

@@ -113,10 +113,10 @@ class Renderer:
         """
         center = (cell.get_width() // 2, cell.get_height() // 2)
 
-        text = self._font.render(text, True, fg_color)
+        text_surface = self._font.render(text, True, fg_color)
         if bg_color:
             cell.fill(bg_color)
-        cell.blit(text, text.get_rect(center=center))
+        cell.blit(text_surface, text_surface.get_rect(center=center))
 
     def render_stats(self):
         """

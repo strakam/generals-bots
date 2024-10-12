@@ -1,8 +1,8 @@
 import functools
 from collections.abc import Callable
-from typing import TypeAlias
+from typing import TypeAlias, Any
 
-import pettingzoo
+import pettingzoo  # type: ignore
 from gymnasium import spaces
 from copy import deepcopy
 
@@ -14,12 +14,12 @@ from generals.gui.properties import GuiMode
 
 # Type aliases
 Reward: TypeAlias = float
-RewardFn: TypeAlias = Callable[[dict[str, Observation], Action, bool, Info], Reward]
+RewardFn: TypeAlias = Callable[[Observation, Action, bool, Info], Reward]
 AgentID: TypeAlias = str
 
 
 class PettingZooGenerals(pettingzoo.ParallelEnv):
-    metadata = {
+    metadata: dict[str, Any] = {
         "render_modes": ["human"],
         "render_fps": 6,
     }
@@ -34,7 +34,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         self,
         grid_factory: GridFactory,
         agents: list[str],
-        reward_fn: RewardFn = None,
+        reward_fn: RewardFn | None = None,
         render_mode=None,
     ):
         self.render_mode = render_mode
@@ -67,7 +67,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         assert agent in self.possible_agents, f"Agent {agent} not in possible agents"
         return self.game.action_space
 
-    def render(self, fps: int = None) -> None:
+    def render(self, fps: int | None = None) -> None:
         fps = self.metadata["render_fps"] if fps is None else fps
         if self.render_mode == "human":
             _ = self.gui.tick(fps=fps)
@@ -99,7 +99,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
             del self.replay
 
         observations = self.game.get_all_observations()
-        infos = {agent: {} for agent in self.agents}
+        infos: dict[str, Any] = {agent: {} for agent in self.agents}
         return observations, infos
 
     def step(
@@ -139,7 +139,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
 
     @staticmethod
     def _default_reward(
-        observation: dict[str, Observation],
+        observation: Observation,
         action: Action,
         done: bool,
         info: Info,

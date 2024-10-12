@@ -1,0 +1,30 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: check-ast
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: check-yaml
+        args: [--unsafe]
+      - id: check-json
+      - id: debug-statements
+      - id: end-of-file-fixer
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [ --fix ]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: mypy --exclude 'examples/' --exclude 'tests/' --disable-error-code "annotation-unchecked" .
+        pass_filenames: false
+        language: system
+        types:
+          - python

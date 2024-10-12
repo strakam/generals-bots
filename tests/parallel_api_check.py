@@ -27,7 +27,7 @@ def sample_action(
         # pick random index of the mask with a 1, it should be 3 numbers
         valid_actions = np.argwhere(mask == 1)
         if len(valid_actions) == 0:
-            return (1, np.array([0,0]), 0, 0)
+            return (1, np.array([0, 0]), 0, 0)
         action_index = np.random.choice(len(valid_actions))
         action = valid_actions[action_index]
         cell = action[:2]
@@ -114,15 +114,17 @@ def parallel_api_test(par_env: ParallelEnv, num_cycles=1000):
                 warnings.warn("No agents present")
 
             for agent in par_env.agents:
-                assert par_env.observation_space(agent) is par_env.observation_space(
-                    agent
+                assert (
+                    par_env.observation_space(agent) is par_env.observation_space(agent)
                 ), "observation_space should return the exact same space object (not a copy) for an agent.\
                     Consider decorating your observation_space(self, agent) method with @functools.lru_cache(maxsize=None)"
-                assert par_env.action_space(agent) is par_env.action_space(
-                    agent
-                ), "action_space should return the exact same space object (not a copy) for an agent\
+                assert (
+                    par_env.action_space(agent) is par_env.action_space(agent)
+                ), (
+                    "action_space should return the exact same space object (not a copy) for an agent\
                 (ensures that action space seeding works as expected). Consider decorating your action_space(self, agent)\
                 method with @functools.lru_cache(maxsize=None)"
+                )
 
             agents_to_remove = {
                 agent for agent in live_agents if terminated[agent] or truncated[agent]
@@ -138,6 +140,7 @@ def parallel_api_test(par_env: ParallelEnv, num_cycles=1000):
     print(f"Total cycles: {t}")
     print("Passed Parallel API test")
 
+
 if __name__ == "__main__":
     mapper = GridFactory()
     agent1 = AgentFactory.make_agent("expander", id="A")
@@ -149,6 +152,7 @@ if __name__ == "__main__":
     env = gym.make("pz-generals-v0", agents=list(agents.keys()), grid_factory=mapper)
     # test the environment with parallel_api_test
     import time
+
     start = time.time()
     n_cycles = 1000
     parallel_api_test(env, num_cycles=n_cycles)

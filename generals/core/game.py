@@ -9,10 +9,10 @@ from .channels import Channels
 from .grid import Grid
 from .config import Direction
 
-from scipy.ndimage import maximum_filter
+from scipy.ndimage import maximum_filter  # type: ignore
 
-Observation: TypeAlias = dict[str, gym.Space | dict[str, gym.Space]]
-Action: TypeAlias = gym.Space
+Observation: TypeAlias = dict[str, np.ndarray | dict[str, gym.Space]]
+Action: TypeAlias = tuple[bool, np.ndarray, int, bool]
 Info: TypeAlias = dict[str, Any]
 
 
@@ -70,7 +70,7 @@ class Game:
         self.action_space = gym.spaces.Tuple(
             (
                 gym.spaces.Discrete(2),  # Pass or Play
-                gym.spaces.MultiDiscrete(self.grid_dims),  # Cell indices
+                gym.spaces.MultiDiscrete(list(self.grid_dims)),  # Cell indices
                 gym.spaces.Discrete(4),  # Direction
                 gym.spaces.Discrete(2),  # Send half army or all
             )
@@ -147,7 +147,7 @@ class Game:
 
     def step(
         self, actions: dict[str, Action]
-    ) -> tuple[dict[str, Observation], dict[str, dict]]:
+    ) -> tuple[dict[str, Observation], dict[str, Any]]:
         """
         Perform one step of the game
 
@@ -235,7 +235,7 @@ class Game:
             self._global_game_update()
 
         observations = self.get_all_observations()
-        infos = {agent: {} for agent in self.agents}
+        infos: dict[str, Any] = {agent: {} for agent in self.agents}
         return observations, infos
 
     def get_all_observations(self) -> dict[str, Observation]:
@@ -313,7 +313,7 @@ class Game:
             "is_winner": int(info[agent]["is_winner"]),
             "timestep": self.time,
         }
-        observation = {
+        observation: Observation = {
             "observation": _observation,
             "action_mask": self.action_mask(agent),
         }

@@ -1,8 +1,9 @@
 import pickle
 import time
-
+from typing import Any
 from generals.core.grid import Grid
 from generals.core.game import Game
+from generals.core.channels import Channels
 from generals.gui.event_handler import ReplayCommand
 from generals.gui.properties import GuiMode
 from generals.gui import GUI
@@ -10,12 +11,12 @@ from copy import deepcopy
 
 
 class Replay:
-    def __init__(self, name: str, grid: Grid, agent_data: dict[str, any]):
+    def __init__(self, name: str, grid: Grid, agent_data: dict[str, Any]):
         self.name = name
         self.grid = grid
         self.agent_data = agent_data
 
-        self.game_states = []
+        self.game_states: list[Channels] = []
 
     def add_state(self, state):
         self.game_states.append(state)
@@ -59,7 +60,7 @@ class Replay:
                 last_move_time = _t
             # If we are not paused, play the game
             elif (
-                _t - last_move_time > (1/gui_properties.game_speed) * 0.512
+                _t - last_move_time > (1 / gui_properties.game_speed) * 0.512
                 and not gui_properties.paused
             ):
                 if game.is_done():

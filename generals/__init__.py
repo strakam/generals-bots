@@ -25,5 +25,4 @@ def _register_generals_envs():
     )
 
 
-
 _register_generals_envs()
