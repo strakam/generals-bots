@@ -144,5 +144,5 @@ class GymnasiumGenerals(gym.Env):
         return reward
 
     def close(self) -> None:
-        if hasattr(self, "replay"):
+        if self.render_mode == "human":
             self.gui.close()
