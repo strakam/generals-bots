@@ -77,6 +77,8 @@ class GymnasiumGenerals(gym.Env):
     ) -> tuple[Observation, dict[str, Any]]:
         if options is None:
             options = {}
+        if seed is None:
+            seed = self.np_random_seed
         super().reset(seed=seed)
         if "grid" in options:
             grid = self.grid_factory.grid_from_string(options["grid"])
@@ -144,5 +146,5 @@ class GymnasiumGenerals(gym.Env):
         return reward
 
     def close(self) -> None:
-        if hasattr(self, "replay"):
+        if self.render_mode == "human":
             self.gui.close()
