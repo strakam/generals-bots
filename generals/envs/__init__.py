@@ -1,6 +1,6 @@
 from .env import (
-    pz_generals_v0,
     gym_generals_v0,
+    pz_generals_v0,
 )
 
 __all__ = [

@@ -1,11 +1,10 @@
-from .agent import Agent
 import numpy as np
+
+from .agent import Agent
 
 
 class RandomAgent(Agent):
-    def __init__(
-        self, id="Random", color=(242, 61, 106), split_prob=0.25, idle_prob=0.05
-    ):
+    def __init__(self, id="Random", color=(242, 61, 106), split_prob=0.25, idle_prob=0.05):
         super().__init__(id, color)
 
         self.idle_probability = idle_prob

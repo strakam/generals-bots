@@ -16,8 +16,13 @@ repos:
     rev: v0.6.9
     hooks:
       - id: ruff
-        args: ["check", "--select", " E F I", "--fix"]
+        args: ["--select", "E", "--select", "F", "--select", "I",
+               "--fix",
+               "--line-length", "120",
+               "--exclude", "tests/", "--exclude", "examples/"
+               ]
       - id: ruff-format
+        args: ["--line-length", "120", "--exclude", "tests/", "--exclude", "examples/"]
 
   - repo: local
     hooks:

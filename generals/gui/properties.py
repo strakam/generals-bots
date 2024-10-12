@@ -4,8 +4,8 @@ from typing import Any
 
 from pygame.time import Clock
 
-from generals.core.game import Game
 from generals.core.config import Dimension
+from generals.core.game import Game
 
 
 class GuiMode(Enum):
@@ -32,9 +32,7 @@ class Properties:
 
         self.__paused: bool = False
 
-        self.__agent_fov: dict[str, bool] = {
-            name: True for name in self.agent_data.keys()
-        }
+        self.__agent_fov: dict[str, bool] = {name: True for name in self.agent_data.keys()}
 
     @property
     def game(self):

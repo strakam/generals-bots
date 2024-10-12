@@ -1,13 +1,15 @@
-import pygame
 from typing import Any
 
+import pygame
+
 from generals.core.game import Game
-from .properties import Properties, GuiMode
+
 from .event_handler import (
+    Command,
     EventHandler,
     ReplayCommand,
-    Command,
 )
+from .properties import GuiMode, Properties
 from .rendering import Renderer
 
 
@@ -26,9 +28,7 @@ class GUI:
 
         self.properties = Properties(game, agent_data, mode)
         self.__renderer = Renderer(self.properties)
-        self.__event_handler = EventHandler.from_mode(
-            self.properties.mode, self.properties
-        )
+        self.__event_handler = EventHandler.from_mode(self.properties.mode, self.properties)
 
     def tick(self, fps=None) -> Command:
         command = self.__event_handler.handle_events()

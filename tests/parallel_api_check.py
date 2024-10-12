@@ -1,10 +1,9 @@
 from __future__ import annotations
-from generals import GridFactory, AgentFactory
+
 import warnings
 
-import numpy as np
 import gymnasium as gym
-
+import numpy as np
 from pettingzoo.test.api_test import missing_attr_warning
 from pettingzoo.utils.conversions import (
     aec_to_parallel_wrapper,
@@ -13,6 +12,8 @@ from pettingzoo.utils.conversions import (
 )
 from pettingzoo.utils.env import ActionType, AgentID, ObsType, ParallelEnv
 from pettingzoo.utils.wrappers import BaseWrapper
+
+from generals import AgentFactory, GridFactory
 
 
 def sample_action(
@@ -67,10 +68,7 @@ def parallel_api_test(par_env: ParallelEnv, num_cycles=1000):
             actions = {
                 agent: sample_action(par_env, obs, agent)
                 for agent in par_env.agents
-                if (
-                    (agent in terminated and not terminated[agent])
-                    or (agent in truncated and not truncated[agent])
-                )
+                if ((agent in terminated and not terminated[agent]) or (agent in truncated and not truncated[agent]))
             }
             obs, rew, terminated, truncated, info = par_env.step(actions)
             for agent in par_env.agents:
@@ -101,39 +99,27 @@ def parallel_api_test(par_env: ParallelEnv, num_cycles=1000):
                     set(par_env.possible_agents)
                 ), "possible_agents defined but does not contain all agents"
 
-                has_finished |= {
-                    agent
-                    for agent in live_agents
-                    if terminated[agent] or truncated[agent]
-                }
+                has_finished |= {agent for agent in live_agents if terminated[agent] or truncated[agent]}
                 if not par_env.agents and has_finished != set(par_env.possible_agents):
-                    warnings.warn(
-                        "No agents present but not all possible_agents are terminated or truncated"
-                    )
+                    warnings.warn("No agents present but not all possible_agents are terminated or truncated")
             elif not par_env.agents:
                 warnings.warn("No agents present")
 
             for agent in par_env.agents:
-                assert (
-                    par_env.observation_space(agent) is par_env.observation_space(agent)
+                assert par_env.observation_space(agent) is par_env.observation_space(
+                    agent
                 ), "observation_space should return the exact same space object (not a copy) for an agent.\
                     Consider decorating your observation_space(self, agent) method with @functools.lru_cache(maxsize=None)"
-                assert (
-                    par_env.action_space(agent) is par_env.action_space(agent)
-                ), (
-                    "action_space should return the exact same space object (not a copy) for an agent\
+                assert par_env.action_space(agent) is par_env.action_space(
+                    agent
+                ), "action_space should return the exact same space object (not a copy) for an agent\
                 (ensures that action space seeding works as expected). Consider decorating your action_space(self, agent)\
                 method with @functools.lru_cache(maxsize=None)"
-                )
 
-            agents_to_remove = {
-                agent for agent in live_agents if terminated[agent] or truncated[agent]
-            }
+            agents_to_remove = {agent for agent in live_agents if terminated[agent] or truncated[agent]}
             live_agents -= agents_to_remove
 
-            assert (
-                set(par_env.agents) == live_agents
-            ), f"{par_env.agents} != {live_agents}"
+            assert set(par_env.agents) == live_agents, f"{par_env.agents} != {live_agents}"
 
             if len(live_agents) == 0:
                 break

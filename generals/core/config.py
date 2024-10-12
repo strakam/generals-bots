@@ -1,6 +1,6 @@
-from typing import Literal
-from importlib.resources import files
 from enum import Enum, IntEnum, StrEnum
+from importlib.resources import files
+from typing import Literal
 
 #################
 # Game Literals #

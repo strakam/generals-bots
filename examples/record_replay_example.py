@@ -1,4 +1,5 @@
 import gymnasium as gym
+
 from generals import AgentFactory, GridFactory
 
 # Initialize agents -- see generals/agents/agent_factory.py for more options

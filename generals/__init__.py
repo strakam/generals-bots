@@ -1,8 +1,8 @@
-from .core.grid import GridFactory, Grid
-from .core.replay import Replay
-from .agents.agent_factory import AgentFactory
 from gymnasium.envs.registration import register
 
+from .agents.agent_factory import AgentFactory
+from .core.grid import Grid, GridFactory
+from .core.replay import Replay
 
 __all__ = [
     "AgentFactory",

@@ -1,13 +1,13 @@
 from collections.abc import Callable
-from typing import TypeAlias, Any, SupportsFloat, TypeVar
+from copy import deepcopy
+from typing import Any, SupportsFloat, TypeAlias, TypeVar
 
 import gymnasium as gym
-from copy import deepcopy
 
-from generals.core.game import Game, Action, Observation, Info
+from generals.agents import Agent
+from generals.core.game import Action, Game, Info, Observation
 from generals.core.grid import GridFactory
 from generals.core.replay import Replay
-from generals.agents import Agent
 from generals.gui import GUI
 from generals.gui.properties import GuiMode
 
@@ -52,9 +52,7 @@ class GymnasiumGenerals(gym.Env):
             agent_id: {"color": agent_color},
             self.npc.id: {"color": self.npc.color},
         }
-        assert (
-            agent_id != npc.id
-        ), "Agent ids must be unique - you can pass custom ids to agent constructors."
+        assert agent_id != npc.id, "Agent ids must be unique - you can pass custom ids to agent constructors."
 
         # Game
         grid = self.grid_factory.grid_from_generator()
@@ -102,9 +100,7 @@ class GymnasiumGenerals(gym.Env):
         info: dict[str, Any] = {}
         return observation, info
 
-    def step(
-        self, action: Action
-    ) -> tuple[Observation, SupportsFloat, bool, bool, dict[str, Any]]:
+    def step(self, action: Action) -> tuple[Observation, SupportsFloat, bool, bool, dict[str, Any]]:
         # Get action of NPC
         npc_action = self.npc.act(self.game.agent_observation(self.npc.id))
         actions = {self.agent_id: action, self.npc.id: npc_action}

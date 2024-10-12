@@ -1,9 +1,10 @@
+import itertools
+
 import numpy as np
 import pytest
 
 import generals.core.game as game
-from generals.core.grid import GridFactory, Grid
-import itertools
+from generals.core.grid import Grid, GridFactory
 
 
 def get_game(grid=None):

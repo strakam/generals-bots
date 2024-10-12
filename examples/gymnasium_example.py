@@ -1,4 +1,5 @@
 import gymnasium as gym
+
 from generals import AgentFactory
 
 # Initialize agents

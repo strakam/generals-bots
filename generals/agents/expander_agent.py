@@ -1,7 +1,8 @@
 import numpy as np
-from .agent import Agent
 
 from generals.core.config import Direction
+
+from .agent import Agent
 
 
 class ExpanderAgent(Agent):
@@ -30,9 +31,7 @@ class ExpanderAgent(Agent):
 
         directions = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
         for i, action in enumerate(valid_actions):
-            di, dj = (
-                action[:-1] + directions[action[-1]].value
-            )  # Destination cell indices
+            di, dj = action[:-1] + directions[action[-1]].value  # Destination cell indices
             if army[action[0], action[1]] <= army[di, dj] + 1:  # Can't capture
                 continue
             elif opponent[di, dj]:

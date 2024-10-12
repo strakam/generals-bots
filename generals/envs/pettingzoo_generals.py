@@ -1,12 +1,12 @@
 import functools
 from collections.abc import Callable
-from typing import TypeAlias, Any
+from copy import deepcopy
+from typing import Any, TypeAlias
 
 import pettingzoo  # type: ignore
 from gymnasium import spaces
-from copy import deepcopy
 
-from generals.core.game import Game, Action, Observation, Info
+from generals.core.game import Action, Game, Info, Observation
 from generals.core.grid import GridFactory
 from generals.core.replay import Replay
 from generals.gui import GUI
@@ -44,10 +44,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         else:
             self.reward_fn = PettingZooGenerals._default_reward
 
-        self.agent_data = {
-            agent_id: {"color": color}
-            for agent_id, color in zip(agents, self.default_colors)
-        }
+        self.agent_data = {agent_id: {"color": color} for agent_id, color in zip(agents, self.default_colors)}
         self.agents = agents
         self.possible_agents = agents
 
@@ -113,9 +110,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
     ]:
         observations, infos = self.game.step(actions)
         truncated = {agent: False for agent in self.agents}  # no truncation
-        terminated = {
-            agent: True if self.game.is_done() else False for agent in self.agents
-        }
+        terminated = {agent: True if self.game.is_done() else False for agent in self.agents}
         rewards = {
             agent: self.reward_fn(
                 observations[agent],
