@@ -6,8 +6,8 @@ class Agent(ABC):
     Base class for all agents.
     """
 
-    def __init__(self, name="Agent", color=(67, 70, 86)):
-        self.name = name
+    def __init__(self, id="NPC", color=(67, 70, 86)):
+        self.id = id
         self.color = color
 
     @abstractmethod
@@ -27,12 +27,4 @@ class Agent(ABC):
         raise NotImplementedError
 
     def __str__(self):
-        return self.name
-
-
-class EmptyAgent(Agent):
-    def act(self, observation):
-        return None
-
-    def reset(self):
-        pass
+        return self.id

@@ -1,6 +1,7 @@
 from .random_agent import RandomAgent
 from .expander_agent import ExpanderAgent
-from .agent import Agent, EmptyAgent
+from .agent import Agent
+
 
 class AgentFactory:
     """
@@ -19,7 +20,5 @@ class AgentFactory:
             return RandomAgent(**kwargs)
         elif agent_type == "expander":
             return ExpanderAgent(**kwargs)
-        elif agent_type == "empty":
-            return EmptyAgent(**kwargs)
         else:
             raise ValueError(f"Unknown agent type: {agent_type}")

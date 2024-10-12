@@ -6,52 +6,56 @@ import pettingzoo
 from gymnasium import spaces
 from copy import deepcopy
 
-from pettingzoo.utils.env import AgentID
-
 from generals.core.game import Game, Action, Observation, Info
 from generals.core.grid import GridFactory
-from generals.agents import Agent
+from generals.core.replay import Replay
 from generals.gui import GUI
 from generals.gui.properties import GuiMode
-from generals.core.replay import Replay
-
 
 # Type aliases
 Reward: TypeAlias = float
 RewardFn: TypeAlias = Callable[[dict[str, Observation], Action, bool, Info], Reward]
+AgentID: TypeAlias = str
 
 
-class PZ_Generals(pettingzoo.ParallelEnv):
+class PettingZooGenerals(pettingzoo.ParallelEnv):
     metadata = {
         "render_modes": ["human"],
         "render_fps": 6,
     }
+    default_colors = [
+        (67, 70, 86),
+        (242, 61, 106),
+        (0, 255, 0),
+        (0, 0, 255),
+    ]  # Up for improvement (needs to be extended for multiple agents)
 
     def __init__(
         self,
         grid_factory: GridFactory,
-        agents: dict[str, Agent],
+        agents: list[str],
         reward_fn: RewardFn = None,
         render_mode=None,
     ):
-        self.game = None
-        self.gui = None
-        self.replay = None
-
         self.render_mode = render_mode
         self.grid_factory = grid_factory
+        if reward_fn is not None:
+            self.reward_fn = reward_fn
+        else:
+            self.reward_fn = PettingZooGenerals._default_reward
 
         self.agent_data = {
-            agents[agent].name: {"color": agents[agent].color}
-            for agent in agents.keys()
+            agent_id: {"color": color}
+            for agent_id, color in zip(agents, self.default_colors)
         }
-        self.possible_agents = list(agents.keys())
+        self.agents = agents
+        self.possible_agents = agents
 
-        assert (
-            len(self.possible_agents) == len(set(self.possible_agents))
-        ), "Agent names must be unique - you can pass custom names to agent constructors."
+        assert len(self.possible_agents) == len(
+            set(self.possible_agents)
+        ), "Agent ids must be unique - you can pass custom ids to agent constructors."
 
-        self.reward_fn = self._default_reward if reward_fn is None else reward_fn
+        self.reward_fn = self._default_reward
 
     @functools.lru_cache(maxsize=None)
     def observation_space(self, agent: AgentID) -> spaces.Space:
@@ -74,7 +78,6 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         if options is None:
             options = {}
         self.agents = deepcopy(self.possible_agents)
-
         if "grid" in options:
             grid = self.grid_factory.grid_from_string(options["grid"])
         else:
@@ -109,12 +112,10 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         dict[AgentID, Info],
     ]:
         observations, infos = self.game.step(actions)
-
         truncated = {agent: False for agent in self.agents}  # no truncation
         terminated = {
             agent: True if self.game.is_done() else False for agent in self.agents
         }
-
         rewards = {
             agent: self.reward_fn(
                 observations[agent],
@@ -134,7 +135,6 @@ class PZ_Generals(pettingzoo.ParallelEnv):
             self.agents = []
             if hasattr(self, "replay"):
                 self.replay.store()
-
         return observations, rewards, terminated, truncated, infos
 
     @staticmethod
@@ -154,4 +154,5 @@ class PZ_Generals(pettingzoo.ParallelEnv):
         return reward
 
     def close(self) -> None:
-        self.gui.close()
+        if self.render_mode == "human":
+            self.gui.close()

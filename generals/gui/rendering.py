@@ -189,8 +189,8 @@ class Renderer:
         """
         agents = self.game.agents
         # Maps of all owned and visible cells
-        owned_map = np.zeros((self.grid_height, self.grid_width), dtype=np.bool)
-        visible_map = np.zeros((self.grid_height, self.grid_width), dtype=np.bool)
+        owned_map = np.zeros((self.grid_height, self.grid_width), dtype=bool)
+        visible_map = np.zeros((self.grid_height, self.grid_width), dtype=bool)
         for agent in agents:
             ownership = self.game.channels.ownership[agent]
             owned_map = np.logical_or(owned_map, ownership)

@@ -227,7 +227,7 @@ def test_observations():
     ############
     # TEST RED #
     ############
-    red_observation = game._agent_observation("red")["observation"]
+    red_observation = game.agent_observation("red")["observation"]
     reference_opponent_ownership = np.array(
         [
             [0, 0, 0, 0],
@@ -286,7 +286,7 @@ def test_observations():
     #############
     # TEST BLUE #
     #############
-    blue_observation = game._agent_observation("blue")["observation"]
+    blue_observation = game.agent_observation("blue")["observation"]
     reference_opponent_ownership = np.array(
         [
             [0, 0, 0, 0],
