@@ -29,7 +29,9 @@ class Grid:
         first_general = np.argwhere(np.isin(grid, ["A"]))
         second_general = np.argwhere(np.isin(grid, ["B"]))
         if len(first_general) != 1 or len(second_general) != 1:
-            raise ValueError("Exactly one 'A' and one 'B' should be present in the grid.")
+            raise ValueError(
+                "Exactly one 'A' and one 'B' should be present in the grid."
+            )
 
         self._grid = grid
 
@@ -111,7 +113,10 @@ class GridFactory:
         if general_positions is None:
             general_positions = self.general_positions
         if seed is None:
-            seed = self.seed
+            if self.seed is None:
+                seed = np.random.randint(0, 2**20)
+            else:
+                seed = self.seed
 
         # Probabilities of each cell type
         p_neutral = 1 - mountain_density - city_density
@@ -120,7 +125,7 @@ class GridFactory:
         # Place cells on the map
         rng = np.random.default_rng(seed)
         map = rng.choice(
-            [PASSABLE, MOUNTAIN, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+            [PASSABLE, MOUNTAIN, "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
             size=grid_dims,
             p=probs,
         )
@@ -142,6 +147,7 @@ class GridFactory:
         try:
             return Grid(map_string)
         except ValueError:
+            seed += 1 # Increase seed to generate a different map
             return self.grid_from_generator(
                 grid_dims=grid_dims,
                 mountain_density=mountain_density,
