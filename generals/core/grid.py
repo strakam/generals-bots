@@ -30,7 +30,9 @@ class Grid:
         first_general = np.argwhere(np.isin(grid, ["A"]))
         second_general = np.argwhere(np.isin(grid, ["B"]))
         if len(first_general) != 1 or len(second_general) != 1:
-            raise ValueError("Exactly one 'A' and one 'B' should be present in the grid.")
+            raise ValueError(
+                "Exactly one 'A' and one 'B' should be present in the grid."
+            )
 
         self._grid = grid
 
@@ -140,7 +142,7 @@ class GridFactory:
         try:
             return Grid(map_string)
         except ValueError:
-            seed += 1  # Increase seed to generate a different map
+            seed += 1 # Increase seed to generate a different map
             return self.grid_from_generator(
                 grid_dims=grid_dims,
                 mountain_density=mountain_density,
