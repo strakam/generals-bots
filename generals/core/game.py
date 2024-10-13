@@ -15,26 +15,28 @@ DIRECTIONS = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
 
 class Game:
     def __init__(self, grid: Grid, agents: list[str]):
+        # Agents
         self.agents = agents
+
+        # Grid
         grid = grid.grid
         self.grid_dims = (grid.shape[0], grid.shape[1])
-        self.time = 0
-
         self.general_positions = {
             agent: np.argwhere(grid == chr(ord("A") + i))[0]
             for i, agent in enumerate(self.agents)
         }
-
         self.channels = Channels(grid, self.agents)
 
-        # Constants
+        # Time stuff
+        self.time = 0
         self.increment_rate = 50
+
+        # Limits
         self.max_army_value = 10_000
         self.max_land_value = np.prod(self.grid_dims)
         self.max_timestep = 100_000
-        ##########
-        # Spaces #
-        ##########
+
+        # Spaces
         grid_multi_binary = gym.spaces.MultiBinary(self.grid_dims)
         grid_discrete = np.ones(self.grid_dims, dtype=int) * self.max_army_value
         self.observation_space = gym.spaces.Dict(
@@ -76,10 +78,6 @@ class Game:
 
         Valid action is an action that originates from agent's cell with atleast 2 units
         and does not bump into a mountain or fall out of the grid.
-
-        Args:
-            agent: str
-
         Returns:
             np.ndarray: an NxNx4 array, where each channel is a boolean mask
             of valid actions (UP, DOWN, LEFT, RIGHT) for each cell in the grid.

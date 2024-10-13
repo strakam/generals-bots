@@ -8,10 +8,10 @@ expander = AgentFactory.make_agent("expander")
 agents = {
     random.id: random,
     expander.id: expander,
-}  
+}
 agent_ids = list(agents.keys()) # Environment calls agents by name
 
-# Create environment -- render modes: {None, "human"}
+# Create environment
 env = PettingZooGenerals(agents=agent_ids, render_mode="human")
 observations, info = env.reset()
 

@@ -34,9 +34,9 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
     ):
         self.render_mode = render_mode
         self.grid_factory = grid_factory if grid_factory is not None else GridFactory()
-
         self.reward_fn = reward_fn if reward_fn is not None else self._default_reward
 
+        # Agents
         self.agent_data = {agent_id: {"color": color} for agent_id, color in zip(agents, self.default_colors)}
         self.agents = agents
         self.possible_agents = agents
@@ -55,10 +55,9 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         assert agent in self.possible_agents, f"Agent {agent} not in possible agents"
         return self.game.action_space
 
-    def render(self, fps: int | None = None) -> None:
-        fps = self.metadata["render_fps"] if fps is None else fps
+    def render(self):
         if self.render_mode == "human":
-            _ = self.gui.tick(fps=fps)
+            _ = self.gui.tick(fps=self.metadata["render_fps"])
 
     def reset(
         self, seed: int | None = None, options: dict | None = None
@@ -100,6 +99,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         dict[AgentID, Info],
     ]:
         observations, infos = self.game.step(actions)
+        # You probably want to set your truncation based on self.game.time
         truncated = {agent: False for agent in self.agents}  # no truncation
         terminated = {agent: True if self.game.is_done() else False for agent in self.agents}
         rewards = {
