@@ -7,7 +7,6 @@ from typing import Literal
 #################
 PASSABLE: Literal["."] = "."
 MOUNTAIN: Literal["#"] = "#"
-CITY: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9] = 0  # CITY can be any digit 0-9
 
 
 class Dimension(IntEnum):

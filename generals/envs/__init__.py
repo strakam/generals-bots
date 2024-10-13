@@ -1,9 +1,7 @@
-from .env import (
-    gym_generals_v0,
-    pz_generals_v0,
-)
+from generals.envs.pettingzoo_generals import PettingZooGenerals
+from generals.envs.gymnasium_generals import GymnasiumGenerals
 
 __all__ = [
-    "pz_generals_v0",
-    "gym_generals_v0",
+    "PettingZooGenerals",
+    "GymnasiumGenerals",
 ]

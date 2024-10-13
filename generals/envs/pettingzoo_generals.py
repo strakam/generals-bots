@@ -1,5 +1,7 @@
 import functools
-from collections.abc import Callable
+
+import pettingzoo
+from gymnasium import spaces
 from copy import deepcopy
 from typing import Any, TypeAlias
 
@@ -11,11 +13,8 @@ from generals.core.grid import GridFactory
 from generals.core.replay import Replay
 from generals.gui import GUI
 from generals.gui.properties import GuiMode
+from generals.envs.env import Reward, RewardFn, AgentID
 
-# Type aliases
-Reward: TypeAlias = float
-RewardFn: TypeAlias = Callable[[Observation, Action, bool, Info], Reward]
-AgentID: TypeAlias = str
 
 
 class PettingZooGenerals(pettingzoo.ParallelEnv):
@@ -32,13 +31,14 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
 
     def __init__(
         self,
-        grid_factory: GridFactory,
         agents: list[str],
+        grid_factory: GridFactory | None = None,
         reward_fn: RewardFn | None = None,
         render_mode=None,
     ):
         self.render_mode = render_mode
-        self.grid_factory = grid_factory
+        self.grid_factory = grid_factory if grid_factory is not None else GridFactory()
+
         if reward_fn is not None:
             self.reward_fn = reward_fn
         else:
