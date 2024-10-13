@@ -16,19 +16,51 @@ repos:
     rev: v0.6.9
     hooks:
       - id: ruff
-        args: ["--select", "E", "--select", "F", "--select", "I",
-               "--fix",
-               "--line-length", "120",
-               "--exclude", "tests/", "--exclude", "examples/"
-               ]
+        args:
+          [
+            "--select",
+            "E",
+            "--select",
+            "F",
+            "--select",
+            "I",
+            "--fix",
+            "--line-length",
+            "120",
+            "--exclude",
+            "tests/",
+            "--exclude",
+            "examples/",
+          ]
       - id: ruff-format
-        args: ["--line-length", "120", "--exclude", "tests/", "--exclude", "examples/"]
+        args:
+          [
+            "--line-length",
+            "120",
+            "--exclude",
+            "tests/",
+            "--exclude",
+            "examples/",
+          ]
 
   - repo: local
     hooks:
       - id: mypy
         name: mypy
-        entry: mypy --exclude 'examples/' --exclude 'tests/' --exclude 'generals/agents/' --disable-error-code "annotation-unchecked" .
+        entry: mypy .
+        args:
+          [
+            --exclude,
+            "examples/",
+            --exclude,
+            "tests/",
+            --exclude,
+            "generals/agents/",
+            --disable-error-code,
+            "annotation-unchecked",
+            --follow-imports,
+            "silent",
+          ]
         pass_filenames: false
         language: system
         types: [python]

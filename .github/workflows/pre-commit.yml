@@ -3,6 +3,8 @@ name: pre-commit hooks
 on:
   push:
 
+  workflow_dispatch:
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -23,4 +25,6 @@ jobs:
 
       - name: Run pre-commit hooks
         run: |
+          pre-commit clean
+          pre-commit install --install-hooks
           pre-commit run --all-files
