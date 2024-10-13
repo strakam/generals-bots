@@ -2,41 +2,29 @@
 import argparse
 import collections
 from typing import Self
-from generals import GridFactory
 
 import gymnasium as gym
 import numpy as np
 import torch
 
 import wrappers
+from generals import GridFactory
 
 parser = argparse.ArgumentParser()
 # These arguments will be set appropriately by ReCodEx, even if you change them.
-parser.add_argument(
-    "--recodex", default=False, action="store_true", help="Running in ReCodEx"
-)
+parser.add_argument("--recodex", default=False, action="store_true", help="Running in ReCodEx")
 parser.add_argument("--render_each", default=0, type=int, help="Render some episodes.")
 parser.add_argument("--seed", default=None, type=int, help="Random seed.")
-parser.add_argument(
-    "--threads", default=8, type=int, help="Maximum number of threads to use."
-)
+parser.add_argument("--threads", default=8, type=int, help="Maximum number of threads to use.")
 # For these and any other arguments you add, ReCodEx will keep your default value.
 parser.add_argument("--batch_size", default=16, type=int, help="Batch size.")
 parser.add_argument("--epsilon", default=0.2, type=float, help="Exploration factor.")
-parser.add_argument(
-    "--epsilon_final", default=0.1, type=float, help="Final exploration factor."
-)
-parser.add_argument(
-    "--epsilon_final_at", default=8000, type=int, help="Training episodes."
-)
+parser.add_argument("--epsilon_final", default=0.1, type=float, help="Final exploration factor.")
+parser.add_argument("--epsilon_final_at", default=8000, type=int, help="Training episodes.")
 parser.add_argument("--gamma", default=1.0, type=float, help="Discounting factor.")
-parser.add_argument(
-    "--hidden_layer_size", default=100, type=int, help="Size of hidden layer."
-)
+parser.add_argument("--hidden_layer_size", default=100, type=int, help="Size of hidden layer.")
 parser.add_argument("--learning_rate", default=1e-3, type=float, help="Learning rate.")
-parser.add_argument(
-    "--target_update_freq", default=200, type=int, help="Target update frequency."
-)
+parser.add_argument("--target_update_freq", default=200, type=int, help="Target update frequency.")
 
 
 class Network:
@@ -61,9 +49,7 @@ class Network:
         )
 
         # TODO: Define an optimizer (most likely from `torch.optim`).
-        self._optimizer = torch.optim.Adam(
-            self._model.parameters(), lr=args.learning_rate
-        )
+        self._optimizer = torch.optim.Adam(self._model.parameters(), lr=args.learning_rate)
 
         # TODO: Define the loss (most likely some `torch.nn.*Loss`).
         self._loss = torch.nn.MSELoss()
@@ -122,9 +108,7 @@ def main(env: wrappers.EvaluationEnv, args: argparse.Namespace) -> None:
 
     # Replay memory; the `max_length` parameter can be passed to limit its size.
     replay_buffer = wrappers.ReplayBuffer(max_length=1_000_000)
-    Transition = collections.namedtuple(
-        "Transition", ["state", "action", "reward", "done", "next_state"]
-    )
+    Transition = collections.namedtuple("Transition", ["state", "action", "reward", "done", "next_state"])
 
     epsilon = args.epsilon
     training = True
@@ -140,16 +124,10 @@ def main(env: wrappers.EvaluationEnv, args: argparse.Namespace) -> None:
                 target_network.copy_weights_from(network)
             # TODO: Choose an action.
             q_values = network.predict(state[np.newaxis])
-            action = (
-                np.argmax(q_values)
-                if np.random.rand() > epsilon
-                else np.random.randint(64)
-            )
+            action = np.argmax(q_values) if np.random.rand() > epsilon else np.random.randint(64)
             i, j, d = np.unravel_index(action, (4, 4, 4))
 
-            next_state, reward, terminated, truncated, _ = env.step(
-                (0, np.array([i, j]), d, 0)
-            )
+            next_state, reward, terminated, truncated, _ = env.step((0, np.array([i, j]), d, 0))
             done = terminated or truncated
             ep_reward += reward
 
@@ -160,9 +138,7 @@ def main(env: wrappers.EvaluationEnv, args: argparse.Namespace) -> None:
             # a batch of `args.batch_size` uniformly randomly chosen transitions.
             #
             if len(replay_buffer) >= 1_000:
-                batch = replay_buffer.sample(
-                    args.batch_size, generator=np.random, replace=True
-                )
+                batch = replay_buffer.sample(args.batch_size, generator=np.random, replace=True)
                 actions = np.array([t.action for t in batch])
                 states = np.array([t.state for t in batch])
                 dones = np.array([t.done for t in batch])
@@ -170,12 +146,7 @@ def main(env: wrappers.EvaluationEnv, args: argparse.Namespace) -> None:
                 next_states = np.array([t.next_state for t in batch])
 
                 targets = network.predict(states)
-                new_values = (
-                    args.gamma
-                    * np.max(target_network.predict(next_states), axis=-1)
-                    * (1 - dones)
-                    + rewards
-                )
+                new_values = args.gamma * np.max(target_network.predict(next_states), axis=-1) * (1 - dones) + rewards
                 targets[np.arange(len(actions)), actions] = new_values
                 network.train(states, targets)
 
@@ -214,7 +185,6 @@ if __name__ == "__main__":
         general_positions=[(0, 0), (3, 3)],
         seed=args.seed,
     )
-
 
     def reward_fn(observation, action, done, info):
         my_land = observation["observation"]["owned_land_count"]

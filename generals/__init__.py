@@ -17,7 +17,8 @@ __all__ = [
 def _register_gym_generals_envs():
     register(
         id="gym-generals-v0",
-        entry_point="generals.envs.env:gym_generals_v0",
+        entry_point="generals.envs.gymnasium_generals:GymnasiumGenerals",
     )
+
 
 _register_gym_generals_envs()

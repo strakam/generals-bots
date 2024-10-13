@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from generals.core.game import Action, Observation
 
 
 class Agent(ABC):
@@ -6,12 +7,12 @@ class Agent(ABC):
     Base class for all agents.
     """
 
-    def __init__(self, id="NPC", color=(67, 70, 86)):
+    def __init__(self, id: str ="NPC", color: tuple[int, int, int]=(67, 70, 86)):
         self.id = id
         self.color = color
 
     @abstractmethod
-    def act(self, observation):
+    def act(self, observation: Observation) -> Action:
         """
         This method should be implemented by the child class.
         It should receive an observation and return an action.

@@ -1,16 +1,23 @@
 import numpy as np
 
 from .agent import Agent
+from generals.core.game import Action, Observation
 
 
 class RandomAgent(Agent):
-    def __init__(self, id="Random", color=(242, 61, 106), split_prob=0.25, idle_prob=0.05):
+    def __init__(
+        self,
+        id: str = "Random",
+        color: tuple[int, int, int] = (242, 61, 106),
+        split_prob: float = 0.25,
+        idle_prob: float = 0.05,
+    ):
         super().__init__(id, color)
 
         self.idle_probability = idle_prob
         self.split_probability = split_prob
 
-    def act(self, observation):
+    def act(self, observation: Observation) -> Action:
         """
         Randomly selects a valid action.
         """
@@ -19,8 +26,12 @@ class RandomAgent(Agent):
 
         valid_actions = np.argwhere(mask == 1)
         if len(valid_actions) == 0:  # No valid actions
-            return 1, (0, 0), 0, 0
-
+            return {
+                "pass": 1,
+                "cell": np.array([0, 0]),
+                "direction": 0,
+                "split": 0,
+            }
         pass_turn = 0 if np.random.rand() > self.idle_probability else 1
         split_army = 0 if np.random.rand() > self.split_probability else 1
 
@@ -28,7 +39,12 @@ class RandomAgent(Agent):
         cell = valid_actions[action_index][:2]
         direction = valid_actions[action_index][2]
 
-        action = (pass_turn, cell, direction, split_army)
+        action = {
+            "pass": pass_turn,
+            "cell": cell,
+            "direction": direction,
+            "split": split_army,
+        }
         return action
 
     def reset(self):

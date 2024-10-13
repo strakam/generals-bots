@@ -1,6 +1,16 @@
+import gymnasium as gym
+import numpy as np
 from enum import Enum, IntEnum, StrEnum
 from importlib.resources import files
-from typing import Literal
+from typing import Literal, Any, TypeAlias, Callable
+
+Observation: TypeAlias = dict[str, np.ndarray | dict[str, gym.Space]]
+Action: TypeAlias = dict[int, np.ndarray, int, int]
+Info: TypeAlias = dict[str, Any]
+
+Reward: TypeAlias = float
+RewardFn: TypeAlias = Callable[[dict[str, Observation], Action, bool, Info], Reward]
+AgentID: TypeAlias = str
 
 #################
 # Game Literals #

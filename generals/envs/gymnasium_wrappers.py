@@ -2,9 +2,9 @@ import gymnasium as gym
 import numpy as np
 
 
-class NormalizeObservationWrapper(gym.ObservationWrapper):
+class NormalizedObservationWrapper(gym.ObservationWrapper):
     def __init__(self, env):
-        super(NormalizeObservationWrapper, self).__init__(env)
+        super(NormalizedObservationWrapper, self).__init__(env)
         grid_multi_binary = gym.spaces.MultiBinary(self.game.grid_dims)
         unit_box = gym.spaces.Box(low=0, high=1, dtype=np.float32)
         self.observation_space = gym.spaces.Dict(

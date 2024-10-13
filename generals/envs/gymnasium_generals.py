@@ -1,17 +1,16 @@
+from copy import deepcopy
 from typing import Any, SupportsFloat
 
 import gymnasium as gym
-from copy import deepcopy
 
-from generals.agents import Agent
+from generals.agents import Agent, AgentFactory
 from generals.core.game import Action, Game, Info, Observation
 from generals.core.grid import GridFactory
 from generals.core.replay import Replay
-from generals.agents import Agent, AgentFactory
+from generals.core.config import Reward, RewardFn
 from generals.gui import GUI
 from generals.gui.properties import GuiMode
 
-from generals.envs.env import Reward, RewardFn
 
 
 class GymnasiumGenerals(gym.Env):

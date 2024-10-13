@@ -5,10 +5,10 @@ import sys
 import gymnasium as gym
 import numpy as np
 
-
 ############################
 # Gym Environment Wrappers #
 ############################
+
 
 class EvaluationEnv(gym.Wrapper):
     def __init__(self, env, seed=None, render_each=0, evaluate_for=100, report_each=10):
@@ -67,15 +67,28 @@ class EvaluationEnv(gym.Wrapper):
             self._episode_returns.append(self._episode_return)
 
             if self._report_each and self.episode % self._report_each == 0:
-                print("Episode {}, mean {}-episode return {:.2f} +-{:.2f}{}".format(
-                    self.episode, self._evaluate_for, np.mean(self._episode_returns[-self._evaluate_for:]),
-                    np.std(self._episode_returns[-self._evaluate_for:]), "" if not self._report_verbose else
-                    ", returns " + " ".join(map("{:g}".format, self._episode_returns[-self._report_each:]))),
-                    file=sys.stderr, flush=True)
+                print(
+                    "Episode {}, mean {}-episode return {:.2f} +-{:.2f}{}".format(
+                        self.episode,
+                        self._evaluate_for,
+                        np.mean(self._episode_returns[-self._evaluate_for :]),
+                        np.std(self._episode_returns[-self._evaluate_for :]),
+                        ""
+                        if not self._report_verbose
+                        else ", returns " + " ".join(map("{:g}".format, self._episode_returns[-self._report_each :])),
+                    ),
+                    file=sys.stderr,
+                    flush=True,
+                )
             if self._evaluating_from is not None and self.episode >= self._evaluating_from + self._evaluate_for:
-                print("The mean {}-episode return after evaluation {:.2f} +-{:.2f}".format(
-                    self._evaluate_for, np.mean(self._episode_returns[-self._evaluate_for:]),
-                    np.std(self._episode_returns[-self._evaluate_for:])), flush=True)
+                print(
+                    "The mean {}-episode return after evaluation {:.2f} +-{:.2f}".format(
+                        self._evaluate_for,
+                        np.mean(self._episode_returns[-self._evaluate_for :]),
+                        np.std(self._episode_returns[-self._evaluate_for :]),
+                    ),
+                    flush=True,
+                )
                 self.close()
                 sys.exit(0)
 
@@ -102,8 +115,9 @@ class DiscretizationWrapper(gym.ObservationWrapper):
             for separator in separators:
                 self._first_tile_states *= 1 + len(separator)
                 self._rest_tiles_states *= 2 + len(separator)
-            self.observation_space = gym.spaces.MultiDiscrete([
-                self._first_tile_states + i * self._rest_tiles_states for i in range(tiles)])
+            self.observation_space = gym.spaces.MultiDiscrete(
+                [self._first_tile_states + i * self._rest_tiles_states for i in range(tiles)]
+            )
 
             self._separator_offsets = [0 if len(s) <= 1 else (s[1] - s[0]) / tiles for s in separators]
             self._separator_tops = [np.inf if len(s) <= 1 else s[-1] + (s[1] - s[0]) for s in separators]
@@ -133,36 +147,46 @@ class DiscretizationWrapper(gym.ObservationWrapper):
 
 class DiscreteCartPoleWrapper(DiscretizationWrapper):
     def __init__(self, env, bins=8):
-        super().__init__(env, [
-            np.linspace(-2.4, 2.4, num=bins + 1)[1:-1],  # cart position
-            np.linspace(-3, 3, num=bins + 1)[1:-1],      # cart velocity
-            np.linspace(-0.2, 0.2, num=bins + 1)[1:-1],  # pole angle
-            np.linspace(-2, 2, num=bins + 1)[1:-1],      # pole angle velocity
-        ])
+        super().__init__(
+            env,
+            [
+                np.linspace(-2.4, 2.4, num=bins + 1)[1:-1],  # cart position
+                np.linspace(-3, 3, num=bins + 1)[1:-1],  # cart velocity
+                np.linspace(-0.2, 0.2, num=bins + 1)[1:-1],  # pole angle
+                np.linspace(-2, 2, num=bins + 1)[1:-1],  # pole angle velocity
+            ],
+        )
 
 
 class DiscreteMountainCarWrapper(DiscretizationWrapper):
     def __init__(self, env, bins=None, tiles=None):
         if bins is None:
             bins = 24 if tiles is None or tiles <= 1 else 12 if tiles <= 3 else 8
-        super().__init__(env, [
-            np.linspace(-1.2, 0.6, num=bins + 1)[1:-1],    # car position
-            np.linspace(-0.07, 0.07, num=bins + 1)[1:-1],  # car velocity
-        ], tiles)
+        super().__init__(
+            env,
+            [
+                np.linspace(-1.2, 0.6, num=bins + 1)[1:-1],  # car position
+                np.linspace(-0.07, 0.07, num=bins + 1)[1:-1],  # car velocity
+            ],
+            tiles,
+        )
 
 
 class DiscreteLunarLanderWrapper(DiscretizationWrapper):
     def __init__(self, env):
-        super().__init__(env, [
-            np.linspace(-.4, .4, num=5 + 1)[1:-1],      # position x
-            np.linspace(-.075, 1.35, num=6 + 1)[1:-1],  # position y
-            np.linspace(-.5, .5, num=5 + 1)[1:-1],      # velocity x
-            np.linspace(-.8, .8, num=7 + 1)[1:-1],      # velocity y
-            np.linspace(-.2, .2, num=3 + 1)[1:-1],      # rotation
-            np.linspace(-.2, .2, num=5 + 1)[1:-1],      # ang velocity
-            [.5],                                       # left contact
-            [.5],                                       # right contact
-        ])
+        super().__init__(
+            env,
+            [
+                np.linspace(-0.4, 0.4, num=5 + 1)[1:-1],  # position x
+                np.linspace(-0.075, 1.35, num=6 + 1)[1:-1],  # position y
+                np.linspace(-0.5, 0.5, num=5 + 1)[1:-1],  # velocity x
+                np.linspace(-0.8, 0.8, num=7 + 1)[1:-1],  # velocity y
+                np.linspace(-0.2, 0.2, num=3 + 1)[1:-1],  # rotation
+                np.linspace(-0.2, 0.2, num=5 + 1)[1:-1],  # ang velocity
+                [0.5],  # left contact
+                [0.5],  # right contact
+            ],
+        )
 
         self._expert = gym.make("LunarLander-v2")
         gym.Env.reset(self._expert.unwrapped, seed=42)
@@ -195,6 +219,7 @@ gym.envs.register(
 # Utilities #
 #############
 
+
 # We use a custom implementation instead of `collections.deque`, which has
 # linear complexity of indexing (it is a two-way linked list). The following
 # implementation has similar runtime performance as a numpy array of objects,
@@ -203,6 +228,7 @@ gym.envs.register(
 # would provide minimal memory overhead, but it is not so flexible.
 class ReplayBuffer:
     """Simple replay buffer with possibly limited capacity."""
+
     def __init__(self, max_length=None):
         self._max_length = max_length
         self._data = []
@@ -263,8 +289,11 @@ def typed_torch_function(device, *types, via_np=False):
         if len(types) != len(args):
             while hasattr(wrapped, "__wrapped__"):
                 wrapped = wrapped.__wrapped__
-            raise AssertionError("The typed_torch_function decorator for {} expected {} arguments, but got {}".format(
-                wrapped, len(types), len(args)))
+            raise AssertionError(
+                "The typed_torch_function decorator for {} expected {} arguments, but got {}".format(
+                    wrapped, len(types), len(args)
+                )
+            )
 
     def structural_map(value):
         if isinstance(value, torch.Tensor):
@@ -283,9 +312,15 @@ def typed_torch_function(device, *types, via_np=False):
 
         def __call__(self, *args, **kwargs):
             check_typed_torch_function(self.__wrapped__, args)
-            return structural_map(self.__wrapped__(
-                *[torch.as_tensor(np.asarray(arg) if via_np else arg, dtype=typ, device=device)
-                  for arg, typ in zip(args, types)], **kwargs))
+            return structural_map(
+                self.__wrapped__(
+                    *[
+                        torch.as_tensor(np.asarray(arg) if via_np else arg, dtype=typ, device=device)
+                        for arg, typ in zip(args, types)
+                    ],
+                    **kwargs,
+                )
+            )
 
         def __get__(self, instance, cls):
             return TypedTorchFunctionWrapper(self.__wrapped__.__get__(instance, cls))
@@ -297,8 +332,18 @@ def torch_init_with_xavier_and_zeros(module):
     """Initialize weights of a PyTorch module with Xavier and zeros initializers."""
     import torch
 
-    if isinstance(module, (torch.nn.Linear, torch.nn.Conv1d, torch.nn.Conv2d, torch.nn.Conv3d,
-                           torch.nn.ConvTranspose1d, torch.nn.ConvTranspose2d, torch.nn.ConvTranspose3d)):
+    if isinstance(
+        module,
+        (
+            torch.nn.Linear,
+            torch.nn.Conv1d,
+            torch.nn.Conv2d,
+            torch.nn.Conv3d,
+            torch.nn.ConvTranspose1d,
+            torch.nn.ConvTranspose2d,
+            torch.nn.ConvTranspose3d,
+        ),
+    ):
         torch.nn.init.xavier_uniform_(module.weight)
         if module.bias is not None:
             torch.nn.init.zeros_(module.bias)
@@ -333,13 +378,22 @@ def raw_typed_tf_function(*types, dynamic_dims=1):
             args = [np.asarray(arg, dtype=dtype.as_numpy_dtype) for arg, dtype in zip(args, types)]
             if self._concrete_function is None:
                 self._concrete_function = tf.function(self.__wrapped__).get_concrete_function(
-                    *[tf.TensorSpec((None,) * dynamic + arg.shape[1:], dtype=tf.dtypes.as_dtype(arg.dtype))
-                      for arg, dynamic in zip(
-                          args, dynamic_dims if isinstance(dynamic_dims, list) else [dynamic_dims] * len(args))])
+                    *[
+                        tf.TensorSpec((None,) * dynamic + arg.shape[1:], dtype=tf.dtypes.as_dtype(arg.dtype))
+                        for arg, dynamic in zip(
+                            args, dynamic_dims if isinstance(dynamic_dims, list) else [dynamic_dims] * len(args)
+                        )
+                    ]
+                )
             ctx = tfe.context.context()
             inputs = [constant_op.convert_to_eager_tensor(arg, ctx) for arg in args]
-            results = tfe.execute.execute(self._concrete_function.name, len(self._concrete_function.outputs),
-                                         inputs + self._concrete_function.captured_inputs, {}, ctx)
+            results = tfe.execute.execute(
+                self._concrete_function.name,
+                len(self._concrete_function.outputs),
+                inputs + self._concrete_function.captured_inputs,
+                {},
+                ctx,
+            )
             results = [np.asarray(result) for result in results]
             return results[0] if len(self._concrete_function.outputs) == 1 else results
 

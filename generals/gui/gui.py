@@ -28,9 +28,7 @@ class GUI:
 
         self.properties = Properties(game, agent_data, mode)
         self.__renderer = Renderer(self.properties)
-        self.__event_handler = EventHandler.from_mode(
-            self.properties.mode, self.properties
-        )
+        self.__event_handler = EventHandler.from_mode(self.properties.mode, self.properties)
 
     def tick(self, fps: int | None = None) -> Command:
         command = self.__event_handler.handle_events()

@@ -1,17 +1,7 @@
-from generals.core.game import Action, Observation, Info
-from generals.envs.gymnasium_generals import GymnasiumGenerals
-from generals.envs.gymnasium_wrappers import NormalizedObservationWrapper
+from generals import GridFactory
 from generals.agents import Agent
-from collections.abc import Callable
-from typing import TypeAlias
-
-from .gymnasium_generals import GymnasiumGenerals
-from .pettingzoo_generals import PettingZooGenerals
-
-# Type aliases
-Reward: TypeAlias = float
-RewardFn: TypeAlias = Callable[[dict[str, Observation], Action, bool, Info], Reward]
-AgentID: TypeAlias = str
+from generals.envs.gymnasium_generals import GymnasiumGenerals, RewardFn
+from generals.envs.gymnasium_wrappers import NormalizedObservationWrapper
 
 """
 Here we can define environment initializion functions that
@@ -27,7 +17,7 @@ custom settings.
 
 def gym_generals_normalized_v0(
     grid_factory: GridFactory | None = None,
-    npc: Agent | None= None,
+    npc: Agent | None = None,
     render_mode: str | None = None,
     reward_fn: RewardFn | None = None,
     agent_id: str = "Agent",
@@ -37,7 +27,7 @@ def gym_generals_normalized_v0(
     Example of a Gymnasium environment initializer that creates
     an environment that returns normalized observations.
     """
-    env = GymnasiumGenerals(
+    _env = GymnasiumGenerals(
         grid_factory=grid_factory,
         npc=npc,
         render_mode=render_mode,
@@ -45,5 +35,5 @@ def gym_generals_normalized_v0(
         agent_color=agent_color,
         reward_fn=reward_fn,
     )
-    env = NormalizedObservationWrapper(env)
+    env = NormalizedObservationWrapper(_env)
     return env

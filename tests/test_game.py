@@ -396,7 +396,22 @@ def test_game_step():
     #############################################################################################################
     # red moves from (2, 1) UP (captures blue square), blue moves from (1, 2) DOWN, (doesnt capture red square) #
     #############################################################################################################
-    moves = {"red": (0, np.array([2, 1]), 0, 0), "blue": (0, np.array([1, 2]), 1, 0)}
+    red_move = {
+        "pass": 0,
+        "cell": np.array([2, 1]),
+        "direction": 0,
+        "split": 0,
+    }
+    blue_move = {
+        "pass": 0,
+        "cell": np.array([1, 2]),
+        "direction": 1,
+        "split": 0,
+    }
+    moves = {
+        "red": red_move,
+        "blue": blue_move,
+    }
     game.step(moves)
     reference_army = np.array(
         [
@@ -459,7 +474,22 @@ def test_game_step():
     ##################################################################################
     # Now red moves from (2, 1) DOWN (invalid move) and blue moves from (0, 0) RIGHT #
     ##################################################################################
-    moves = {"red": (0, np.array([2, 1]), 1, 0), "blue": (0, np.array([0, 0]), 3, 0)}
+    red_move = {
+        "pass": 0,
+        "cell": np.array([2, 1]),
+        "direction": 1,
+        "split": 0,
+    }
+    blue_move = {
+        "pass": 0,
+        "cell": np.array([0, 0]),
+        "direction": 3,
+        "split": 0,
+    }
+    moves = {
+        "red": red_move,
+        "blue": blue_move,
+    }
 
     with pytest.warns(UserWarning):  # we expect a warning
         game.step(moves)
@@ -526,7 +556,22 @@ def test_game_step():
     #####################################################################################
     # Red sends half army from (3, 3) LEFT and blue sends half army from (1, 3) LEFT    #
     #####################################################################################
-    moves = {"red": (0, np.array([3, 3]), 2, 1), "blue": (0, np.array([1, 3]), 2, 1)}
+    red_move = {
+        "pass": 0,
+        "cell": np.array([3, 3]),
+        "direction": 2,
+        "split": 1,
+    }
+    blue_move = {
+        "pass": 0,
+        "cell": np.array([1, 3]),
+        "direction": 2,
+        "split": 1,
+    }
+    moves = {
+        "red": red_move,
+        "blue": blue_move,
+    }
     game.step(moves)
     reference_army = np.array(
         [
@@ -589,7 +634,22 @@ def test_game_step():
     ##############################################################
     # Red moves army from (3, 2) UP and blue is passing the move #
     ##############################################################
-    moves = {"red": (0, np.array([3, 2]), 0, 0), "blue": (1, np.array([1, 3]), 2, 1)}
+    red_move = {
+        "pass": 0,
+        "cell": np.array([3, 2]),
+        "direction": 0,
+        "split": 0,
+    }
+    blue_move = {
+        "pass": 1,
+        "cell": np.array([1, 3]),
+        "direction": 2,
+        "split": 0,
+    }
+    moves = {
+        "red": red_move,
+        "blue": blue_move,
+    }
 
     game.step(moves)
     reference_army = np.array(
@@ -653,7 +713,22 @@ def test_game_step():
     #############################################################
     # Red moves from (2, 2) UP and blue moves from (1, 2) RIGHT #
     #############################################################
-    moves = {"red": (0, np.array([2, 2]), 0, 0), "blue": (0, np.array([1, 2]), 3, 0)}
+    red_move = {
+        "pass": 0,
+        "cell": np.array([2, 2]),
+        "direction": 0,
+        "split": 0,
+    }
+    blue_move = {
+        "pass": 0,
+        "cell": np.array([1, 2]),
+        "direction": 3,
+        "split": 0,
+    }
+    moves = {
+        "red": red_move,
+        "blue": blue_move,
+    }
 
     game.step(moves)
     reference_army = np.array(

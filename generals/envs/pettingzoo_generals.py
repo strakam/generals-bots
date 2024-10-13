@@ -1,9 +1,6 @@
 import functools
-
-import pettingzoo
-from gymnasium import spaces
 from copy import deepcopy
-from typing import Any, TypeAlias
+from typing import Any, Callable, TypeAlias
 
 import pettingzoo  # type: ignore
 from gymnasium import spaces
@@ -11,10 +8,9 @@ from gymnasium import spaces
 from generals.core.game import Action, Game, Info, Observation
 from generals.core.grid import GridFactory
 from generals.core.replay import Replay
+from generals.core.config import AgentID, Reward, RewardFn
 from generals.gui import GUI
 from generals.gui.properties import GuiMode
-from generals.envs.env import Reward, RewardFn, AgentID
-
 
 
 class PettingZooGenerals(pettingzoo.ParallelEnv):
@@ -39,10 +35,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         self.render_mode = render_mode
         self.grid_factory = grid_factory if grid_factory is not None else GridFactory()
 
-        if reward_fn is not None:
-            self.reward_fn = reward_fn
-        else:
-            self.reward_fn = PettingZooGenerals._default_reward
+        self.reward_fn = reward_fn if reward_fn is not None else self._default_reward
 
         self.agent_data = {agent_id: {"color": color} for agent_id, color in zip(agents, self.default_colors)}
         self.agents = agents
@@ -51,8 +44,6 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         assert len(self.possible_agents) == len(
             set(self.possible_agents)
         ), "Agent ids must be unique - you can pass custom ids to agent constructors."
-
-        self.reward_fn = self._default_reward
 
     @functools.lru_cache(maxsize=None)
     def observation_space(self, agent: AgentID) -> spaces.Space:
