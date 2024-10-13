@@ -20,5 +20,10 @@ def _register_gym_generals_envs():
         entry_point="generals.envs.gymnasium_generals:GymnasiumGenerals",
     )
 
+    register(
+        id="gym-generals-normalized-v0",
+        entry_point="generals.envs.initializers:gyms_generals_normalized_v0",
+    )
+
 
 _register_gym_generals_envs()

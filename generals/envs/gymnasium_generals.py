@@ -99,7 +99,7 @@ class GymnasiumGenerals(gym.Env):
         actions = {self.agent_id: action, self.npc.id: npc_action}
 
         observations, infos = self.game.step(actions)
-        # From observations, pick only stuff for the agent
+        # From observations of all agents, pick only those relevant for the main agent
         obs = observations[self.agent_id]
         info = infos[self.agent_id]
         reward = self.reward_fn(obs, action, self.game.is_done(), info)

@@ -4,8 +4,8 @@ from generals.envs.gymnasium_generals import GymnasiumGenerals, RewardFn
 from generals.envs.gymnasium_wrappers import NormalizedObservationWrapper
 
 """
-Here we can define environment initializion functions that
-can create interesting types of envrionments. In case of
+Here we can define environment initialization functions that
+can create interesting types of environments. In case of
 Gymnasium environments, please register these functions also
 in the generals/__init__.py, so they can be created via gym.make
 ----------------------------------------------------------
