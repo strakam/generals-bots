@@ -4,41 +4,37 @@ from typing import Any
 import gymnasium as gym
 import numpy as np
 from scipy.ndimage import maximum_filter  # type: ignore
-from typing_extensions import TypeAlias
 
 from .channels import Channels
-from .config import Direction
+from .config import Action, Direction, Info, Observation
 from .grid import Grid
-
-Observation: TypeAlias = dict[str, np.ndarray | dict[str, gym.Space]]
-Action: TypeAlias = tuple[bool, np.ndarray, int, bool]
-Info: TypeAlias = dict[str, Any]
-
 
 DIRECTIONS = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
 
 
 class Game:
     def __init__(self, grid: Grid, agents: list[str]):
+        # Agents
         self.agents = agents
-        map = grid.grid
-        self.grid_dims = (map.shape[0], map.shape[1])
-        self.time = 0
 
+        # Grid
+        _grid = grid.grid
+        self.channels = Channels(_grid, self.agents)
+        self.grid_dims = (_grid.shape[0], _grid.shape[1])
         self.general_positions = {
-            agent: np.argwhere(map == chr(ord("A") + i))[0] for i, agent in enumerate(self.agents)
+            agent: np.argwhere(_grid == chr(ord("A") + i))[0] for i, agent in enumerate(self.agents)
         }
 
-        self.channels = Channels(map, self.agents)
-
-        # Constants
+        # Time stuff
+        self.time = 0
         self.increment_rate = 50
+
+        # Limits
         self.max_army_value = 10_000
         self.max_land_value = np.prod(self.grid_dims)
         self.max_timestep = 100_000
-        ##########
-        # Spaces #
-        ##########
+
+        # Spaces
         grid_multi_binary = gym.spaces.MultiBinary(self.grid_dims)
         grid_discrete = np.ones(self.grid_dims, dtype=int) * self.max_army_value
         self.observation_space = gym.spaces.Dict(
@@ -65,13 +61,13 @@ class Game:
             }
         )
 
-        self.action_space = gym.spaces.Tuple(
-            (
-                gym.spaces.Discrete(2),  # Pass or Play
-                gym.spaces.MultiDiscrete(list(self.grid_dims)),  # Cell indices
-                gym.spaces.Discrete(4),  # Direction
-                gym.spaces.Discrete(2),  # Send half army or all
-            )
+        self.action_space = gym.spaces.Dict(
+            {
+                "pass": gym.spaces.Discrete(2),
+                "cell": gym.spaces.MultiDiscrete(list(self.grid_dims)),
+                "direction": gym.spaces.Discrete(4),
+                "split": gym.spaces.Discrete(2),
+            }
         )
 
     def action_mask(self, agent: str) -> np.ndarray:
@@ -80,10 +76,6 @@ class Game:
 
         Valid action is an action that originates from agent's cell with atleast 2 units
         and does not bump into a mountain or fall out of the grid.
-
-        Args:
-            agent: str
-
         Returns:
             np.ndarray: an NxNx4 array, where each channel is a boolean mask
             of valid actions (UP, DOWN, LEFT, RIGHT) for each cell in the grid.
@@ -120,12 +112,6 @@ class Game:
     def channel_to_indices(self, channel: np.ndarray) -> np.ndarray:
         """
         Returns a list of indices of cells with non-zero values from specified a channel.
-
-        Args:
-            channel: one channel of the game grid
-
-        Returns:
-            np.ndarray: list of indices of cells with non-zero values.
         """
         return np.argwhere(channel != 0)
 
@@ -138,16 +124,20 @@ class Game:
     def step(self, actions: dict[str, Action]) -> tuple[dict[str, Observation], dict[str, Any]]:
         """
         Perform one step of the game
-
-        Args:
-            actions: dictionary of agent name to action
         """
         done_before_actions = self.is_done()
         # Process validity of moves, whether agents want to pass the turn,
         # and calculate intended amount of army to move (all available or split)
         moves = {}
         for agent, move in actions.items():
-            pass_turn, (i, j), direction, split_army = move
+            pass_turn = move["pass"]
+            if isinstance(move["cell"], np.ndarray):
+                i = move["cell"][0]
+                j = move["cell"][1]
+            else:
+                raise ValueError('Action key "cell" should be a numpy array.')
+            direction = move["direction"]
+            split_army = move["split"]
             # Skip if agent wants to pass the turn
             if pass_turn == 1:
                 continue
@@ -270,8 +260,6 @@ class Game:
     def agent_observation(self, agent: str) -> Observation:
         """
         Returns an observation for a given agent.
-        Args:
-            agent: str
         """
         info = self.get_infos()
         opponent = self.agents[0] if agent == self.agents[1] else self.agents[1]

@@ -1,15 +1,15 @@
 import numpy as np
 
-from generals.core.config import Direction
+from generals.core.config import Action, Direction, Observation
 
 from .agent import Agent
 
 
 class ExpanderAgent(Agent):
-    def __init__(self, id="Expander", color=(0, 130, 255)):
+    def __init__(self, id: str = "Expander", color: tuple[int, int, int] = (0, 130, 255)):
         super().__init__(id, color)
 
-    def act(self, observation):
+    def act(self, observation: Observation) -> Action:
         """
         Heuristically selects a valid (expanding) action.
         Prioritizes capturing opponent and then neutral cells.
@@ -19,7 +19,12 @@ class ExpanderAgent(Agent):
 
         valid_actions = np.argwhere(mask == 1)
         if len(valid_actions) == 0:  # No valid actions
-            return 1, np.array([0, 0]), 0, 0
+            return {
+                "pass": 1,
+                "cell": np.array([0, 0]),
+                "direction": 0,
+                "split": 0,
+            }
 
         army = observation["army"]
         opponent = observation["opponent_cells"]
@@ -49,12 +54,12 @@ class ExpanderAgent(Agent):
             action_index = np.random.choice(len(valid_actions))
             action = valid_actions[action_index]
 
-        pass_turn = 0  # 0 for not passing the turn, 1 for passing the turn
-        split_army = 0  # 0 for not splitting the army, 1 for splitting the army
-        cell = np.array([action[0], action[1]])
-        direction = action[2]
-
-        action = (pass_turn, cell, direction, split_army)
+        action = {
+            "pass": 0,
+            "cell": action[:2],
+            "direction": action[2],
+            "split": 0,
+        }
         return action
 
     def reset(self):

@@ -1,13 +1,23 @@
 from enum import Enum, IntEnum, StrEnum
 from importlib.resources import files
-from typing import Literal
+from typing import Any, Callable, Literal, TypeAlias
+
+import gymnasium as gym
+import numpy as np
+
+Observation: TypeAlias = dict[str, np.ndarray | dict[str, gym.Space]]
+Action: TypeAlias = dict[str, int | np.ndarray]
+Info: TypeAlias = dict[str, Any]
+
+Reward: TypeAlias = float
+RewardFn: TypeAlias = Callable[[Observation, Action, bool, Info], Reward]
+AgentID: TypeAlias = str
 
 #################
 # Game Literals #
 #################
 PASSABLE: Literal["."] = "."
 MOUNTAIN: Literal["#"] = "#"
-CITY: Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9] = 0  # CITY can be any digit 0-9
 
 
 class Dimension(IntEnum):

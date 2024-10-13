@@ -1,21 +1,16 @@
 import functools
-from collections.abc import Callable
 from copy import deepcopy
-from typing import Any, TypeAlias
+from typing import Any
 
 import pettingzoo  # type: ignore
 from gymnasium import spaces
 
+from generals.core.config import AgentID, Reward, RewardFn
 from generals.core.game import Action, Game, Info, Observation
 from generals.core.grid import GridFactory
 from generals.core.replay import Replay
 from generals.gui import GUI
 from generals.gui.properties import GuiMode
-
-# Type aliases
-Reward: TypeAlias = float
-RewardFn: TypeAlias = Callable[[Observation, Action, bool, Info], Reward]
-AgentID: TypeAlias = str
 
 
 class PettingZooGenerals(pettingzoo.ParallelEnv):
@@ -32,18 +27,16 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
 
     def __init__(
         self,
-        grid_factory: GridFactory,
         agents: list[str],
+        grid_factory: GridFactory | None = None,
         reward_fn: RewardFn | None = None,
         render_mode=None,
     ):
         self.render_mode = render_mode
-        self.grid_factory = grid_factory
-        if reward_fn is not None:
-            self.reward_fn = reward_fn
-        else:
-            self.reward_fn = PettingZooGenerals._default_reward
+        self.grid_factory = grid_factory if grid_factory is not None else GridFactory()
+        self.reward_fn = reward_fn if reward_fn is not None else self._default_reward
 
+        # Agents
         self.agent_data = {agent_id: {"color": color} for agent_id, color in zip(agents, self.default_colors)}
         self.agents = agents
         self.possible_agents = agents
@@ -51,8 +44,6 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         assert len(self.possible_agents) == len(
             set(self.possible_agents)
         ), "Agent ids must be unique - you can pass custom ids to agent constructors."
-
-        self.reward_fn = self._default_reward
 
     @functools.lru_cache(maxsize=None)
     def observation_space(self, agent: AgentID) -> spaces.Space:
@@ -64,10 +55,9 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         assert agent in self.possible_agents, f"Agent {agent} not in possible agents"
         return self.game.action_space
 
-    def render(self, fps: int | None = None) -> None:
-        fps = self.metadata["render_fps"] if fps is None else fps
+    def render(self):
         if self.render_mode == "human":
-            _ = self.gui.tick(fps=fps)
+            _ = self.gui.tick(fps=self.metadata["render_fps"])
 
     def reset(
         self, seed: int | None = None, options: dict | None = None
@@ -109,6 +99,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         dict[AgentID, Info],
     ]:
         observations, infos = self.game.step(actions)
+        # You probably want to set your truncation based on self.game.time
         truncated = {agent: False for agent in self.agents}  # no truncation
         terminated = {agent: True if self.game.is_done() else False for agent in self.agents}
         rewards = {

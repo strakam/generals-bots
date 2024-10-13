@@ -1,6 +1,5 @@
 .PHONY: test build clean
 
-
 # Run PettingZoo example
 pz:
 	python3 -m examples.pettingzoo_example
@@ -27,6 +26,9 @@ test_performance:
 
 test:
 	pytest
+
+pc:
+	pre-commit run --all-files
 
 build:
 	python setup.py sdist bdist_wheel
