@@ -1,14 +1,14 @@
 import functools
 from copy import deepcopy
-from typing import Any, Callable, TypeAlias
+from typing import Any
 
 import pettingzoo  # type: ignore
 from gymnasium import spaces
 
+from generals.core.config import AgentID, Reward, RewardFn
 from generals.core.game import Action, Game, Info, Observation
 from generals.core.grid import GridFactory
 from generals.core.replay import Replay
-from generals.core.config import AgentID, Reward, RewardFn
 from generals.gui import GUI
 from generals.gui.properties import GuiMode
 

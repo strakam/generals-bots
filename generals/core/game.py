@@ -6,9 +6,8 @@ import numpy as np
 from scipy.ndimage import maximum_filter  # type: ignore
 
 from .channels import Channels
-from .config import Direction, Observation, Action, Info
+from .config import Action, Direction, Info, Observation
 from .grid import Grid
-
 
 DIRECTIONS = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
 
@@ -19,13 +18,12 @@ class Game:
         self.agents = agents
 
         # Grid
-        grid = grid.grid
-        self.grid_dims = (grid.shape[0], grid.shape[1])
+        _grid = grid.grid
+        self.channels = Channels(_grid, self.agents)
+        self.grid_dims = (_grid.shape[0], _grid.shape[1])
         self.general_positions = {
-            agent: np.argwhere(grid == chr(ord("A") + i))[0]
-            for i, agent in enumerate(self.agents)
+            agent: np.argwhere(_grid == chr(ord("A") + i))[0] for i, agent in enumerate(self.agents)
         }
-        self.channels = Channels(grid, self.agents)
 
         # Time stuff
         self.time = 0
@@ -88,9 +86,7 @@ class Game:
         ownership_channel = self.channels.ownership[agent]
         more_than_1_army = (self.channels.army > 1) * ownership_channel
         owned_cells_indices = self.channel_to_indices(more_than_1_army)
-        valid_action_mask = np.zeros(
-            (self.grid_dims[0], self.grid_dims[1], 4), dtype=bool
-        )
+        valid_action_mask = np.zeros((self.grid_dims[0], self.grid_dims[1], 4), dtype=bool)
 
         if self.is_done():
             return valid_action_mask
@@ -102,21 +98,15 @@ class Game:
             in_first_boundary = np.all(destinations >= 0, axis=1)
             in_height_boundary = destinations[:, 0] < self.grid_dims[0]
             in_width_boundary = destinations[:, 1] < self.grid_dims[1]
-            destinations = destinations[
-                in_first_boundary & in_height_boundary & in_width_boundary
-            ]
+            destinations = destinations[in_first_boundary & in_height_boundary & in_width_boundary]
 
             # check if destination is road
-            passable_cell_indices = (
-                self.channels.passable[destinations[:, 0], destinations[:, 1]] == 1
-            )
+            passable_cell_indices = self.channels.passable[destinations[:, 0], destinations[:, 1]] == 1
             action_destinations = destinations[passable_cell_indices]
 
             # get valid action mask for a given direction
             valid_source_indices = action_destinations - direction.value
-            valid_action_mask[
-                valid_source_indices[:, 0], valid_source_indices[:, 1], channel_index
-            ] = 1.0
+            valid_action_mask[valid_source_indices[:, 0], valid_source_indices[:, 1], channel_index] = 1.0
         return valid_action_mask
 
     def channel_to_indices(self, channel: np.ndarray) -> np.ndarray:
@@ -131,9 +121,7 @@ class Game:
         """
         return maximum_filter(ownership_channel, size=3)
 
-    def step(
-        self, actions: dict[str, Action]
-    ) -> tuple[dict[str, Observation], dict[str, Any]]:
+    def step(self, actions: dict[str, Action]) -> tuple[dict[str, Observation], dict[str, Any]]:
         """
         Perform one step of the game
         """
@@ -143,7 +131,11 @@ class Game:
         moves = {}
         for agent, move in actions.items():
             pass_turn = move["pass"]
-            i, j = move["cell"]
+            if isinstance(move["cell"], np.ndarray):
+                i = move["cell"][0]
+                j = move["cell"][1]
+            else:
+                raise ValueError('Action key "cell" should be a numpy array.')
             direction = move["direction"]
             split_army = move["split"]
             # Skip if agent wants to pass the turn
@@ -185,10 +177,7 @@ class Game:
             # Figure out the target square owner and army size
             target_square_army = self.channels.army[di, dj]
             target_square_owner_idx = np.argmax(
-                [
-                    self.channels.ownership[agent][di, dj]
-                    for agent in ["neutral"] + self.agents
-                ]
+                [self.channels.ownership[agent][di, dj] for agent in ["neutral"] + self.agents]
             )
             target_square_owner = (["neutral"] + self.agents)[target_square_owner_idx]
             if target_square_owner == agent:
@@ -197,9 +186,7 @@ class Game:
             else:
                 # Calculate resulting army, winner and update channels
                 remaining_army = np.abs(target_square_army - army_to_move)
-                square_winner = (
-                    agent if target_square_army < army_to_move else target_square_owner
-                )
+                square_winner = agent if target_square_army < army_to_move else target_square_owner
                 self.channels.army[di, dj] = remaining_army
                 self.channels.army[si, sj] = army_to_stay
                 self.channels.ownership[square_winner][di, dj] = 1
@@ -211,9 +198,7 @@ class Game:
 
         if self.is_done():
             # Give all cells of loser to winner
-            winner = (
-                self.agents[0] if self.agent_won(self.agents[0]) else self.agents[1]
-            )
+            winner = self.agents[0] if self.agent_won(self.agents[0]) else self.agents[1]
             loser = self.agents[1] if winner == self.agents[0] else self.agents[0]
             self.channels.ownership[winner] += self.channels.ownership[loser]
             self.channels.ownership[loser] = self.channels.passable * 0
@@ -263,9 +248,7 @@ class Game:
         """
         players_stats = {}
         for agent in self.agents:
-            army_size = np.sum(
-                self.channels.army * self.channels.ownership[agent]
-            ).astype(int)
+            army_size = np.sum(self.channels.army * self.channels.ownership[agent]).astype(int)
             land_size = np.sum(self.channels.ownership[agent]).astype(int)
             players_stats[agent] = {
                 "army": army_size,
@@ -309,6 +292,5 @@ class Game:
         Returns True if the agent won the game, False otherwise.
         """
         return all(
-            self.channels.ownership[agent][general[0], general[1]] == 1
-            for general in self.general_positions.values()
+            self.channels.ownership[agent][general[0], general[1]] == 1 for general in self.general_positions.values()
         )

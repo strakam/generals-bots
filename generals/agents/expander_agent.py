@@ -1,14 +1,12 @@
 import numpy as np
 
-from generals.core.config import Direction, Observation, Action
+from generals.core.config import Action, Direction, Observation
 
 from .agent import Agent
 
 
 class ExpanderAgent(Agent):
-    def __init__(
-        self, id: str = "Expander", color: tuple[int, int, int] = (0, 130, 255)
-    ):
+    def __init__(self, id: str = "Expander", color: tuple[int, int, int] = (0, 130, 255)):
         super().__init__(id, color)
 
     def act(self, observation: Observation) -> Action:
@@ -38,9 +36,7 @@ class ExpanderAgent(Agent):
 
         directions = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
         for i, action in enumerate(valid_actions):
-            di, dj = (
-                action[:-1] + directions[action[-1]].value
-            )  # Destination cell indices
+            di, dj = action[:-1] + directions[action[-1]].value  # Destination cell indices
             if army[action[0], action[1]] <= army[di, dj] + 1:  # Can't capture
                 continue
             elif opponent[di, dj]:

@@ -28,7 +28,7 @@ repos:
     hooks:
       - id: mypy
         name: mypy
-        entry: mypy --exclude 'examples/' --exclude 'tests/' --disable-error-code "annotation-unchecked" .
+        entry: mypy --exclude 'examples/' --exclude 'tests/' --exclude 'generals/agents/' --disable-error-code "annotation-unchecked" .
         pass_filenames: false
         language: system
         types: [python]

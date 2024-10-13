@@ -16,19 +16,21 @@ class Channels:
     ownership_neutral - ownership mask for neutral cells that are passable (1 if cell is neutral, 0 otherwise)
     """
 
-    def __init__(self, map: np.ndarray, _agents: list[str]):
-        self._army: np.ndarray = np.where(np.isin(map, valid_generals), 1, 0).astype(int)
-        self._general: np.ndarray = np.where(np.isin(map, valid_generals), 1, 0).astype(bool)
-        self._mountain: np.ndarray = np.where(map == MOUNTAIN, 1, 0).astype(bool)
-        self._city: np.ndarray = np.where(np.char.isdigit(map), 1, 0).astype(bool)
-        self._passable: np.ndarray = (map != MOUNTAIN).astype(bool)
+    def __init__(self, grid: np.ndarray, _agents: list[str]):
+        self._army: np.ndarray = np.where(np.isin(grid, valid_generals), 1, 0).astype(int)
+        self._general: np.ndarray = np.where(np.isin(grid, valid_generals), 1, 0).astype(bool)
+        self._mountain: np.ndarray = np.where(grid == MOUNTAIN, 1, 0).astype(bool)
+        self._city: np.ndarray = np.where(np.char.isdigit(grid), 1, 0).astype(bool)
+        self._passable: np.ndarray = (grid != MOUNTAIN).astype(bool)
 
-        self._ownership: dict[str, np.ndarray] = {"neutral": ((map == PASSABLE) | (np.char.isdigit(map))).astype(bool)}
+        self._ownership: dict[str, np.ndarray] = {
+            "neutral": ((grid == PASSABLE) | (np.char.isdigit(grid))).astype(bool)
+        }
         for i, agent in enumerate(_agents):
-            self._ownership[agent] = np.where(map == chr(ord("A") + i), 1, 0).astype(bool)
+            self._ownership[agent] = np.where(grid == chr(ord("A") + i), 1, 0).astype(bool)
 
         # City costs are 40 + digit in the cell
-        city_costs = np.where(np.char.isdigit(map), map, "0").astype(int)
+        city_costs = np.where(np.char.isdigit(grid), grid, "0").astype(int)
         self.army += 40 * self.city + city_costs
 
     @property

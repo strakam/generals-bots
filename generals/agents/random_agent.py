@@ -1,7 +1,8 @@
 import numpy as np
 
-from .agent import Agent
 from generals.core.game import Action, Observation
+
+from .agent import Agent
 
 
 class RandomAgent(Agent):
