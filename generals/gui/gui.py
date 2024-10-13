@@ -1,13 +1,15 @@
-import pygame
 from typing import Any
 
+import pygame
+
 from generals.core.game import Game
-from .properties import Properties, GuiMode
+
 from .event_handler import (
+    Command,
     EventHandler,
     ReplayCommand,
-    Command,
 )
+from .properties import GuiMode, Properties
 from .rendering import Renderer
 
 

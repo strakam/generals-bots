@@ -4,16 +4,18 @@ from .config import MOUNTAIN, PASSABLE
 
 valid_generals = ["A", "B"]  # Generals are represented by A and B
 
+
 class Channels:
     """
-        army - army size in each cell
-        general - general mask (1 if general is in cell, 0 otherwise)
-        mountain - mountain mask (1 if cell is mountain, 0 otherwise)
-        city - city mask (1 if cell is city, 0 otherwise)
-        passable - passable mask (1 if cell is passable, 0 otherwise)
-        ownership_i - ownership mask for player i (1 if player i owns cell, 0 otherwise)
-        ownership_neutral - ownership mask for neutral cells that are passable (1 if cell is neutral, 0 otherwise)
+    army - army size in each cell
+    general - general mask (1 if general is in cell, 0 otherwise)
+    mountain - mountain mask (1 if cell is mountain, 0 otherwise)
+    city - city mask (1 if cell is city, 0 otherwise)
+    passable - passable mask (1 if cell is passable, 0 otherwise)
+    ownership_i - ownership mask for player i (1 if player i owns cell, 0 otherwise)
+    ownership_neutral - ownership mask for neutral cells that are passable (1 if cell is neutral, 0 otherwise)
     """
+
     def __init__(self, map: np.ndarray, _agents: list[str]):
         self._army: np.ndarray = np.where(np.isin(map, valid_generals), 1, 0).astype(int)
         self._general: np.ndarray = np.where(np.isin(map, valid_generals), 1, 0).astype(bool)
@@ -21,9 +23,7 @@ class Channels:
         self._city: np.ndarray = np.where(np.char.isdigit(map), 1, 0).astype(bool)
         self._passable: np.ndarray = (map != MOUNTAIN).astype(bool)
 
-        self._ownership: dict[str, np.ndarray] = {
-            "neutral": ((map == PASSABLE) | (np.char.isdigit(map))).astype(bool)
-        }
+        self._ownership: dict[str, np.ndarray] = {"neutral": ((map == PASSABLE) | (np.char.isdigit(map))).astype(bool)}
         for i, agent in enumerate(_agents):
             self._ownership[agent] = np.where(map == chr(ord("A") + i), 1, 0).astype(bool)
 

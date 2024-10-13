@@ -1,6 +1,6 @@
-from .random_agent import RandomAgent
-from .expander_agent import ExpanderAgent
 from .agent import Agent
+from .expander_agent import ExpanderAgent
+from .random_agent import RandomAgent
 
 
 class AgentFactory:

@@ -4,8 +4,8 @@ from typing import Any
 
 from pygame.time import Clock
 
-from generals.core.game import Game
 from generals.core.config import Dimension
+from generals.core.game import Game
 
 
 class GuiMode(Enum):
@@ -19,7 +19,7 @@ class Properties:
     __game: Game
     __agent_data: dict[str, dict[str, Any]]
     __mode: GuiMode
-    __game_speed: int = 1
+    __game_speed: float = 1.0
     __clock: Clock = Clock()
     __font_size = 18
 
@@ -27,16 +27,12 @@ class Properties:
         self.__grid_height: int = self.__game.grid_dims[0]
         self.__grid_width: int = self.__game.grid_dims[1]
         self.__display_grid_width: int = Dimension.SQUARE_SIZE.value * self.grid_width
-        self.__display_grid_height: int = (
-            Dimension.SQUARE_SIZE.value * self.grid_height
-        )
+        self.__display_grid_height: int = Dimension.SQUARE_SIZE.value * self.grid_height
         self.__right_panel_width: int = 4 * Dimension.GUI_CELL_WIDTH.value
 
         self.__paused: bool = False
 
-        self.__agent_fov: dict[str, bool] = {
-            name: True for name in self.agent_data.keys()
-        }
+        self.__agent_fov: dict[str, bool] = {name: True for name in self.agent_data.keys()}
 
     @property
     def game(self):

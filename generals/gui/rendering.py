@@ -1,10 +1,10 @@
-import pygame
-import numpy as np
-
-from generals.gui.properties import Properties, GuiMode
-from generals.core.config import Dimension, Path
-
 from typing import TypeAlias
+
+import numpy as np
+import pygame
+
+from generals.core.config import Dimension, Path
+from generals.gui.properties import GuiMode, Properties
 
 Color: TypeAlias = tuple[int, int, int]
 FOG_OF_WAR: Color = (70, 73, 76)
@@ -48,9 +48,7 @@ class Renderer:
         height = Dimension.GUI_CELL_HEIGHT.value
 
         # Main window
-        self.screen = pygame.display.set_mode(
-            (window_width, window_height), pygame.HWSURFACE | pygame.DOUBLEBUF
-        )
+        self.screen = pygame.display.set_mode((window_width, window_height), pygame.HWSURFACE | pygame.DOUBLEBUF)
         # Scoreboard
         self.right_panel = pygame.Surface((self.right_panel_width, window_height))
         self.score_cols = {}
@@ -65,25 +63,14 @@ class Renderer:
             "speed": pygame.Surface((self.right_panel_width / 2, height)),
         }
         # Game area and tiles
-        self.game_area = pygame.Surface(
-            (self.display_grid_width, self.display_grid_height)
-        )
+        self.game_area = pygame.Surface((self.display_grid_width, self.display_grid_height))
         self.tiles = [
-            [
-                pygame.Surface(
-                    (Dimension.SQUARE_SIZE.value, Dimension.SQUARE_SIZE.value)
-                )
-                for _ in range(self.grid_width)
-            ]
+            [pygame.Surface((Dimension.SQUARE_SIZE.value, Dimension.SQUARE_SIZE.value)) for _ in range(self.grid_width)]
             for _ in range(self.grid_height)
         ]
 
-        self._mountain_img = pygame.image.load(
-            str(Path.MOUNTAIN_PATH), "png"
-        ).convert_alpha()
-        self._general_img = pygame.image.load(
-            str(Path.GENERAL_PATH), "png"
-        ).convert_alpha()
+        self._mountain_img = pygame.image.load(str(Path.MOUNTAIN_PATH), "png").convert_alpha()
+        self._general_img = pygame.image.load(str(Path.GENERAL_PATH), "png").convert_alpha()
         self._city_img = pygame.image.load(Path.CITY_PATH, "png").convert_alpha()
 
         self._font = pygame.font.Font(Path.FONT_PATH, self.properties.font_size)
@@ -113,10 +100,10 @@ class Renderer:
         """
         center = (cell.get_width() // 2, cell.get_height() // 2)
 
-        text = self._font.render(text, True, fg_color)
+        text_surface = self._font.render(text, True, fg_color)
         if bg_color:
             cell.fill(bg_color)
-        cell.blit(text, text.get_rect(center=center))
+        cell.blit(text_surface, text_surface.get_rect(center=center))
 
     def render_stats(self):
         """
@@ -177,9 +164,7 @@ class Renderer:
             )
             pygame.draw.rect(self.info_panel[key], BLACK, rect_dim, 1)
 
-            self.right_panel.blit(
-                self.info_panel[key], (i * 2 * gui_cell_width, 3 * gui_cell_height)
-            )
+            self.right_panel.blit(self.info_panel[key], (i * 2 * gui_cell_width, 3 * gui_cell_height))
         # Render right_panel on the screen
         self.screen.blit(self.right_panel, (self.display_grid_width, 0))
 
@@ -228,9 +213,7 @@ class Renderer:
 
         # Draw background of visible neutral cities
         visible_cities = np.logical_and(self.game.channels.city, visible_map)
-        visible_cities_neutral = np.logical_and(
-            visible_cities, self.game.channels.ownership_neutral
-        )
+        visible_cities_neutral = np.logical_and(visible_cities, self.game.channels.ownership_neutral)
         self.draw_channel(visible_cities_neutral, NEUTRAL_CASTLE)
 
         # Draw invisible cities as mountains

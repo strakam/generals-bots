@@ -1,12 +1,12 @@
 import functools
 from collections.abc import Callable
-from typing import TypeAlias
-
-import pettingzoo
-from gymnasium import spaces
 from copy import deepcopy
+from typing import Any, TypeAlias
 
-from generals.core.game import Game, Action, Observation, Info
+import pettingzoo  # type: ignore
+from gymnasium import spaces
+
+from generals.core.game import Action, Game, Info, Observation
 from generals.core.grid import GridFactory
 from generals.core.replay import Replay
 from generals.gui import GUI
@@ -14,12 +14,12 @@ from generals.gui.properties import GuiMode
 
 # Type aliases
 Reward: TypeAlias = float
-RewardFn: TypeAlias = Callable[[dict[str, Observation], Action, bool, Info], Reward]
+RewardFn: TypeAlias = Callable[[Observation, Action, bool, Info], Reward]
 AgentID: TypeAlias = str
 
 
 class PettingZooGenerals(pettingzoo.ParallelEnv):
-    metadata = {
+    metadata: dict[str, Any] = {
         "render_modes": ["human"],
         "render_fps": 6,
     }
@@ -34,7 +34,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         self,
         grid_factory: GridFactory,
         agents: list[str],
-        reward_fn: RewardFn = None,
+        reward_fn: RewardFn | None = None,
         render_mode=None,
     ):
         self.render_mode = render_mode
@@ -44,10 +44,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         else:
             self.reward_fn = PettingZooGenerals._default_reward
 
-        self.agent_data = {
-            agent_id: {"color": color}
-            for agent_id, color in zip(agents, self.default_colors)
-        }
+        self.agent_data = {agent_id: {"color": color} for agent_id, color in zip(agents, self.default_colors)}
         self.agents = agents
         self.possible_agents = agents
 
@@ -67,7 +64,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         assert agent in self.possible_agents, f"Agent {agent} not in possible agents"
         return self.game.action_space
 
-    def render(self, fps: int = None) -> None:
+    def render(self, fps: int | None = None) -> None:
         fps = self.metadata["render_fps"] if fps is None else fps
         if self.render_mode == "human":
             _ = self.gui.tick(fps=fps)
@@ -99,7 +96,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
             del self.replay
 
         observations = self.game.get_all_observations()
-        infos = {agent: {} for agent in self.agents}
+        infos: dict[str, Any] = {agent: {} for agent in self.agents}
         return observations, infos
 
     def step(
@@ -113,9 +110,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
     ]:
         observations, infos = self.game.step(actions)
         truncated = {agent: False for agent in self.agents}  # no truncation
-        terminated = {
-            agent: True if self.game.is_done() else False for agent in self.agents
-        }
+        terminated = {agent: True if self.game.is_done() else False for agent in self.agents}
         rewards = {
             agent: self.reward_fn(
                 observations[agent],
@@ -139,7 +134,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
 
     @staticmethod
     def _default_reward(
-        observation: dict[str, Observation],
+        observation: Observation,
         action: Action,
         done: bool,
         info: Info,

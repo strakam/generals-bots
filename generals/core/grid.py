@@ -1,5 +1,6 @@
 import numpy as np
-from .config import PASSABLE, MOUNTAIN
+
+from .config import MOUNTAIN, PASSABLE
 
 
 class Grid:
@@ -29,9 +30,7 @@ class Grid:
         first_general = np.argwhere(np.isin(grid, ["A"]))
         second_general = np.argwhere(np.isin(grid, ["B"]))
         if len(first_general) != 1 or len(second_general) != 1:
-            raise ValueError(
-                "Exactly one 'A' and one 'B' should be present in the grid."
-            )
+            raise ValueError("Exactly one 'A' and one 'B' should be present in the grid.")
 
         self._grid = grid
 
@@ -52,13 +51,7 @@ class Grid:
 
         def dfs(grid, visited, square):
             i, j = square
-            if (
-                i < 0
-                or i >= grid.shape[0]
-                or j < 0
-                or j >= grid.shape[1]
-                or visited[i, j]
-            ):
+            if i < 0 or i >= grid.shape[0] or j < 0 or j >= grid.shape[1] or visited[i, j]:
                 return
             if grid[i, j] == MOUNTAIN:
                 return
@@ -83,8 +76,8 @@ class GridFactory:
         grid_dims: tuple[int, int] = (10, 10),
         mountain_density: float = 0.2,
         city_density: float = 0.05,
-        general_positions: list[tuple[int, int]] = None,
-        seed: int = None,
+        general_positions: list[tuple[int, int]] | None = None,
+        seed: int | None = None,
     ):
         self.grid_height = grid_dims[0]
         self.grid_width = grid_dims[1]
@@ -98,11 +91,11 @@ class GridFactory:
 
     def grid_from_generator(
         self,
-        grid_dims: tuple[int, int] = None,
-        mountain_density: float = None,
-        city_density: float = None,
-        general_positions: list[tuple[int, int]] = None,
-        seed: int = None,
+        grid_dims: tuple[int, int] | None = None,
+        mountain_density: float | None = None,
+        city_density: float | None = None,
+        general_positions: list[tuple[int, int]] | None = None,
+        seed: int | None = None,
     ) -> Grid:
         if grid_dims is None:
             grid_dims = (self.grid_height, self.grid_width)
@@ -147,7 +140,7 @@ class GridFactory:
         try:
             return Grid(map_string)
         except ValueError:
-            seed += 1 # Increase seed to generate a different map
+            seed += 1  # Increase seed to generate a different map
             return self.grid_from_generator(
                 grid_dims=grid_dims,
                 mountain_density=mountain_density,
