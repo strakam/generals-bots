@@ -9,7 +9,6 @@ def test_gym_runs():
 
     env = gym.make(
         "gym-generals-v0",
-        agent_id="tester",
         npc=npc,
     )
     env_checker.check_env(env.unwrapped)

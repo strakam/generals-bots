@@ -1,18 +1,18 @@
-from generals.agents import AgentFactory
+from generals.agents import RandomAgent, ExpanderAgent
 from generals.envs import PettingZooGenerals
 
 # Initialize agents
-random = AgentFactory.make_agent("random")
-expander = AgentFactory.make_agent("expander")
+random = RandomAgent()
+expander = ExpanderAgent()
 
+# Store agents in a dictionary
 agents = {
     random.id: random,
     expander.id: expander,
 }
-agent_ids = list(agents.keys()) # Environment calls agents by name
 
 # Create environment
-env = PettingZooGenerals(agents=agent_ids, render_mode="human")
+env = PettingZooGenerals(agents=agents, render_mode="human")
 observations, info = env.reset()
 
 done = False

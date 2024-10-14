@@ -5,6 +5,7 @@ from typing import Any, Callable, Literal, TypeAlias
 import gymnasium as gym
 import numpy as np
 
+# Type aliases
 Observation: TypeAlias = dict[str, np.ndarray | dict[str, gym.Space]]
 Action: TypeAlias = dict[str, int | np.ndarray]
 Info: TypeAlias = dict[str, Any]
@@ -13,9 +14,7 @@ Reward: TypeAlias = float
 RewardFn: TypeAlias = Callable[[Observation, Action, bool, Info], Reward]
 AgentID: TypeAlias = str
 
-#################
-# Game Literals #
-#################
+# Game Literals
 PASSABLE: Literal["."] = "."
 MOUNTAIN: Literal["#"] = "#"
 
