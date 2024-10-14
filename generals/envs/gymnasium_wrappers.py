@@ -4,7 +4,7 @@ import numpy as np
 
 class NormalizedObservationWrapper(gym.ObservationWrapper):
     def __init__(self, env):
-        super(NormalizedObservationWrapper, self).__init__(env)
+        super().__init__(env)
         grid_multi_binary = gym.spaces.MultiBinary(self.game.grid_dims)
         unit_box = gym.spaces.Box(low=0, high=1, dtype=np.float32)
         self.observation_space = gym.spaces.Dict(
@@ -56,7 +56,7 @@ class NormalizedObservationWrapper(gym.ObservationWrapper):
 
 class RemoveActionMaskWrapper(gym.ObservationWrapper):
     def __init__(self, env):
-        super(RemoveActionMaskWrapper, self).__init__(env)
+        super().__init__(env)
         grid_multi_binary = gym.spaces.MultiBinary(self.game.grid_dims)
         unit_box = gym.spaces.Box(low=0, high=1, dtype=np.float32)
         self.observation_space = gym.spaces.Dict(
@@ -85,7 +85,7 @@ class RemoveActionMaskWrapper(gym.ObservationWrapper):
 
 class ObservationAsImageWrapper(gym.ObservationWrapper):
     def __init__(self, env):
-        super(ObservationAsImageWrapper, self).__init__(env)
+        super().__init__(env)
         self.observation_space = gym.spaces.Box(low=0, high=1, shape=self.game.grid_dims + (14,), dtype=np.float32)
 
     def observation(self, observation):

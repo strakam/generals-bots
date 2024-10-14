@@ -9,7 +9,7 @@ agents = {
     random.id: random,
     expander.id: expander,
 }
-agent_ids = list(agents.keys()) # Environment calls agents by name
+agent_ids = list(agents.keys())  # Environment calls agents by name
 
 # Create environment
 env = PettingZooGenerals(agents=agent_ids, render_mode="human")

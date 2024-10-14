@@ -1,6 +1,7 @@
+from collections.abc import Callable
 from enum import Enum, IntEnum, StrEnum
 from importlib.resources import files
-from typing import Any, Callable, Literal, TypeAlias
+from typing import Any, Literal, TypeAlias
 
 import gymnasium as gym
 import numpy as np
