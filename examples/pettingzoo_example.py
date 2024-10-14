@@ -10,10 +10,9 @@ agents = {
     random.id: random,
     expander.id: expander,
 }
-agent_ids = list(agents.keys())
 
 # Create environment
-env = PettingZooGenerals(agents=agent_ids, render_mode="human")
+env = PettingZooGenerals(agents=agents, render_mode="human")
 observations, info = env.reset()
 
 done = False

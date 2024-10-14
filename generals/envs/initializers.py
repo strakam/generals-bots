@@ -18,10 +18,9 @@ custom settings.
 def gym_generals_normalized_v0(
     grid_factory: GridFactory | None = None,
     npc: Agent | None = None,
+    agent: Agent | None = None,
     render_mode: str | None = None,
     reward_fn: RewardFn | None = None,
-    agent_id: str = "Agent",
-    agent_color: tuple[int, int, int] = (67, 70, 86),
 ):
     """
     Example of a Gymnasium environment initializer that creates
@@ -30,9 +29,8 @@ def gym_generals_normalized_v0(
     _env = GymnasiumGenerals(
         grid_factory=grid_factory,
         npc=npc,
+        agent=agent,
         render_mode=render_mode,
-        agent_id=agent_id,
-        agent_color=agent_color,
         reward_fn=reward_fn,
     )
     env = NormalizedObservationWrapper(_env)
