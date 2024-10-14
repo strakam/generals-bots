@@ -5,6 +5,7 @@ from typing import Any
 import pettingzoo  # type: ignore
 from gymnasium import spaces
 
+from generals.agents.agent import Agent
 from generals.core.config import AgentID, Reward, RewardFn
 from generals.core.game import Action, Game, Info, Observation
 from generals.core.grid import GridFactory
@@ -18,16 +19,10 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         "render_modes": ["human"],
         "render_fps": 6,
     }
-    default_colors = [
-        (67, 70, 86),
-        (242, 61, 106),
-        (0, 255, 0),
-        (0, 0, 255),
-    ]  # Up for improvement (needs to be extended for multiple agents)
 
     def __init__(
         self,
-        agents: list[str],
+        agents: dict[AgentID, Agent],
         grid_factory: GridFactory | None = None,
         reward_fn: RewardFn | None = None,
         render_mode=None,
@@ -37,9 +32,9 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         self.reward_fn = reward_fn if reward_fn is not None else self._default_reward
 
         # Agents
-        self.agent_data = {agent_id: {"color": color} for agent_id, color in zip(agents, self.default_colors)}
-        self.agents = agents
-        self.possible_agents = agents
+        self.agent_data = {agents[id].id: {"color": agents[id].color} for id in agents}
+        self.agents = [agents[id].id for id in agents]
+        self.possible_agents = self.agents
 
         assert len(self.possible_agents) == len(
             set(self.possible_agents)

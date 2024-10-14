@@ -18,8 +18,7 @@ grid_factory = GridFactory(
 env = gym.make(
     "gym-generals-v0",  # Environment name
     grid_factory=grid_factory,  # Grid factory
-    agent_id="Agent",  # Agent ID
-    agent_color=(67, 70, 86),  # Agent color
+    agent=agent,
     npc=npc,  # NPC that will play against the agent
 )
 

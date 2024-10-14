@@ -22,10 +22,9 @@ class GymnasiumGenerals(gym.Env):
         self,
         grid_factory: GridFactory | None = None,
         npc: Agent | None = None,
+        agent: Agent | None = None,  # Optional, just to obtain id and color
         reward_fn: RewardFn | None = None,
         render_mode: str | None = None,
-        agent_id: str = "Agent",
-        agent_color: tuple[int, int, int] = (67, 70, 86),
     ):
         self.render_mode = render_mode
         self.grid_factory = grid_factory if grid_factory is not None else GridFactory()
@@ -38,13 +37,13 @@ class GymnasiumGenerals(gym.Env):
         else:
             assert isinstance(npc, Agent), "NPC must be an instance of Agent class."
         self.npc = npc
-        self.agent_id = agent_id
+        self.agent_id = "Agent" if agent is None else agent.id
         self.agent_ids = [self.agent_id, self.npc.id]
         self.agent_data = {
-            agent_id: {"color": agent_color},
+            self.agent_id: {"color": (67, 70, 86) if agent is None else agent.color},
             self.npc.id: {"color": self.npc.color},
         }
-        assert agent_id != npc.id, "Agent ids must be unique - you can pass custom ids to agent constructors."
+        assert self.agent_id != npc.id, "Agent ids must be unique - you can pass custom ids to agent constructors."
 
         # Game
         grid = self.grid_factory.grid_from_generator()
