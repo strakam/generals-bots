@@ -5,7 +5,7 @@
 ## **Generals.io RL**
 
 [![CodeQL](https://github.com/strakam/Generals-RL/actions/workflows/codeql.yml/badge.svg)](https://github.com/strakam/Generals-RL/actions/workflows/codeql.yml)
-[![CI](https://github.com/strakam/Generals-RL/actions/workflows/tests.yml/badge.svg)](https://github.com/strakam/Generals-RL/actions/workflows/tests.yml)
+[![CI](https://github.com/strakam/Generals-RL/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/strakam/Generals-RL/actions/workflows/pre-commit.yml)
 
 
 
@@ -25,11 +25,8 @@ Highlights:
 * 🔬 **analysis tools**: leverage features like replays for deeper insights
 
 > [!Note]
-> This repository is based on the generals.io game. Its one and only goal is to provide a bot development
-> platform, particularly for Machine-Learning agents.
-
-> [!Tip]
-> Try out the [original game](https://generals.io), its a lot of fun!
+> This repository is based on the [generals.io](https://generals.io) game (check it out, it's a lot of fun!).
+The one and only goal of this project is to provide a bot development platform, especially for Machine Learning based agents.
 
 ## 📦 Installation
 You can install the latest stable version via `pip` for reliable performance
@@ -173,7 +170,7 @@ The `observation` is a `Dict`. Values are either `numpy` matrices with shape `(N
 | `is_winner`          |     —     | Indicates whether the agent won                                              |
 | `timestep`           |     —     | Current timestep of the game                                                 |
 
-The `action_mask` is a 3D array with shape `(N, M, 4)`, where each element corresponds to whether a move is valid from cell 
+The `action_mask` is a 3D array with shape `(N, M, 4)`, where each element corresponds to whether a move is valid from cell
 `[i, j]` in one of four directions: `0 (up)`, `1 (down)`, `2 (left)`, or `3 (right)`.
 
 ### ⚡ Action
@@ -191,7 +188,8 @@ Actions are in a `dict` format with the following `key - value` format:
 > ```
 
 ### 🎁 Reward
-It is possible to implement custom reward function. The default is `1` for winner and `-1` for loser, otherwise `0`.
+It is possible to implement custom reward function. The default reward is awarded only at the end of a game
+and gives `1` for winner and `-1` for loser, otherwise `0`.
 ```python
 def custom_reward_fn(observation, action, done, info):
     # Give agent a reward based on the number of cells they own

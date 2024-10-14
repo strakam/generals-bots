@@ -1,6 +1,6 @@
 from gymnasium.envs.registration import register
 
-from generals.agents.agent_factory import AgentFactory
+from generals.agents import AgentFactory
 from generals.core.grid import Grid, GridFactory
 from generals.core.replay import Replay
 from generals.envs.pettingzoo_generals import PettingZooGenerals
