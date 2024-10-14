@@ -1,11 +1,11 @@
 <div align="center">
 
-![Gameplay GIF](https://raw.githubusercontent.com/strakam/Generals-RL/master/generals/assets/gifs/wider_gameplay.gif)
+![Gameplay GIF](https://raw.githubusercontent.com/strakam/generals-bots/master/generals/assets/gifs/wider_gameplay.gif)
 
 ## **Generals.io Bots**
 
-[![CodeQL](https://github.com/strakam/Generals-RL/actions/workflows/codeql.yml/badge.svg)](https://github.com/strakam/Generals-RL/actions/workflows/codeql.yml)
-[![CI](https://github.com/strakam/Generals-RL/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/strakam/Generals-RL/actions/workflows/pre-commit.yml)
+[![CodeQL](https://github.com/strakam/generals-bots/actions/workflows/codeql.yml/badge.svg)](https://github.com/strakam/generals-bots/actions/workflows/codeql.yml)
+[![CI](https://github.com/strakam/generals-bots/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/strakam/generals-bots/actions/workflows/pre-commit.yml)
 
 
 
@@ -35,8 +35,8 @@ pip install generals
 ```
 or clone the repo for the most up-to-date features
 ```bash
-git clone https://github.com/strakam/Generals-RL
-cd Generals-RL
+git clone https://github.com/strakam/generals-bots
+cd generals-bots
 pip install -e .
 ```
 
@@ -69,7 +69,7 @@ while not (terminated or truncated):
 ```
 
 > [!TIP]
-> Check out [Wiki](https://github.com/strakam/Generals-RL/wiki) for more commented examples to get a better idea on how to start 🤗.
+> Check out [Wiki](https://github.com/strakam/generals-bots/wiki) for more commented examples to get a better idea on how to start 🤗.
 
 ## 🎨 Custom Grids
 Grids on which the game is played on are generated via `GridFactory`. You can instantiate the class with desired grid properties, and it will generate
@@ -205,7 +205,7 @@ observations, info = env.reset()
 You can contribute to this project in multiple ways:
 - 🤖 If you implement ANY non-trivial agent, send it to us! We will publish it so others can play against it
 - 💡 If you have an idea on how to improve the game, submit an issue or create a PR, we are happy to improve!
-  We also have some ideas (see [issues](https://github.com/strakam/Generals-RL/issues)), so you can see what we plan to work on
+  We also have some ideas (see [issues](https://github.com/strakam/generals-bots/issues)), so you can see what we plan to work on
 
 > [!Tip]
-> Check out [wiki](https://github.com/strakam/Generals-RL/wiki) to learn in more detail on how to contribute.
+> Check out [wiki](https://github.com/strakam/generals-bots/wiki) to learn in more detail on how to contribute.
