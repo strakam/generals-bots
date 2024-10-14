@@ -2,7 +2,7 @@
 
 ![Gameplay GIF](https://raw.githubusercontent.com/strakam/Generals-RL/master/generals/assets/gifs/wider_gameplay.gif)
 
-## **Generals.io RL**
+## **Generals.io Bots**
 
 [![CodeQL](https://github.com/strakam/Generals-RL/actions/workflows/codeql.yml/badge.svg)](https://github.com/strakam/Generals-RL/actions/workflows/codeql.yml)
 [![CI](https://github.com/strakam/Generals-RL/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/strakam/Generals-RL/actions/workflows/pre-commit.yml)
@@ -13,7 +13,7 @@
 [Installation](#-installation) • [Getting Started](#-getting-started) • [Customization](#-custom-grids) • [Environment](#-environment)
 </div>
 
-Generals-RL is a real-time strategy environment where players compete to conquer their opponents' generals on a 2D grid.
+Generals-bots is a fast-paced strategy environment where players compete to conquer their opponents' generals on a 2D grid.
 While the goal is simple — capture the enemy general — the gameplay combines strategic depth with fast-paced action,
 challenging players to balance micro and macro-level decision-making.
 The combination of these elements makes the game highly engaging and complex.
