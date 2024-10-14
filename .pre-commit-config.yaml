@@ -12,31 +12,35 @@ repos:
       - id: debug-statements
       - id: end-of-file-fixer
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9
-    hooks:
-      - id: ruff
-        args: ["--select", "E", "--select", "F", "--select", "I",
-               "--fix",
-               "--line-length", "120",
-               "--exclude", "tests/", "--exclude", "examples/"
-               ]
-      - id: ruff-format
-        args: ["--line-length", "120", "--exclude", "tests/", "--exclude", "examples/"]
-
   - repo: local
     hooks:
+      - id: ruff-linter
+        name: Ruff linter
+        entry: poetry run ruff check . --fix
+        language: system
+        pass_filenames: false
+        types:
+          - python
+
+      - id: ruff-format
+        name: Ruff formatter
+        entry: poetry run ruff format .
+        language: system
+        pass_filenames: false
+        types:
+          - python
+
       - id: mypy
         name: mypy
-        entry: mypy --exclude 'examples/' --exclude 'tests/' --exclude 'generals/agents/' --disable-error-code "annotation-unchecked" .
+        entry: poetry run mypy .
         pass_filenames: false
         language: system
-        types: [python]
+        types:
+          - python
 
-  - repo: local
-    hooks:
       - id: run-pytest
         name: Run tests
         entry: make test
         language: system
-        types: [python]
+        types:
+          - python
