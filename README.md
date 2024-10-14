@@ -10,32 +10,31 @@
 
 
 
-[Installation](#-installation) • [Getting Started](#-getting-started) • [Customization](#-custom-maps) • [Environment](#-environment)
+[Installation](#-installation) • [Getting Started](#-getting-started) • [Customization](#-custom-grids) • [Environment](#-environment)
 </div>
 
 Generals-RL is a real-time strategy environment where players compete to conquer their opponents' generals on a 2D grid.
-While the goal is simple — capture the enemy general — the gameplay involves a lot of depth.
-Players need to employ strategic planning, deception, and manage both micro and macro mechanics throughout the game.
+While the goal is simple — capture the enemy general — the gameplay combines strategic depth with fast-paced action,
+challenging players to balance micro and macro-level decision-making.
 The combination of these elements makes the game highly engaging and complex.
 
-This repository aims to make bot development more accessible, especially for Machine Learning based agents.
+This repository is designed to make bot development for [Generals.io]((https://generals.io)) easier,
+particularly for Machine Learning agents.
 
 Highlights:
-* 🚀 Fast & Lightweight simulator powered by `numpy` (thousands of steps per second)
-* 🤝 Compatibility with Reinforcement-Learning API standards 🤸[Gymnasium](https://gymnasium.farama.org/) and 🦁[PettingZoo](https://pettingzoo.farama.org/)
-* 🔧 Easy customization of environments
-* 🔬 Analysis tools such as replays
-
-> [!NOTE]
-> This repository is based on the [generals.io](https://generals.io) game.
-> Check it out, it is a lot of fun!
+* 🚀 **blazing-fast, lightweight simulator**: run thousands of steps per second with numpy-powered efficiency
+* 🤝 **seamless integration**: fully compatible with RL standards 🤸[Gymnasium](https://gymnasium.farama.org/) and 🦁[PettingZoo](https://pettingzoo.farama.org/)
+* 🔧 **effortless customization**: easily tailor environments to your specific needs
+* 🔬 **analysis tools**: leverage features like replays for deeper insights
+> [!Tip]
+> This repository is based on the [generals.io](https://generals.io) game. Check it out, it is a lot of fun!
 
 ## 📦 Installation
-Stable release version is available through pip:
+You can install the latest stable version via pip for reliable release
 ```bash
 pip install generals
 ```
-Alternatively, you can install latest version via git
+or clone the repo for the most up-to-date features
 ```bash
 git clone https://github.com/strakam/Generals-RL
 cd Generals-RL
