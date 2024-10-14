@@ -1,10 +1,10 @@
 import gymnasium as gym
 
-from generals import AgentFactory
+from generals.agents import RandomAgent, ExpanderAgent
 
-# Initialize opponent agent
-agent = AgentFactory.make_agent("random")
-npc = AgentFactory.make_agent("expander")
+# Initialize agents
+agent = RandomAgent()
+npc = ExpanderAgent()
 
 # Create environment
 env = gym.make("gym-generals-v0", agent=agent, npc=npc, render_mode="human")

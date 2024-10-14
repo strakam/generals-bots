@@ -19,14 +19,14 @@ challenging players to balance micro and macro-level decision-making.
 The combination of these elements makes the game highly engaging and complex.
 
 Highlights:
-* 🚀 **blazing-fast simulator**: run thousands of steps per second with numpy-powered efficiency
+* 🚀 **blazing-fast simulator**: run thousands of steps per second with `numpy`-powered efficiency
 * 🤝 **seamless integration**: fully compatible with RL standards 🤸[Gymnasium](https://gymnasium.farama.org/) and 🦁[PettingZoo](https://pettingzoo.farama.org/)
 * 🔧 **effortless customization**: easily tailor environments to your specific needs
 * 🔬 **analysis tools**: leverage features like replays for deeper insights
 
 > [!Note]
 > This repository is based on the [generals.io](https://generals.io) game (check it out, it's a lot of fun!).
-The one and only goal of this project is to provide a bot development platform, especially for Machine Learning based agents.
+> The one and only goal of this project is to provide a bot development platform, especially for Machine Learning based agents.
 
 ## 📦 Installation
 You can install the latest stable version via `pip` for reliable performance
@@ -41,28 +41,29 @@ pip install -e .
 ```
 
 ## 🚀 Getting Started
-We create agents in two modes:
-- **classic mode** - this mode is intended for agents based on classical algorithms and heuristics.
-  In this mode you can start by subclassing an `Agent` class just like [`RandomAgent`](./generals/agents/random_agent.py) or [`ExpanderAgent`](./generals/agents/expander_agent.py).
-  You can specify your agent `id` (name) and `color` and the only thing remaining is to implement the `act` function, that has the signature explained in sections down below.
-- **learning mode** - this mode is more "open" and we expect that you have some experience with **Gymnasium** or **PettingZoo**.
+Creating an agent is very simple. Start by subclassing an `Agent` class just like
+[`RandomAgent`](./generals/agents/random_agent.py) or [`ExpanderAgent`](./generals/agents/expander_agent.py).
+You can specify your agent `id` (name) and `color` and the only thing remaining is to implement the `act` function,
+that has the signature explained in sections down below.
+
 
 ### Usage Example (🤸 Gymnasium)
-In both modes, the example loop for running the game looks like this
+The example loop for running the game looks like this
 ```python
 import gymnasium as gym
-from generals import AgentFactory
+from generals.agents import RandomAgent, ExpanderAgent # import your agent
 
-# Initialize opponent agent
-npc = AgentFactory.make_agent("expander")
+# Initialize agents
+agent = RandomAgent()
+npc = ExpanderAgent()
 
 # Create environment
-env = gym.make("gym-generals-v0", npc=npc, render_mode="human")
+env = gym.make("gym-generals-v0", agent=agent, npc=npc, render_mode="human")
 
 observation, info = env.reset()
 terminated = truncated = False
 while not (terminated or truncated):
-    action = env.action_space.sample()  # Here you put an action of your agent
+    action = agent.act(observation)
     observation, reward, terminated, truncated, info = env.step(action)
     env.render()
 ```
@@ -112,7 +113,8 @@ Grids are created using a string format where:
 - `.` represents passable terrain
 - `#` indicates impassable mountains
 - `A, B` mark the positions of generals
-- digits `0-9` represent cities, where the number is a city `cost` calculated as `40 + digit`
+- digits `0-9` represent cities, where the number specifies amount of neutral army in the city,
+  which is calculated as `40 + digit`
 
 ## 🔬 Interactive Replays
 We can store replays and then analyze them in an interactive fashion. `Replay` class handles replay related functionality.
@@ -174,10 +176,10 @@ The `action_mask` is a 3D array with shape `(N, M, 4)`, where each element corre
 `[i, j]` in one of four directions: `0 (up)`, `1 (down)`, `2 (left)`, or `3 (right)`.
 
 ### ⚡ Action
-Actions are in a `dict` format with the following `key - value` format:
+Actions are in a `dict` format with the following `key: value` format:
 - `pass` indicates whether you want to `1 (pass)` or `0 (play)`.
-- `cell` chooses from which cell you want to move - value: an `np.array([i,j])` where `i,j` are indices of the cell you want to move from
-- `direction` indicates wehther you want to move `0 (up)`, `1 (down)`, `2 (left)`, or `3 (right)`
+- `cell` value is an `np.array([i,j])` where `i,j` are indices of the cell you want to move from
+- `direction` indicates whether you want to move `0 (up)`, `1 (down)`, `2 (left)`, or `3 (right)`
 - `split` indicates whether you want to `1 (split)` units and send only half, or `0 (no split)` where you send all units to the next cell
 
 > [!TIP]
