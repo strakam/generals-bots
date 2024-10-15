@@ -31,7 +31,7 @@ Highlights:
 ## 📦 Installation
 You can install the latest stable version via `pip` for reliable performance
 ```bash
-pip install generals
+pip install generals-bots
 ```
 or clone the repo for the most up-to-date features
 ```bash
