@@ -5,7 +5,7 @@ on:
   push:
 
 jobs:
-  test:
+  ci:
     runs-on: ubuntu-latest
 
     steps:
