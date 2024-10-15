@@ -1,0 +1,38 @@
+[tool.poetry]
+name = "generals-bots"
+version = "1.0.0"
+description = "Develop your agent for generals.io!"
+authors = ["Matej Straka <strakammm@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "generals"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+numpy = "^2.1.1"
+pettingzoo = "^1.24.3"
+gymnasium = "^1.0.0"
+pygame = "^2.6.0"
+scipy = "^1.14.1"
+
+[tool.poetry.group.dev.dependencies]
+mypy = "^1.11.2"
+pre-commit = "^3.2.2"
+pytest = "^8.3.3"
+types-setuptools = "^75.1.0.20240917"
+typing_extensions = "^4.12.2"
+ruff = "^0.6.9"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 120
+lint.select = ["E", "F", "I", "BLE", "UP", "FA"]
+target-version = "py311"
+exclude = ["tests", "examples"]
+
+[tool.mypy]
+exclude = ["tests/", "examples/", "generals/agents/"]
+follow_imports="silent"

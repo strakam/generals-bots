@@ -40,12 +40,12 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
             set(self.possible_agents)
         ), "Agent ids must be unique - you can pass custom ids to agent constructors."
 
-    @functools.lru_cache(maxsize=None)
+    @functools.cache
     def observation_space(self, agent: AgentID) -> spaces.Space:
         assert agent in self.possible_agents, f"Agent {agent} not in possible agents"
         return self.game.observation_space
 
-    @functools.lru_cache(maxsize=None)
+    @functools.cache
     def action_space(self, agent: AgentID) -> spaces.Space:
         assert agent in self.possible_agents, f"Agent {agent} not in possible agents"
         return self.game.action_space

@@ -31,14 +31,16 @@ Highlights:
 ## 📦 Installation
 You can install the latest stable version via `pip` for reliable performance
 ```bash
-pip install generals
+pip install generals-bots
 ```
 or clone the repo for the most up-to-date features
 ```bash
 git clone https://github.com/strakam/generals-bots
 cd generals-bots
-pip install -e .
+make install
 ```
+> [!Note]
+> Under the hood, `make install` installs [poetry](https://python-poetry.org/) and the package using poetry.
 
 ## 🚀 Getting Started
 Creating an agent is very simple. Start by subclassing an `Agent` class just like
