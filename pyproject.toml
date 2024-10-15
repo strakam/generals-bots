@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "Generals-RL"
 version = "1.0.0"
-description = "Bot development for Generals.io game"
+description = "Develop your agent for generals.io!"
 authors = ["Matej Straka <strakammm@gmail.com>"]
 license = "MIT"
 readme = "README.md"

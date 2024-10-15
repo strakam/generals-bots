@@ -1,5 +1,10 @@
 .PHONY: test build clean
 
+# Install package
+install:
+	pip install poetry==1.8.4
+	poetry install --with dev
+
 # Run PettingZoo example
 pz:
 	poetry run python3 -m examples.pettingzoo_example
