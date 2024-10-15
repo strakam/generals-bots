@@ -39,7 +39,8 @@ git clone https://github.com/strakam/generals-bots
 cd generals-bots
 make install
 ```
-Under the hood, `make install` installs [poetry](https://python-poetry.org/) and the package using poetry.
+> [!Note]
+> Under the hood, `make install` installs [poetry](https://python-poetry.org/) and the package using poetry.
 
 ## 🚀 Getting Started
 Creating an agent is very simple. Start by subclassing an `Agent` class just like
