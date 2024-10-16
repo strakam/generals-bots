@@ -23,6 +23,7 @@ class GymnasiumGenerals(gym.Env):
         grid_factory: GridFactory | None = None,
         npc: Agent | None = None,
         agent: Agent | None = None,  # Optional, just to obtain id and color
+        truncation: int | None = None,
         reward_fn: RewardFn | None = None,
         render_mode: str | None = None,
     ):
@@ -50,6 +51,7 @@ class GymnasiumGenerals(gym.Env):
         self.game = Game(grid, [self.agent_id, self.npc.id])
         self.observation_space = self.game.observation_space
         self.action_space = self.game.action_space
+        self.truncation = truncation
 
     def render(self):
         if self.render_mode == "human":
@@ -103,12 +105,14 @@ class GymnasiumGenerals(gym.Env):
         info = infos[self.agent_id]
         reward = self.reward_fn(obs, action, self.game.is_done(), info)
         terminated = self.game.is_done()
-        truncated = False if self.game.time < 120 else True  # Choose your constant
+        truncated = False
+        if self.truncation is not None:
+            truncated = self.game.time >= self.truncation
 
         if hasattr(self, "replay"):
             self.replay.add_state(deepcopy(self.game.channels))
 
-        if terminated:
+        if terminated or truncated:
             if hasattr(self, "replay"):
                 self.replay.store()
         return obs, reward, terminated, truncated, info

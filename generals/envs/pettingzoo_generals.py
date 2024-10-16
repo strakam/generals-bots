@@ -24,6 +24,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         self,
         agents: dict[AgentID, Agent],
         grid_factory: GridFactory | None = None,
+        truncation: int | None = None,
         reward_fn: RewardFn | None = None,
         render_mode=None,
     ):
@@ -39,6 +40,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         assert len(self.possible_agents) == len(
             set(self.possible_agents)
         ), "Agent ids must be unique - you can pass custom ids to agent constructors."
+        self.truncation = truncation
 
     @functools.cache
     def observation_space(self, agent: AgentID) -> spaces.Space:
@@ -95,7 +97,8 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
     ]:
         observations, infos = self.game.step(actions)
         # You probably want to set your truncation based on self.game.time
-        truncated = {agent: False for agent in self.agents}  # no truncation
+        truncation = False if self.truncation is None else self.game.time >= self.truncation
+        truncated = {agent: truncation for agent in self.agents}
         terminated = {agent: True if self.game.is_done() else False for agent in self.agents}
         rewards = {
             agent: self.reward_fn(
