@@ -24,7 +24,7 @@ class Grid:
                 pass
             case _:
                 raise ValueError("Grid must be encoded as a string or a numpy array.")
-        if not Grid.verify_grid(grid):
+        if not Grid.verify_grid_connectivity(grid):
             raise ValueError("Invalid grid layout - generals cannot reach each other.")
         # check that exactly one 'A' and one 'B' are present in the grid
         first_general = np.argwhere(np.isin(grid, ["A"]))
@@ -35,6 +35,11 @@ class Grid:
         self._grid = grid
 
     @staticmethod
+    def generals_distance(grid: "Grid") -> int:
+        generals = np.argwhere(np.isin(grid.grid, ["A", "B"]))
+        return abs(generals[0][0] - generals[1][0]) + abs(generals[0][1] - generals[1][1])
+
+    @staticmethod
     def numpify_grid(grid: str) -> np.ndarray:
         return np.array([list(row) for row in grid.strip().split("\n")])
 
@@ -43,17 +48,21 @@ class Grid:
         return "\n".join(["".join(row) for row in grid])
 
     @staticmethod
-    def verify_grid(grid: np.ndarray) -> bool:
+    def verify_grid_connectivity(grid: np.ndarray | str) -> bool:
         """
         Verify grid layout (can generals reach each other?)
         Returns True if grid is valid, False otherwise
         """
+        if isinstance(grid, str):
+            grid = Grid.numpify_grid(grid)
+
+        height, width = grid.shape
 
         def dfs(grid, visited, square):
             i, j = square
-            if i < 0 or i >= grid.shape[0] or j < 0 or j >= grid.shape[1] or visited[i, j]:
+            if i < 0 or i >= height or j < 0 or j >= width or visited[i, j]:
                 return
-            if grid[i, j] == MOUNTAIN:
+            if grid[i, j] == MOUNTAIN or str(grid[i, j]).isdigit():  # mountain or city
                 return
             visited[i, j] = True
             for di, dj in [[-1, 0], [1, 0], [0, -1], [0, 1]]:
@@ -62,6 +71,7 @@ class Grid:
 
         generals = np.argwhere(np.isin(grid, ["A", "B"]))
         start, end = generals[0], generals[1]
+
         visited = np.zeros_like(grid, dtype=bool)
         dfs(grid, visited, start)
         return visited[end[0], end[1]]
@@ -123,14 +133,14 @@ class GridFactory:
             p=probs,
         )
 
-        # Place generals on random squares - generals_positions is a list of two tuples
-        if general_positions is None:
-            general_positions = []
-            while len(general_positions) < 2:
-                position = tuple(rng.integers(0, grid_dims))
-                if position not in general_positions:
-                    general_positions.append(position)
-
+        # Place generals on random squares, they should be atleast some distance apart
+        min_distance = max(grid_dims) // 2
+        p1 = np.random.randint(0, grid_dims[0]), np.random.randint(0, grid_dims[1])
+        while True:
+            p2 = np.random.randint(0, grid_dims[0]), np.random.randint(0, grid_dims[1])
+            if abs(p1[0] - p2[0]) + abs(p1[1] - p2[1]) >= min_distance:
+                break
+        general_positions = np.array([p1, p2])
         for i, idx in enumerate(general_positions):
             map[idx[0], idx[1]] = chr(ord("A") + i)
 

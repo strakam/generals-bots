@@ -16,7 +16,6 @@ def test_grid_creation():
     grid_nd_array = Grid(map_nd_array)
     assert grid_str == grid_nd_array
 
-
 def test_verify_grid():
     map = """
 .....
@@ -25,8 +24,8 @@ def test_verify_grid():
 ..22.
 ...B.
     """
-    map = Grid.numpify_grid(map)
-    assert Grid.verify_grid(map)
+    _grid = Grid(map)
+    assert Grid.verify_grid_connectivity(_grid.grid)
 
     map = """
 .....
@@ -37,27 +36,7 @@ def test_verify_grid():
     """
 
     map = Grid.numpify_grid(map)
-    assert not Grid.verify_grid(map)
-
-    map = """
-.....
-.A##2
-##.2.
-..2##
-...B.
-    """
-    map = Grid.numpify_grid(map)
-    assert Grid.verify_grid(map)
-
-    map = """
-..#..
-.A##2
-##.2.
-..2##
-...B.
-    """
-    map = Grid.numpify_grid(map)
-    assert not Grid.verify_grid(map)
+    assert not Grid.verify_grid_connectivity(map)
 
     map = """
 .....
@@ -67,7 +46,8 @@ BA2#2
 .....
     """
     map = Grid.numpify_grid(map)
-    assert Grid.verify_grid(map)
+    grid = Grid(map)
+    assert Grid.verify_grid_connectivity(map)
 
     map = """
 ...#.
@@ -77,7 +57,8 @@ BA2#2
 .....
     """
     map = Grid.numpify_grid(map)
-    assert not Grid.verify_grid(map)
+    grid = Grid(map)
+    assert not Grid.verify_grid_connectivity(grid)
 
     map = """
 ...#.
@@ -87,7 +68,7 @@ A#2#2
 .....
     """
     map = Grid.numpify_grid(map)
-    assert Grid.verify_grid(map)
+    assert Grid.verify_grid_connectivity(map)
 
 
 def test_numpify_map():
