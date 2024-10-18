@@ -1,6 +1,6 @@
 import numpy as np
 
-from generals.core.grid import Grid
+from generals.core.grid import Grid, GridFactory
 
 
 def test_grid_creation():
@@ -46,7 +46,6 @@ BA2#2
 .....
     """
     map = Grid.numpify_grid(map)
-    grid = Grid(map)
     assert Grid.verify_grid_connectivity(map)
 
     map = """
@@ -57,8 +56,7 @@ BA2#2
 .....
     """
     map = Grid.numpify_grid(map)
-    grid = Grid(map)
-    assert not Grid.verify_grid_connectivity(grid)
+    assert not Grid.verify_grid_connectivity(map)
 
     map = """
 ...#.
@@ -68,7 +66,17 @@ A#2#2
 .....
     """
     map = Grid.numpify_grid(map)
-    assert Grid.verify_grid_connectivity(map)
+    assert not Grid.verify_grid_connectivity(map)
+
+def test_grid_factory():
+    generator = GridFactory()
+    generator.rng = np.random.default_rng()
+    for _ in range(10):
+        grid = generator.grid_from_generator()
+        assert Grid.verify_grid_connectivity(grid.grid)
+        height, width = grid.grid.shape
+        assert Grid.generals_distance(grid) >= max(height, width) // 2
+
 
 
 def test_numpify_map():

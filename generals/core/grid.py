@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.random import Generator
 
 from .config import MOUNTAIN, PASSABLE
 
@@ -94,7 +95,15 @@ class GridFactory:
         self.mountain_density = mountain_density
         self.city_density = city_density
         self.general_positions = general_positions
-        self.seed = seed
+        self._rng = np.random.default_rng(seed)
+
+    @property
+    def rng(self):
+        return self._rng
+
+    @rng.setter
+    def rng(self, number_generator: Generator):
+        self._rng = number_generator
 
     def grid_from_string(self, grid: str) -> Grid:
         return Grid(grid)
@@ -115,19 +124,15 @@ class GridFactory:
             city_density = self.city_density
         if general_positions is None:
             general_positions = self.general_positions
-        if seed is None:
-            if self.seed is None:
-                seed = np.random.randint(0, 2**20)
-            else:
-                seed = self.seed
+        if seed is not None:
+            self.rng = np.random.default_rng(seed)
 
         # Probabilities of each cell type
         p_neutral = 1 - mountain_density - city_density
         probs = [p_neutral, mountain_density] + [city_density / 10] * 10
 
         # Place cells on the map
-        rng = np.random.default_rng(seed)
-        map = rng.choice(
+        map = self.rng.choice(
             [PASSABLE, MOUNTAIN, "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
             size=grid_dims,
             p=probs,
@@ -135,12 +140,12 @@ class GridFactory:
 
         # Place generals on random squares, they should be atleast some distance apart
         min_distance = max(grid_dims) // 2
-        p1 = np.random.randint(0, grid_dims[0]), np.random.randint(0, grid_dims[1])
+        p1 = self.rng.integers(0, grid_dims[0]), self.rng.integers(0, grid_dims[1])
         while True:
-            p2 = np.random.randint(0, grid_dims[0]), np.random.randint(0, grid_dims[1])
+            p2 = self.rng.integers(0, grid_dims[0]), self.rng.integers(0, grid_dims[1])
             if abs(p1[0] - p2[0]) + abs(p1[1] - p2[1]) >= min_distance:
                 break
-        general_positions = np.array([p1, p2])
+        general_positions = [p1, p2]
         for i, idx in enumerate(general_positions):
             map[idx[0], idx[1]] = chr(ord("A") + i)
 
@@ -150,11 +155,10 @@ class GridFactory:
         try:
             return Grid(map_string)
         except ValueError:
-            seed += 1  # Increase seed to generate a different map
             return self.grid_from_generator(
                 grid_dims=grid_dims,
                 mountain_density=mountain_density,
                 city_density=city_density,
                 general_positions=general_positions,
-                seed=seed,
+                seed=None,
             )
