@@ -14,6 +14,7 @@ pettingzoo = "^1.24.3"
 gymnasium = "^1.0.0"
 pygame = "^2.6.0"
 scipy = "^1.14.1"
+python-socketio = {extras = ["client"], version = "^5.11.4"}
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.11.2"
