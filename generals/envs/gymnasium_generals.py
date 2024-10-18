@@ -67,8 +67,8 @@ class GymnasiumGenerals(gym.Env):
         if "grid" in options:
             grid = self.grid_factory.grid_from_string(options["grid"])
         else:
-            map_seed = self.np_random.integers(0, 2**20)
-            grid = self.grid_factory.grid_from_generator(seed=map_seed)
+            self.grid_factory.rng = self.np_random
+            grid = self.grid_factory.grid_from_generator()
 
         # Create game for current run
         self.game = Game(grid, self.agent_ids)

@@ -88,7 +88,7 @@ class Game:
         owned_cells_indices = self.channel_to_indices(more_than_1_army)
         valid_action_mask = np.zeros((self.grid_dims[0], self.grid_dims[1], 4), dtype=bool)
 
-        if self.is_done():
+        if self.is_done() and not self.agent_won(agent):  # if you lost, return all zeros
             return valid_action_mask
 
         for channel_index, direction in enumerate(DIRECTIONS):
@@ -107,6 +107,7 @@ class Game:
             # get valid action mask for a given direction
             valid_source_indices = action_destinations - direction.value
             valid_action_mask[valid_source_indices[:, 0], valid_source_indices[:, 1], channel_index] = 1.0
+        # assert False
         return valid_action_mask
 
     def channel_to_indices(self, channel: np.ndarray) -> np.ndarray:
@@ -197,7 +198,7 @@ class Game:
             self.time += 1
 
         if self.is_done():
-            # Give all cells of loser to winner
+            # give all cells of loser to winner
             winner = self.agents[0] if self.agent_won(self.agents[0]) else self.agents[1]
             loser = self.agents[1] if winner == self.agents[0] else self.agents[0]
             self.channels.ownership[winner] += self.channels.ownership[loser]

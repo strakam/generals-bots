@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.random import Generator
 
 from .config import MOUNTAIN, PASSABLE
 
@@ -24,7 +25,7 @@ class Grid:
                 pass
             case _:
                 raise ValueError("Grid must be encoded as a string or a numpy array.")
-        if not Grid.verify_grid(grid):
+        if not Grid.verify_grid_connectivity(grid):
             raise ValueError("Invalid grid layout - generals cannot reach each other.")
         # check that exactly one 'A' and one 'B' are present in the grid
         first_general = np.argwhere(np.isin(grid, ["A"]))
@@ -35,6 +36,11 @@ class Grid:
         self._grid = grid
 
     @staticmethod
+    def generals_distance(grid: "Grid") -> int:
+        generals = np.argwhere(np.isin(grid.grid, ["A", "B"]))
+        return abs(generals[0][0] - generals[1][0]) + abs(generals[0][1] - generals[1][1])
+
+    @staticmethod
     def numpify_grid(grid: str) -> np.ndarray:
         return np.array([list(row) for row in grid.strip().split("\n")])
 
@@ -43,17 +49,21 @@ class Grid:
         return "\n".join(["".join(row) for row in grid])
 
     @staticmethod
-    def verify_grid(grid: np.ndarray) -> bool:
+    def verify_grid_connectivity(grid: np.ndarray | str) -> bool:
         """
         Verify grid layout (can generals reach each other?)
         Returns True if grid is valid, False otherwise
         """
+        if isinstance(grid, str):
+            grid = Grid.numpify_grid(grid)
+
+        height, width = grid.shape
 
         def dfs(grid, visited, square):
             i, j = square
-            if i < 0 or i >= grid.shape[0] or j < 0 or j >= grid.shape[1] or visited[i, j]:
+            if i < 0 or i >= height or j < 0 or j >= width or visited[i, j]:
                 return
-            if grid[i, j] == MOUNTAIN:
+            if grid[i, j] == MOUNTAIN or str(grid[i, j]).isdigit():  # mountain or city
                 return
             visited[i, j] = True
             for di, dj in [[-1, 0], [1, 0], [0, -1], [0, 1]]:
@@ -62,6 +72,7 @@ class Grid:
 
         generals = np.argwhere(np.isin(grid, ["A", "B"]))
         start, end = generals[0], generals[1]
+
         visited = np.zeros_like(grid, dtype=bool)
         dfs(grid, visited, start)
         return visited[end[0], end[1]]
@@ -84,7 +95,15 @@ class GridFactory:
         self.mountain_density = mountain_density
         self.city_density = city_density
         self.general_positions = general_positions
-        self.seed = seed
+        self._rng = np.random.default_rng(seed)
+
+    @property
+    def rng(self):
+        return self._rng
+
+    @rng.setter
+    def rng(self, number_generator: Generator):
+        self._rng = number_generator
 
     def grid_from_string(self, grid: str) -> Grid:
         return Grid(grid)
@@ -105,32 +124,28 @@ class GridFactory:
             city_density = self.city_density
         if general_positions is None:
             general_positions = self.general_positions
-        if seed is None:
-            if self.seed is None:
-                seed = np.random.randint(0, 2**20)
-            else:
-                seed = self.seed
+        if seed is not None:
+            self.rng = np.random.default_rng(seed)
 
         # Probabilities of each cell type
         p_neutral = 1 - mountain_density - city_density
         probs = [p_neutral, mountain_density] + [city_density / 10] * 10
 
         # Place cells on the map
-        rng = np.random.default_rng(seed)
-        map = rng.choice(
+        map = self.rng.choice(
             [PASSABLE, MOUNTAIN, "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
             size=grid_dims,
             p=probs,
         )
 
-        # Place generals on random squares - generals_positions is a list of two tuples
-        if general_positions is None:
-            general_positions = []
-            while len(general_positions) < 2:
-                position = tuple(rng.integers(0, grid_dims))
-                if position not in general_positions:
-                    general_positions.append(position)
-
+        # Place generals on random squares, they should be atleast some distance apart
+        min_distance = max(grid_dims) // 2
+        p1 = self.rng.integers(0, grid_dims[0]), self.rng.integers(0, grid_dims[1])
+        while True:
+            p2 = self.rng.integers(0, grid_dims[0]), self.rng.integers(0, grid_dims[1])
+            if abs(p1[0] - p2[0]) + abs(p1[1] - p2[1]) >= min_distance:
+                break
+        general_positions = [p1, p2]
         for i, idx in enumerate(general_positions):
             map[idx[0], idx[1]] = chr(ord("A") + i)
 
@@ -140,11 +155,10 @@ class GridFactory:
         try:
             return Grid(map_string)
         except ValueError:
-            seed += 1  # Increase seed to generate a different map
             return self.grid_from_generator(
                 grid_dims=grid_dims,
                 mountain_density=mountain_density,
                 city_density=city_density,
                 general_positions=general_positions,
-                seed=seed,
+                seed=None,
             )
