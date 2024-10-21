@@ -1,3 +1,4 @@
+import numpy as np
 from socketio import SimpleClient  # type: ignore
 
 from generals.agents.agent import Agent
@@ -79,25 +80,37 @@ class GeneralsIOClient(SimpleClient):
         if force_start:
             self.emit("set_force_start", (self.queue_id, True))
 
+        agent_index = None
         while True:
-            event = self.receive()[0]
+            event, *data = self.receive()
             if event == "game_start":
+                game_data = data[0]
+                agent_index = game_data["playerIndex"]
                 break
 
-        self._start_game()
+        self._play_game(agent_index)
 
-    def _start_game(self) -> None:
+    def _play_game(self, agent_index: int) -> None:
         """
         Triggered after server starts the game.
         TODO: spawn a new thread in which Agent will calculate its moves
+        :param agent_index: The index of agent in the game
         """
         winner = False
+        map = np.empty([])  # noqa: F841
+        cities = np.empty([])  # noqa: F841
+        # TODO deserts?
         while True:
-            event = self.receive()[0]
-            if event == "game_lost" or event == "game_won":
-                # server sends game_lost or game_won before game_over
-                winner = event == "game_won"
-                break
+            event, data, suffix = self.receive()
+            print('received an event:', event)
+            match event:
+                case "game_update":
+                    map_diff = np.array(data["map_diff"])  # noqa: F841
+                    cities_diff = np.array(data["cities_diff"])  # noqa: F841
+                case "game_lost" | "game_won":
+                    # server sends game_lost or game_won before game_over
+                    winner = event == "game_won"
+                    break
 
         self._finish_game(winner)
 
