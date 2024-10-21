@@ -79,17 +79,21 @@ class GeneralsIOClient(SimpleClient):
         if force_start:
             self.emit("set_force_start", (self.queue_id, True))
 
+        agent_index = None
         while True:
-            event = self.receive()[0]
+            event, *data = self.receive()
             if event == "game_start":
+                game_data = data[0]
+                agent_index = game_data["playerIndex"]
                 break
 
-        self._start_game()
+        self._play_game(agent_index)
 
-    def _start_game(self) -> None:
+    def _play_game(self, agent_index: int) -> None:
         """
         Triggered after server starts the game.
         TODO: spawn a new thread in which Agent will calculate its moves
+        :param agent_index: The index of agent in the game
         """
         winner = False
         while True:
