@@ -10,7 +10,7 @@
 
 
 
-[Installation](#-installation) • [Getting Started](#-getting-started) • [Customization](#-custom-grids) • [Environment](#-environment)
+[Installation](#-installation) • [Getting Started](#-getting-started) • [Customization](#-custom-grids) • [Environment](#-environment) • [Wiki](https://github.com/strakam/generals-bots/wiki)
 </div>
 
 Generals-bots is a fast-paced strategy environment where players compete to conquer their opponents' generals on a 2D grid.
