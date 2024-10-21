@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.0.1](https://github.com/strakam/generals-bots/compare/v1.0.0...v1.0.1) (2024-10-21)
+
+
+### 🐛 Bug Fixes
+
+* Fix deterministicity.. seeds now work properly ([d56c63c](https://github.com/strakam/generals-bots/commit/d56c63c1b17590882246210ce270cc6443c68671))
+* Generals are now generated sufficiently apart, with free path between them ([ccbb1dc](https://github.com/strakam/generals-bots/commit/ccbb1dc3a01e9fd28e1a28cc890324977babdb17))
+* Make truncation as a parameter to the env ([8af020e](https://github.com/strakam/generals-bots/commit/8af020e362acf016c7079ce3bc96d6459e2b470e))
+* Update complete example ([e588cfa](https://github.com/strakam/generals-bots/commit/e588cfaff1056bbbbfb62b76846195936dc11b52))
+
 ## [1.0.0](https://github.com/strakam/generals-bots/compare/v0.5.1...v1.0.0) (2024-10-14)
 
 
