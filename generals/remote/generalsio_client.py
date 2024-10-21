@@ -1,3 +1,4 @@
+import numpy as np
 from socketio import SimpleClient  # type: ignore
 
 from generals.agents.agent import Agent
@@ -96,12 +97,20 @@ class GeneralsIOClient(SimpleClient):
         :param agent_index: The index of agent in the game
         """
         winner = False
+        map = np.empty([])  # noqa: F841
+        cities = np.empty([])  # noqa: F841
+        # TODO deserts?
         while True:
-            event = self.receive()[0]
-            if event == "game_lost" or event == "game_won":
-                # server sends game_lost or game_won before game_over
-                winner = event == "game_won"
-                break
+            event, data, suffix = self.receive()
+            print('received an event:', event)
+            match event:
+                case "game_update":
+                    map_diff = np.array(data["map_diff"])  # noqa: F841
+                    cities_diff = np.array(data["cities_diff"])  # noqa: F841
+                case "game_lost" | "game_won":
+                    # server sends game_lost or game_won before game_over
+                    winner = event == "game_won"
+                    break
 
         self._finish_game(winner)
 
