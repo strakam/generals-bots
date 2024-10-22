@@ -13,7 +13,8 @@ class Channels:
     city - city mask (1 if cell is city, 0 otherwise)
     passable - passable mask (1 if cell is passable, 0 otherwise)
     ownership_i - ownership mask for player i (1 if player i owns cell, 0 otherwise)
-    ownership_neutral - ownership mask for neutral cells that are passable (1 if cell is neutral, 0 otherwise)
+    ownership_neutral - ownership mask for neutral cells that are
+    passable (1 if cell is neutral, 0 otherwise)
     """
 
     def __init__(self, grid: np.ndarray, _agents: list[str]):
@@ -37,6 +38,10 @@ class Channels:
     def ownership(self) -> dict[str, np.ndarray]:
         return self._ownership
 
+    @ownership.setter
+    def ownership(self, value):
+        self._ownership = value
+
     @property
     def army(self) -> np.ndarray:
         return self._army
@@ -49,21 +54,38 @@ class Channels:
     def general(self) -> np.ndarray:
         return self._general
 
+    @general.setter
+    def general(self, value):
+        self._general = value
+
     @property
     def mountain(self) -> np.ndarray:
         return self._mountain
+
+    @mountain.setter
+    def mountain(self, value):
+        self._mountain = value
 
     @property
     def city(self) -> np.ndarray:
         return self._city
 
+    @city.setter
+    def city(self, value):
+        self._city = value
+
     @property
     def passable(self) -> np.ndarray:
         return self._passable
+
+    @passable.setter
+    def passable(self, value):
+        self._passable = value
 
     @property
     def ownership_neutral(self) -> np.ndarray:
         return self._ownership["neutral"]
 
-    def _set_passable(self, value):
-        self._passable = value
+    @ownership_neutral.setter
+    def ownership_neutral(self, value):
+        self._ownership["neutral"] = value

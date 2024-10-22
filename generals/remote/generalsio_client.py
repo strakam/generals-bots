@@ -2,6 +2,7 @@ import numpy as np
 from socketio import SimpleClient  # type: ignore
 
 from generals.agents.agent import Agent
+from generals.core.channels import Channels
 
 
 class GeneralsBotError(Exception):
@@ -29,6 +30,29 @@ class RegisterAgentError(GeneralsIOClientError):
         return f"Failed to register the agent. Error: {self.msg}"
 
 
+class GeneralsIOState:
+    def __init__(self, data: dict):
+        self.replay_id = data["replay_id"]
+        self.usernames = data["usernames"]
+
+        self.map = []
+        self.cities = []
+        self.generals = []
+        self.scores = []
+        self.stars = []
+        
+        self.turn = 0
+
+    def update(self, data: dict) -> None:
+        self.turn = data["turn"]
+        self.map = self._apply_diff(self.map, data["map_diff"])
+        self.cities = self._apply_diff(self.cities, data["cities_diff"])
+
+    def _apply_diff(self, old: list[int], diff: list[int]) -> list[int]:
+        print(diff)
+        return old
+
+
 class GeneralsIOClient(SimpleClient):
     """
     Wrapper around socket.io client to enable Agent to join
@@ -40,6 +64,8 @@ class GeneralsIOClient(SimpleClient):
         self.connect("https://botws.generals.io")
         self.user_id = user_id
         self._queue_id = ""
+        self.replay_id = None
+        self.usernames = []
 
     @property
     def queue_id(self):
@@ -80,33 +106,35 @@ class GeneralsIOClient(SimpleClient):
         if force_start:
             self.emit("set_force_start", (self.queue_id, True))
 
-        agent_index = None
         while True:
             event, *data = self.receive()
             if event == "game_start":
-                game_data = data[0]
-                agent_index = game_data["playerIndex"]
+                self._initialize_game(data)
                 break
 
-        self._play_game(agent_index)
+        self._play_game()
 
-    def _play_game(self, agent_index: int) -> None:
+    def _initialize_game(self, data: dict) -> None:
+        """
+        Triggered after server starts the game.
+        :param agent_index: The index of agent in the game
+        """
+        self.game_state = GeneralsIOState(data[0])
+
+    def _play_game(self) -> None:
         """
         Triggered after server starts the game.
         TODO: spawn a new thread in which Agent will calculate its moves
         :param agent_index: The index of agent in the game
         """
         winner = False
-        map = np.empty([])  # noqa: F841
-        cities = np.empty([])  # noqa: F841
         # TODO deserts?
         while True:
             event, data, suffix = self.receive()
             print('received an event:', event)
             match event:
                 case "game_update":
-                    map_diff = np.array(data["map_diff"])  # noqa: F841
-                    cities_diff = np.array(data["cities_diff"])  # noqa: F841
+                    self.game_state.update(data)
                 case "game_lost" | "game_won":
                     # server sends game_lost or game_won before game_over
                     winner = event == "game_won"
