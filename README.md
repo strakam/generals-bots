@@ -166,7 +166,7 @@ The `observation` is a `Dict`. Values are either `numpy` matrices with shape `(N
 | `owned_cells`        | `(N,M)`   | Mask indicating cells owned by the agent                                     |
 | `opponent_cells`     | `(N,M)`   | Mask indicating cells owned by the opponent                                  |
 | `neutral_cells`      | `(N,M)`   | Mask indicating cells that are not owned by any agent                        |
-| `structure`          | `(N,M)`   | Mask indicating whether cells contain cities or mountains, even out of FoV   |
+| `structures_in_fog`  | `(N,M)`   | Mask indicating whether cells contain cities or mountains (in fog)           |
 | `owned_land_count`   |     —     | Number of cells the agent owns                                               |
 | `owned_army_count`   |     —     | Total number of units owned by the agent                                     |
 | `opponent_land_count`|     —     | Number of cells owned by the opponent                                        |
