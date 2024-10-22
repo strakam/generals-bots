@@ -180,7 +180,7 @@ class Renderer:
             ownership = self.game.channels.ownership[agent]
             owned_map = np.logical_or(owned_map, ownership)
             if self.agent_fov[agent]:
-                visibility = self.game.visibility_channel(ownership)
+                visibility = self.game.channels.get_visibility(agent)
                 visible_map = np.logical_or(visible_map, visibility)
 
         # Helper maps for not owned and invisible cells

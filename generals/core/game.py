@@ -3,7 +3,6 @@ from typing import Any
 
 import gymnasium as gym
 import numpy as np
-from scipy.ndimage import maximum_filter  # type: ignore
 
 from .channels import Channels
 from .config import Action, Direction, Info, Observation
@@ -48,7 +47,7 @@ class Game:
                         "opponent_cells": grid_multi_binary,
                         "neutral_cells": grid_multi_binary,
                         "visible_cells": grid_multi_binary,
-                        "structure": grid_multi_binary,
+                        "structures_in_fog": grid_multi_binary,
                         "owned_land_count": gym.spaces.Discrete(self.max_army_value),
                         "owned_army_count": gym.spaces.Discrete(self.max_army_value),
                         "opponent_land_count": gym.spaces.Discrete(self.max_army_value),
@@ -115,12 +114,6 @@ class Game:
         Returns a list of indices of cells with non-zero values from specified a channel.
         """
         return np.argwhere(channel != 0)
-
-    def visibility_channel(self, ownership_channel: np.ndarray) -> np.ndarray:
-        """
-        Returns a binary channel of visible cells from the perspective of the given player.
-        """
-        return maximum_filter(ownership_channel, size=3)
 
     def step(self, actions: dict[str, Action]) -> tuple[dict[str, Observation], dict[str, Any]]:
         """
@@ -264,16 +257,17 @@ class Game:
         """
         info = self.get_infos()
         opponent = self.agents[0] if agent == self.agents[1] else self.agents[1]
-        visibility = self.visibility_channel(self.channels.ownership[agent])
+        visible = self.channels.get_visibility(agent)
+        invisible = 1 - visible
         _observation = {
-            "army": self.channels.army.astype(int) * visibility,
-            "general": self.channels.general * visibility,
-            "city": self.channels.city * visibility,
-            "owned_cells": self.channels.ownership[agent] * visibility,
-            "opponent_cells": self.channels.ownership[opponent] * visibility,
-            "neutral_cells": self.channels.ownership_neutral * visibility,
-            "visible_cells": visibility,
-            "structure": self.channels.mountain + self.channels.city,
+            "army": self.channels.army.astype(int) * visible,
+            "general": self.channels.general * visible,
+            "city": self.channels.city * visible,
+            "owned_cells": self.channels.ownership[agent] * visible,
+            "opponent_cells": self.channels.ownership[opponent] * visible,
+            "neutral_cells": self.channels.ownership_neutral * visible,
+            "visible_cells": visible,
+            "structures_in_fog": invisible * (self.channels.mountain + self.channels.city),
             "owned_land_count": info[agent]["land"],
             "owned_army_count": info[agent]["army"],
             "opponent_land_count": info[opponent]["land"],

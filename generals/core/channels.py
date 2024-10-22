@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.ndimage import maximum_filter  # type: ignore
 
 from .config import MOUNTAIN, PASSABLE
 
@@ -33,6 +34,10 @@ class Channels:
         # City costs are 40 + digit in the cell
         city_costs = np.where(np.char.isdigit(grid), grid, "0").astype(int)
         self.army += 40 * self.city + city_costs
+
+    def get_visibility(self, agent_id: str) -> np.ndarray:
+        channel = self._ownership[agent_id]
+        return maximum_filter(channel, size=3)
 
     @property
     def ownership(self) -> dict[str, np.ndarray]:

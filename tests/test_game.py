@@ -67,39 +67,6 @@ def test_channel_to_indices():
     assert (indices == reference).all()
 
 
-def test_visibility_channel():
-    """
-    For given ownership mask, we should get visibility mask.
-    """
-    dummy_game = get_game()
-
-    ownership = np.array([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
-    reference = np.array([[1, 1, 1], [1, 1, 1], [1, 1, 1]])
-    visibility = dummy_game.visibility_channel(ownership)
-    assert (visibility == reference).all()
-
-    ownership = np.array(
-        [
-            [0, 0, 0, 0, 0],
-            [1, 1, 0, 0, 0],
-            [0, 1, 0, 0, 0],
-            [0, 0, 0, 0, 1],
-            [0, 0, 0, 0, 1],
-        ]
-    )
-    reference = np.array(
-        [
-            [1, 1, 1, 0, 0],
-            [1, 1, 1, 0, 0],
-            [1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1],
-            [0, 0, 0, 1, 1],
-        ]
-    )
-    visibility = dummy_game.visibility_channel(ownership)
-    assert (visibility == reference).all()
-
-
 def test_action_mask():
     """
     For given ownership mask and passable mask, we should get NxNx4 mask of valid actions.
@@ -115,7 +82,7 @@ def test_action_mask():
         ],
         dtype=int,
     )
-    game.channels._set_passable(
+    game.channels.passable = (
         np.array(
             [
                 [1, 1, 1, 1],

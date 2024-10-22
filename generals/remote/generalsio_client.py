@@ -1,6 +1,8 @@
+import numpy as np
 from socketio import SimpleClient  # type: ignore
 
 from generals.agents.agent import Agent
+from generals.core.config import Observation
 
 
 class GeneralsBotError(Exception):
@@ -41,24 +43,52 @@ def apply_diff(old: list[int], diff: list[int]) -> list[int]:
         i += 1
     return new
 
+test_old_1 = [0, 0]
+test_diff_1 = [1, 1, 3]
+desired = [0,3]
+assert apply_diff(test_old_1, test_diff_1) == desired
+test_old_2 = [0,0]
+test_diff_2 = [0,1,2,1]
+desired = [2, 0]
+assert apply_diff(test_old_2, test_diff_2) == desired
+print("All tests passed")
+
 
 class GeneralsIOState:
     def __init__(self, data: dict):
         self.replay_id = data["replay_id"]
         self.usernames = data["usernames"]
+        self.player_index = data["playerIndex"]
+        self.opponent_index = 1 - self.player_index # works only for 1v1
+
+        self.n_players = len(self.usernames)
 
         self.map = []
         self.cities = []
-        self.generals = []
-        self.scores = []
-        self.stars = []
-
-        self.turn = 0
 
     def update(self, data: dict) -> None:
         self.turn = data["turn"]
         self.map = apply_diff(self.map, data["map_diff"])
         self.cities = apply_diff(self.cities, data["cities_diff"])
+        self.generals = data["generals"]
+        self.scores = data["scores"]
+        if "stars" in data:
+            self.stars = data["stars"]
+
+
+    def agent_observation(self) -> Observation:
+        width, height = self.map[0], self.map[1]
+        size = height * width
+
+        armies = np.array(self.map[2 : 2 + size]).reshape((height, width))
+        terrain = np.array(self.map[2 + size : 2 + 2 * size]).reshape((height, width))
+
+        # make 2D binary map of owned cells. These are the ones that have self.player_index value in terrain
+        army = armies
+        owned_cells = np.where(terrain == self.player_index, 1, 0)
+        opponent_cells = np.where(terrain == self.opponent_index, 1, 0)
+        visible_neutral_cells = np.where(terrain == -1, 1, 0)
+        print(self.generals)
 
 
 class GeneralsIOClient(SimpleClient):
@@ -72,8 +102,6 @@ class GeneralsIOClient(SimpleClient):
         self.connect("https://botws.generals.io")
         self.user_id = user_id
         self._queue_id = ""
-        self.replay_id = None
-        self.usernames = []
 
     @property
     def queue_id(self):
@@ -125,7 +153,7 @@ class GeneralsIOClient(SimpleClient):
     def _initialize_game(self, data: dict) -> None:
         """
         Triggered after server starts the game.
-        :param agent_index: The index of agent in the game
+        :param data: dictionary of information received in the beginning
         """
         self.game_state = GeneralsIOState(data[0])
 
@@ -133,7 +161,6 @@ class GeneralsIOClient(SimpleClient):
         """
         Triggered after server starts the game.
         TODO: spawn a new thread in which Agent will calculate its moves
-        :param agent_index: The index of agent in the game
         """
         winner = False
         # TODO deserts?
@@ -143,6 +170,7 @@ class GeneralsIOClient(SimpleClient):
             match event:
                 case "game_update":
                     self.game_state.update(data)
+                    self.game_state.agent_observation()
                 case "game_lost" | "game_won":
                     # server sends game_lost or game_won before game_over
                     winner = event == "game_won"
