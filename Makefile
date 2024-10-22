@@ -13,6 +13,8 @@ pz:
 gym:
 	poetry run python3 -m examples.gymnasium_example
 
+remote:
+	poetry run python3 -m examples.client_example
 # Create new replay and run it
 make n_replay:
 	poetry run python3 -m examples.record_replay_example
