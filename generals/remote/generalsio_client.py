@@ -1,8 +1,6 @@
-import numpy as np
 from socketio import SimpleClient  # type: ignore
 
 from generals.agents.agent import Agent
-from generals.core.channels import Channels
 
 
 class GeneralsBotError(Exception):
@@ -30,6 +28,20 @@ class RegisterAgentError(GeneralsIOClientError):
         return f"Failed to register the agent. Error: {self.msg}"
 
 
+def apply_diff(old: list[int], diff: list[int]) -> list[int]:
+    i = 0
+    new = []
+    while i < len(diff):
+        if diff[i] > 0:  # matching
+            new.extend(old[len(new) : len(new) + diff[i]])
+        i += 1
+        if i < len(diff) and diff[i] > 0:  # applying diffs
+            new.extend(diff[i + 1 : i + 1 + diff[i]])
+            i += diff[i]
+        i += 1
+    return new
+
+
 class GeneralsIOState:
     def __init__(self, data: dict):
         self.replay_id = data["replay_id"]
@@ -40,17 +52,13 @@ class GeneralsIOState:
         self.generals = []
         self.scores = []
         self.stars = []
-        
+
         self.turn = 0
 
     def update(self, data: dict) -> None:
         self.turn = data["turn"]
-        self.map = self._apply_diff(self.map, data["map_diff"])
-        self.cities = self._apply_diff(self.cities, data["cities_diff"])
-
-    def _apply_diff(self, old: list[int], diff: list[int]) -> list[int]:
-        print(diff)
-        return old
+        self.map = apply_diff(self.map, data["map_diff"])
+        self.cities = apply_diff(self.cities, data["cities_diff"])
 
 
 class GeneralsIOClient(SimpleClient):
@@ -131,7 +139,7 @@ class GeneralsIOClient(SimpleClient):
         # TODO deserts?
         while True:
             event, data, suffix = self.receive()
-            print('received an event:', event)
+            print("received an event:", event)
             match event:
                 case "game_update":
                     self.game_state.update(data)
