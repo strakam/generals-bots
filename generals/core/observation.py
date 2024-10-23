@@ -1,8 +1,6 @@
 import numpy as np
-from scipy.ndimage import maximum_filter  # type: ignore
 
 from generals.core.game import DIRECTIONS, Game
-from generals.remote.generalsio_client import GeneralsIOState
 
 
 def observation_from_simulator(game: Game, agent_id: str) -> "Observation":
@@ -48,56 +46,13 @@ def observation_from_simulator(game: Game, agent_id: str) -> "Observation":
     )
 
 
-def observation_from_generalsio_state(state: GeneralsIOState) -> "Observation":
-    width, height = state.map[0], state.map[1]
-    size = height * width
-
-    armies = np.array(state.map[2 : 2 + size]).reshape((height, width))
-    terrain = np.array(state.map[2 + size : 2 + 2 * size]).reshape((height, width))
-    cities = np.zeros((height, width))
-    for city in state.cities:
-        cities[city // width, city % width] = 1
-
-    generals = np.zeros((height, width))
-    for general in state.generals:
-        if general != -1:
-            generals[general // width, general % width] = 1
-
-    army = armies
-    owned_cells = np.where(terrain == state.player_index, 1, 0)
-    opponent_cells = np.where(terrain == state.opponent_index, 1, 0)
-    neutral_cells = np.where(terrain == -1, 1, 0)
-    visible_cells = maximum_filter(np.where(terrain == state.player_index, 1, 0), size=3)
-    structures_in_fog = np.where(terrain == -4, 1, 0)
-    owned_land_count = state.scores[state.player_index]["tiles"]
-    owned_army_count = state.scores[state.player_index]["total"]
-    opponent_land_count = state.scores[state.opponent_index]["tiles"]
-    opponent_army_count = state.scores[state.opponent_index]["total"]
-    timestep = state.turn
-
-    return Observation(
-        army=army,
-        generals=generals,
-        city=cities,
-        owned_cells=owned_cells,
-        opponent_cells=opponent_cells,
-        neutral_cells=neutral_cells,
-        visible_cells=visible_cells,
-        structures_in_fog=structures_in_fog,
-        owned_land_count=owned_land_count,
-        owned_army_count=owned_army_count,
-        opponent_land_count=opponent_land_count,
-        opponent_army_count=opponent_army_count,
-        timestep=timestep,
-    )
-
-
 class Observation:
     def __init__(
         self,
-        army: np.ndarray,
+        armies: np.ndarray,
         generals: np.ndarray,
-        city: np.ndarray,
+        cities: np.ndarray,
+        mountains: np.ndarray,
         owned_cells: np.ndarray,
         opponent_cells: np.ndarray,
         neutral_cells: np.ndarray,
@@ -109,9 +64,10 @@ class Observation:
         opponent_army_count: int,
         timestep: int,
     ):
-        self.army = army
+        self.armies = armies
         self.generals = generals
-        self.city = city
+        self.cities = cities
+        self.mountains = mountains
         self.owned_cells = owned_cells
         self.opponent_cells = opponent_cells
         self.neutral_cells = neutral_cells
@@ -138,7 +94,7 @@ class Observation:
         height, width = self.owned_cells.shape
 
         ownership_channel = self.owned_cells
-        more_than_1_army = (self.army > 1) * ownership_channel
+        more_than_1_army = (self.armies > 1) * ownership_channel
         owned_cells_indices = np.argwhere(more_than_1_army)
         valid_action_mask = np.zeros((height, width, 4), dtype=bool)
 
@@ -155,9 +111,9 @@ class Observation:
             destinations = destinations[in_first_boundary & in_height_boundary & in_width_boundary]
 
             # check if destination is road
-            passable_cells = self.neutral_cells + self.owned_cells + self.opponent_cells + self.city
+            passable_cells = 1 - self.mountains
             # assert that every value is either 0 or 1 in passable cells
-            assert np.all(np.isin(passable_cells, [0, 1]))
+            assert np.all(np.isin(passable_cells, [0, 1])), f"{passable_cells}"
             passable_cell_indices = passable_cells[destinations[:, 0], destinations[:, 1]] == 1
             action_destinations = destinations[passable_cell_indices]
 
@@ -169,9 +125,10 @@ class Observation:
 
     def as_dict(self, with_mask=True):
         _obs = {
-            "armies": self.army,
+            "armies": self.armies,
             "generals": self.generals,
-            "cities": self.city,
+            "cities": self.cities,
+            "mountains": self.mountains,
             "owned_cells": self.owned_cells,
             "opponent_cells": self.opponent_cells,
             "neutral_cells": self.neutral_cells,
