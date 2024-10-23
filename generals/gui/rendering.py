@@ -225,7 +225,7 @@ class Renderer:
 
         # Draw nonzero army counts on visible squares
         visible_army = self.game.channels.army * visible_map
-        visible_army_indices = self.game.channel_to_indices(visible_army)
+        visible_army_indices = self.channel_to_indices(visible_army)
         for i, j in visible_army_indices:
             self.render_cell_text(
                 self.tiles[i][j],
@@ -240,12 +240,18 @@ class Renderer:
             self.game_area.blit(self.tiles[i][j], (j * square_size, i * square_size))
         self.screen.blit(self.game_area, (0, 0))
 
+    def channel_to_indices(self, channel: np.ndarray) -> np.ndarray:
+        """
+        Returns a list of indices of cells with non-zero values from specified a channel.
+        """
+        return np.argwhere(channel != 0)
+
     def draw_channel(self, channel: np.ndarray, color: Color):
         """
         Draw background and borders (left and top) for grid tiles of a given channel
         """
         square_size = Dimension.SQUARE_SIZE.value
-        for i, j in self.game.channel_to_indices(channel):
+        for i, j in self.channel_to_indices(channel):
             self.tiles[i][j].fill(color)
             pygame.draw.line(self.tiles[i][j], BLACK, (0, 0), (0, square_size), 1)
             pygame.draw.line(self.tiles[i][j], BLACK, (0, 0), (square_size, 0), 1)
@@ -254,5 +260,5 @@ class Renderer:
         """
         Draw images on grid tiles of a given channel
         """
-        for i, j in self.game.channel_to_indices(channel):
+        for i, j in self.channel_to_indices(channel):
             self.tiles[i][j].blit(image, (3, 2))

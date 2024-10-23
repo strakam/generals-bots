@@ -26,7 +26,7 @@ class ExpanderAgent(Agent):
                 "split": 0,
             }
 
-        army = observation["army"]
+        army = observation["armies"]
         opponent = observation["opponent_cells"]
         neutral = observation["neutral_cells"]
 
