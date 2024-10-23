@@ -1,49 +1,6 @@
 import numpy as np
 
-from generals.core.game import DIRECTIONS, Game
-
-
-def observation_from_simulator(game: Game, agent_id: str) -> "Observation":
-    scores = {}
-    for agent in game.agents:
-        army_size = np.sum(game.channels.army * game.channels.ownership[agent]).astype(int)
-        land_size = np.sum(game.channels.ownership[agent]).astype(int)
-        scores[agent] = {
-            "army": army_size,
-            "land": land_size,
-        }
-    opponent = game.agents[0] if agent_id == game.agents[1] else game.agents[1]
-    visible = game.channels.get_visibility(agent_id)
-    invisible = 1 - visible
-    army = game.channels.army.astype(int) * visible
-    generals = game.channels.general * visible
-    city = game.channels.city * visible
-    owned_cells = game.channels.ownership[agent_id] * visible
-    opponent_cells = game.channels.ownership[opponent] * visible
-    neutral_cells = game.channels.ownership_neutral * visible
-    visible_cells = visible
-    structures_in_fog = invisible * (game.channels.mountain + game.channels.city)
-    owned_land_count = scores[agent_id]["land"]
-    owned_army_count = scores[agent_id]["army"]
-    opponent_land_count = scores[opponent]["land"]
-    opponent_army_count = scores[opponent]["army"]
-    timestep = game.time
-
-    return Observation(
-        army=army,
-        generals=generals,
-        city=city,
-        owned_cells=owned_cells,
-        opponent_cells=opponent_cells,
-        neutral_cells=neutral_cells,
-        visible_cells=visible_cells,
-        structures_in_fog=structures_in_fog,
-        owned_land_count=owned_land_count,
-        owned_army_count=owned_army_count,
-        opponent_land_count=opponent_land_count,
-        opponent_army_count=opponent_army_count,
-        timestep=timestep,
-    )
+from generals.core.config import DIRECTIONS
 
 
 class Observation:

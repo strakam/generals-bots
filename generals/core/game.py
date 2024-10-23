@@ -4,10 +4,9 @@ import gymnasium as gym
 import numpy as np
 
 from .channels import Channels
-from .config import Action, Direction, Info, Observation
+from .config import DIRECTIONS, Action, Info
 from .grid import Grid
-
-DIRECTIONS = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
+from .observation import Observation
 
 
 class Game:
@@ -42,6 +41,7 @@ class Game:
                         "armies": gym.spaces.MultiDiscrete(grid_discrete),
                         "generals": grid_multi_binary,
                         "cities": grid_multi_binary,
+                        "mountains": grid_multi_binary,
                         "owned_cells": grid_multi_binary,
                         "opponent_cells": grid_multi_binary,
                         "neutral_cells": grid_multi_binary,
@@ -67,47 +67,6 @@ class Game:
             }
         )
 
-    # def action_mask(self, agent: str) -> np.ndarray:
-    #     """
-    #     Function to compute valid actions from a given ownership mask.
-    #
-    #     Valid action is an action that originates from agent's cell with atleast 2 units
-    #     and does not bump into a mountain or fall out of the grid.
-    #     Returns:
-    #         np.ndarray: an NxNx4 array, where each channel is a boolean mask
-    #         of valid actions (UP, DOWN, LEFT, RIGHT) for each cell in the grid.
-    #
-    #         I.e. valid_action_mask[i, j, k] is 1 if action k is valid in cell (i, j).
-    #     """
-    #
-    #     ownership_channel = self.channels.ownership[agent]
-    #     more_than_1_army = (self.channels.army > 1) * ownership_channel
-    #     owned_cells_indices = self.channel_to_indices(more_than_1_army)
-    #     valid_action_mask = np.zeros((self.grid_dims[0], self.grid_dims[1], 4), dtype=bool)
-    #
-    #     if self.is_done() and not self.agent_won(agent):  # if you lost, return all zeros
-    #         return valid_action_mask
-    #
-    #     for channel_index, direction in enumerate(DIRECTIONS):
-    #         destinations = owned_cells_indices + direction.value
-    #
-    #         # check if destination is in grid bounds
-    #         in_first_boundary = np.all(destinations >= 0, axis=1)
-    #         in_height_boundary = destinations[:, 0] < self.grid_dims[0]
-    #         in_width_boundary = destinations[:, 1] < self.grid_dims[1]
-    #         destinations = destinations[in_first_boundary & in_height_boundary & in_width_boundary]
-    #
-    #         # check if destination is road
-    #         passable_cell_indices = self.channels.passable[destinations[:, 0], destinations[:, 1]] == 1
-    #         action_destinations = destinations[passable_cell_indices]
-    #
-    #         # get valid action mask for a given direction
-    #         valid_source_indices = action_destinations - direction.value
-    #         valid_action_mask[valid_source_indices[:, 0], valid_source_indices[:, 1], channel_index] = 1.0
-    #     # assert False
-    #     return valid_action_mask
-
-
     def step(self, actions: dict[str, Action]) -> tuple[dict[str, Observation], dict[str, Any]]:
         """
         Perform one step of the game
@@ -129,9 +88,9 @@ class Game:
             if pass_turn == 1:
                 continue
             if split_army == 1:  # Agent wants to split the army
-                army_to_move = self.channels.army[i, j] // 2
+                army_to_move = self.channels.armies[i, j] // 2
             else:  # Leave just one army in the source cell
-                army_to_move = self.channels.army[i, j] - 1
+                army_to_move = self.channels.armies[i, j] - 1
             if army_to_move < 1:  # Skip if army size to move is less than 1
                 continue
             moves[agent] = (i, j, direction, army_to_move)
@@ -141,8 +100,8 @@ class Game:
             si, sj, direction, army_to_move = moves[agent]
 
             # Cap the amount of army to move (previous moves may have lowered available army)
-            army_to_move = min(army_to_move, self.channels.army[si, sj] - 1)
-            army_to_stay = self.channels.army[si, sj] - army_to_move
+            army_to_move = min(army_to_move, self.channels.armies[si, sj] - 1)
+            army_to_stay = self.channels.armies[si, sj] - army_to_move
 
             # Check if the current agent still owns the source cell and has more than 1 army
             if self.channels.ownership[agent][si, sj] == 0 or army_to_move < 1:
@@ -154,20 +113,20 @@ class Game:
             )  # destination indices
 
             # Figure out the target square owner and army size
-            target_square_army = self.channels.army[di, dj]
+            target_square_army = self.channels.armies[di, dj]
             target_square_owner_idx = np.argmax(
                 [self.channels.ownership[agent][di, dj] for agent in ["neutral"] + self.agents]
             )
             target_square_owner = (["neutral"] + self.agents)[target_square_owner_idx]
             if target_square_owner == agent:
-                self.channels.army[di, dj] += army_to_move
-                self.channels.army[si, sj] = army_to_stay
+                self.channels.armies[di, dj] += army_to_move
+                self.channels.armies[si, sj] = army_to_stay
             else:
                 # Calculate resulting army, winner and update channels
                 remaining_army = np.abs(target_square_army - army_to_move)
                 square_winner = agent if target_square_army < army_to_move else target_square_owner
-                self.channels.army[di, dj] = remaining_army
-                self.channels.army[si, sj] = army_to_stay
+                self.channels.armies[di, dj] = remaining_army
+                self.channels.armies[si, sj] = army_to_stay
                 self.channels.ownership[square_winner][di, dj] = 1
                 if square_winner != target_square_owner:
                     self.channels.ownership[target_square_owner][di, dj] = 0
@@ -184,6 +143,10 @@ class Game:
         else:
             self._global_game_update()
 
+        observations = {agent: self.agent_observation(agent) for agent in self.agents}
+        infos = self.get_infos()
+        return observations, infos
+
     def _global_game_update(self) -> None:
         """
         Update game state globally.
@@ -194,13 +157,13 @@ class Game:
         # every `increment_rate` steps, increase army size in each cell
         if self.time % self.increment_rate == 0:
             for owner in owners:
-                self.channels.army += self.channels.ownership[owner]
+                self.channels.armies += self.channels.ownership[owner]
 
         # Increment armies on general and city cells, but only if they are owned by player
         if self.time % 2 == 0 and self.time > 0:
-            update_mask = self.channels.general + self.channels.city
+            update_mask = self.channels.generals + self.channels.cities
             for owner in owners:
-                self.channels.army += update_mask * self.channels.ownership[owner]
+                self.channels.armies += update_mask * self.channels.ownership[owner]
 
     def is_done(self) -> bool:
         """
@@ -217,7 +180,7 @@ class Game:
         """
         players_stats = {}
         for agent in self.agents:
-            army_size = np.sum(self.channels.army * self.channels.ownership[agent]).astype(int)
+            army_size = np.sum(self.channels.armies * self.channels.ownership[agent]).astype(int)
             land_size = np.sum(self.channels.ownership[agent]).astype(int)
             players_stats[agent] = {
                 "army": army_size,
@@ -225,37 +188,55 @@ class Game:
                 "is_winner": self.agent_won(agent),
             }
         return players_stats
-    #
-    # def agent_observation(self, agent: str) -> Observation:
-    #     """
-    #     Returns an observation for a given agent.
-    #     """
-    #     info = self.get_infos()
-    #     opponent = self.agents[0] if agent == self.agents[1] else self.agents[1]
-    #     visible = self.channels.get_visibility(agent)
-    #     invisible = 1 - visible
-    #     _observation = {
-    #         "army": self.channels.army.astype(int) * visible,
-    #         "general": self.channels.general * visible,
-    #         "city": self.channels.city * visible,
-    #         "owned_cells": self.channels.ownership[agent] * visible,
-    #         "opponent_cells": self.channels.ownership[opponent] * visible,
-    #         "neutral_cells": self.channels.ownership_neutral * visible,
-    #         "visible_cells": visible,
-    #         "structures_in_fog": invisible * (self.channels.mountain + self.channels.city),
-    #         "owned_land_count": info[agent]["land"],
-    #         "owned_army_count": info[agent]["army"],
-    #         "opponent_land_count": info[opponent]["land"],
-    #         "opponent_army_count": info[opponent]["army"],
-    #         "is_winner": int(info[agent]["is_winner"]),
-    #         "timestep": self.time,
-    #     }
-    #     observation: Observation = {
-    #         "observation": _observation,
-    #         "action_mask": self.action_mask(agent),
-    #     }
-    #
-    #     return observation
+
+    def agent_observation(self, agent: str) -> Observation:
+        """
+        Returns an observation for a given agent.
+        """
+        scores = {}
+        for _agent in self.agents:
+            army_size = np.sum(self.channels.armies * self.channels.ownership[_agent]).astype(int)
+            land_size = np.sum(self.channels.ownership[_agent]).astype(int)
+            scores[_agent] = {
+                "army": army_size,
+                "land": land_size,
+            }
+
+        visible = self.channels.get_visibility(agent)
+        invisible = 1 - visible
+
+        opponent = self.agents[0] if agent == self.agents[1] else self.agents[1]
+
+        armies = self.channels.armies.astype(int) * visible
+        mountains = self.channels.mountains * visible
+        generals = self.channels.generals * visible
+        cities = self.channels.cities * visible
+        owned_cells = self.channels.ownership[agent] * visible
+        opponent_cells = self.channels.ownership[opponent] * visible
+        neutral_cells = self.channels.ownership_neutral * visible
+        structures_in_fog = invisible * (self.channels.mountains + self.channels.cities)
+        owned_land_count = scores[agent]["land"]
+        owned_army_count = scores[agent]["army"]
+        opponent_land_count = scores[opponent]["land"]
+        opponent_army_count = scores[opponent]["army"]
+        timestep = self.time
+
+        return Observation(
+            armies=armies,
+            generals=generals,
+            cities=cities,
+            mountains=mountains,
+            owned_cells=owned_cells,
+            opponent_cells=opponent_cells,
+            neutral_cells=neutral_cells,
+            visible_cells=visible,
+            structures_in_fog=structures_in_fog,
+            owned_land_count=owned_land_count,
+            owned_army_count=owned_army_count,
+            opponent_land_count=opponent_land_count,
+            opponent_army_count=opponent_army_count,
+            timestep=timestep,
+        ).as_dict()
 
     def agent_won(self, agent: str) -> bool:
         """

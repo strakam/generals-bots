@@ -3,16 +3,14 @@ from enum import Enum, IntEnum, StrEnum
 from importlib.resources import files
 from typing import Any, Literal, TypeAlias
 
-import gymnasium as gym
 import numpy as np
 
 # Type aliases
-Observation: TypeAlias = dict[str, np.ndarray | dict[str, gym.Space]]
 Action: TypeAlias = dict[str, int | np.ndarray]
 Info: TypeAlias = dict[str, Any]
 
 Reward: TypeAlias = float
-RewardFn: TypeAlias = Callable[[Observation, Action, bool, Info], Reward]
+RewardFn: TypeAlias = Callable[["Observation", Action, bool, Info], Reward]
 AgentID: TypeAlias = str
 
 # Game Literals
@@ -32,6 +30,9 @@ class Direction(Enum):
     DOWN = (1, 0)
     LEFT = (0, -1)
     RIGHT = (0, 1)
+
+
+DIRECTIONS = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
 
 
 class Path(StrEnum):
