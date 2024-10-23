@@ -5,8 +5,9 @@ import gymnasium as gym
 
 from generals.agents import Agent, AgentFactory
 from generals.core.config import Reward, RewardFn
-from generals.core.game import Action, Game, Info, Observation
+from generals.core.game import Action, Game, Info
 from generals.core.grid import GridFactory
+from generals.core.observation import Observation, observation_from_simulator
 from generals.core.replay import Replay
 from generals.gui import GUI
 from generals.gui.properties import GuiMode
@@ -90,16 +91,22 @@ class GymnasiumGenerals(gym.Env):
         self.observation_space = self.game.observation_space
         self.action_space = self.game.action_space
 
-        observation = self.game.agent_observation(self.agent_id)
+        observation = observation_from_simulator(self.game, self.agent_id).as_dict()
         info: dict[str, Any] = {}
         return observation, info
 
     def step(self, action: Action) -> tuple[Observation, SupportsFloat, bool, bool, dict[str, Any]]:
         # Get action of NPC
-        npc_action = self.npc.act(self.game.agent_observation(self.npc.id))
+        npc_ovservation = observation_from_simulator(self.game, self.npc.id).as_dict()
+        npc_action = self.npc.act(npc_ovservation)
         actions = {self.agent_id: action, self.npc.id: npc_action}
 
-        observations, infos = self.game.step(actions)
+        self.game.step(actions)
+        observations = {
+            agent_id: observation_from_simulator(self.game, agent_id).as_dict() for agent_id in self.agent_ids
+        }
+        infos = {agent_id: {} for agent_id in self.agent_ids}
+
         # From observations of all agents, pick only those relevant for the main agent
         obs = observations[self.agent_id]
         info = infos[self.agent_id]

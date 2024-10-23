@@ -39,6 +39,13 @@ class Channels:
         channel = self._ownership[agent_id]
         return maximum_filter(channel, size=3)
 
+    @staticmethod
+    def channel_to_indices(channel: np.ndarray) -> np.ndarray:
+        """
+        Returns a list of indices of cells with non-zero values from specified a channel.
+        """
+        return np.argwhere(channel != 0)
+
     @property
     def ownership(self) -> dict[str, np.ndarray]:
         return self._ownership

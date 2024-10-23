@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.ndimage import maximum_filter  # type: ignore
 from socketio import SimpleClient  # type: ignore
 
 from generals.agents.agent import Agent
@@ -43,12 +44,13 @@ def apply_diff(old: list[int], diff: list[int]) -> list[int]:
         i += 1
     return new
 
+
 test_old_1 = [0, 0]
 test_diff_1 = [1, 1, 3]
-desired = [0,3]
+desired = [0, 3]
 assert apply_diff(test_old_1, test_diff_1) == desired
-test_old_2 = [0,0]
-test_diff_2 = [0,1,2,1]
+test_old_2 = [0, 0]
+test_diff_2 = [0, 1, 2, 1]
 desired = [2, 0]
 assert apply_diff(test_old_2, test_diff_2) == desired
 print("All tests passed")
@@ -59,7 +61,7 @@ class GeneralsIOState:
         self.replay_id = data["replay_id"]
         self.usernames = data["usernames"]
         self.player_index = data["playerIndex"]
-        self.opponent_index = 1 - self.player_index # works only for 1v1
+        self.opponent_index = 1 - self.player_index  # works only for 1v1
 
         self.n_players = len(self.usernames)
 
@@ -75,20 +77,41 @@ class GeneralsIOState:
         if "stars" in data:
             self.stars = data["stars"]
 
-
     def agent_observation(self) -> Observation:
         width, height = self.map[0], self.map[1]
         size = height * width
 
         armies = np.array(self.map[2 : 2 + size]).reshape((height, width))
         terrain = np.array(self.map[2 + size : 2 + 2 * size]).reshape((height, width))
+        cities = np.zeros((height, width))
+        for city in self.cities:
+            cities[city // width, city % width] = 1
 
-        # make 2D binary map of owned cells. These are the ones that have self.player_index value in terrain
-        army = armies
-        owned_cells = np.where(terrain == self.player_index, 1, 0)
-        opponent_cells = np.where(terrain == self.opponent_index, 1, 0)
-        visible_neutral_cells = np.where(terrain == -1, 1, 0)
-        print(self.generals)
+        generals = np.zeros((height, width))
+        for general in self.generals:
+            if general != -1:
+                generals[general // width, general % width] = 1
+        _observation = {
+            "army": armies,
+            "general": generals,
+            "city": cities,
+            "owned_cells": np.where(terrain == self.player_index, 1, 0),
+            "opponent_cells": np.where(terrain == self.opponent_index, 1, 0),
+            "neutral_cells": np.where(terrain == -1, 1, 0),
+            "visible_cells": maximum_filter(np.where(terrain == self.player_index, 1, 0), size=3),
+            "structures_in_fog": np.where(terrain == -4, 1, 0),
+            "owned_land_count": self.scores[self.player_index]["tiles"],
+            "owned_army_count": self.scores[self.player_index]["total"],
+            "opponent_land_count": self.scores[self.opponent_index]["tiles"],
+            "opponent_army_count": self.scores[self.opponent_index]["total"],
+            "is_winner": False,
+            "timestep": self.turn,
+        }
+
+        observation = {
+            "observation": _observation,
+        }
+        return observation
 
 
 class GeneralsIOClient(SimpleClient):
