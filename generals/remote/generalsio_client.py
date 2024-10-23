@@ -3,7 +3,10 @@ from scipy.ndimage import maximum_filter  # type: ignore
 from socketio import SimpleClient  # type: ignore
 
 from generals.agents.agent import Agent
-from generals.core.config import Observation
+from generals.core.game import Direction
+from generals.core.observation import Observation
+
+DIRECTIONS = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
 
 
 class GeneralsBotError(Exception):
@@ -56,7 +59,7 @@ assert apply_diff(test_old_2, test_diff_2) == desired
 print("All tests passed")
 
 
-class GeneralsIOState:
+class GeneralsIOself:
     def __init__(self, data: dict):
         self.replay_id = data["replay_id"]
         self.usernames = data["usernames"]
@@ -77,7 +80,7 @@ class GeneralsIOState:
         if "stars" in data:
             self.stars = data["stars"]
 
-    def agent_observation(self) -> Observation:
+    def get_observation(self) -> "Observation":
         width, height = self.map[0], self.map[1]
         size = height * width
 
@@ -91,27 +94,36 @@ class GeneralsIOState:
         for general in self.generals:
             if general != -1:
                 generals[general // width, general % width] = 1
-        _observation = {
-            "army": armies,
-            "general": generals,
-            "city": cities,
-            "owned_cells": np.where(terrain == self.player_index, 1, 0),
-            "opponent_cells": np.where(terrain == self.opponent_index, 1, 0),
-            "neutral_cells": np.where(terrain == -1, 1, 0),
-            "visible_cells": maximum_filter(np.where(terrain == self.player_index, 1, 0), size=3),
-            "structures_in_fog": np.where(terrain == -4, 1, 0),
-            "owned_land_count": self.scores[self.player_index]["tiles"],
-            "owned_army_count": self.scores[self.player_index]["total"],
-            "opponent_land_count": self.scores[self.opponent_index]["tiles"],
-            "opponent_army_count": self.scores[self.opponent_index]["total"],
-            "is_winner": False,
-            "timestep": self.turn,
-        }
 
-        observation = {
-            "observation": _observation,
-        }
-        return observation
+        army = armies
+        owned_cells = np.where(terrain == self.player_index, 1, 0)
+        opponent_cells = np.where(terrain == self.opponent_index, 1, 0)
+        neutral_cells = np.where(terrain == -1, 1, 0)
+        mountain_cells = np.where(terrain == -2, 1, 0)
+        visible_cells = maximum_filter(np.where(terrain == self.player_index, 1, 0), size=3)
+        structures_in_fog = np.where(terrain == -4, 1, 0)
+        owned_land_count = self.scores[self.player_index]["tiles"]
+        owned_army_count = self.scores[self.player_index]["total"]
+        opponent_land_count = self.scores[self.opponent_index]["tiles"]
+        opponent_army_count = self.scores[self.opponent_index]["total"]
+        timestep = self.turn
+
+        return Observation(
+            armies=army,
+            generals=generals,
+            cities=cities,
+            mountains=mountain_cells,
+            owned_cells=owned_cells,
+            opponent_cells=opponent_cells,
+            neutral_cells=neutral_cells,
+            visible_cells=visible_cells,
+            structures_in_fog=structures_in_fog,
+            owned_land_count=owned_land_count,
+            owned_army_count=owned_army_count,
+            opponent_land_count=opponent_land_count,
+            opponent_army_count=opponent_army_count,
+            timestep=timestep,
+        ).as_dict()
 
 
 class GeneralsIOClient(SimpleClient):
@@ -124,6 +136,7 @@ class GeneralsIOClient(SimpleClient):
         super().__init__()
         self.connect("https://botws.generals.io")
         self.user_id = user_id
+        self.agent = agent
         self._queue_id = ""
 
     @property
@@ -178,7 +191,7 @@ class GeneralsIOClient(SimpleClient):
         Triggered after server starts the game.
         :param data: dictionary of information received in the beginning
         """
-        self.game_state = GeneralsIOState(data[0])
+        self.game_state = GeneralsIOself(data[0])
 
     def _play_game(self) -> None:
         """
@@ -193,7 +206,19 @@ class GeneralsIOClient(SimpleClient):
             match event:
                 case "game_update":
                     self.game_state.update(data)
-                    self.game_state.agent_observation()
+                    obs = self.game_state.get_observation()
+                    # This code here should be made way prettier, its just POC
+                    action = self.agent.act(obs)
+                    if not action["pass"]:
+                        source = action["cell"]
+                        direction = DIRECTIONS[action["direction"]].value
+                        split = action["split"]
+                        destination = source + direction
+                        # convert to index
+                        source_index = source[0] * self.game_state.map[0] + source[1]
+                        destination_index = destination[0] * self.game_state.map[0] + destination[1]
+                        self.emit("attack", (int(source_index), int(destination_index), int(split)))
+
                 case "game_lost" | "game_won":
                     # server sends game_lost or game_won before game_over
                     winner = event == "game_won"
