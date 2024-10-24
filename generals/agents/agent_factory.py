@@ -16,9 +16,9 @@ class AgentFactory:
         """
         Creates an agent of the specified type.
         """
-        if agent_type == "random":
+        if agent_type == "Random":
             return RandomAgent(**kwargs)
-        elif agent_type == "expander":
+        elif agent_type == "Expander":
             return ExpanderAgent(**kwargs)
         else:
             raise ValueError(f"Unknown agent type: {agent_type}")

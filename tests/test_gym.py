@@ -5,7 +5,7 @@ from generals.agents import AgentFactory
 
 
 def test_gym_runs():
-    npc = AgentFactory.make_agent("random")
+    npc = AgentFactory.make_agent("Random")
 
     env = gym.make(
         "gym-generals-v0",

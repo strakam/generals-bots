@@ -1,6 +1,7 @@
 import numpy as np
 
-from generals.core.game import Action, Direction
+from generals.core.config import Direction
+from generals.core.game import Action
 from generals.core.observation import Observation
 
 from .agent import Agent
