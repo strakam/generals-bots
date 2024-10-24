@@ -1,17 +1,21 @@
 import functools
+from collections.abc import Callable
 from copy import deepcopy
-from typing import Any
+from typing import Any, TypeAlias
 
 import pettingzoo  # type: ignore
 from gymnasium import spaces
 
 from generals.agents.agent import Agent
-from generals.core.config import AgentID, Reward, RewardFn
 from generals.core.game import Action, Game, Info, Observation
 from generals.core.grid import GridFactory
 from generals.core.replay import Replay
 from generals.gui import GUI
 from generals.gui.properties import GuiMode
+
+AgentID: TypeAlias = str
+Reward: TypeAlias = float
+RewardFn: TypeAlias = Callable[[Observation, Action, bool, Info], Reward]
 
 
 class PettingZooGenerals(pettingzoo.ParallelEnv):
@@ -82,7 +86,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         elif hasattr(self, "replay"):
             del self.replay
 
-        observations = self.game.get_all_observations()
+        observations = {agent: self.game.agent_observation(agent).as_dict() for agent in self.agents}
         infos: dict[str, Any] = {agent: {} for agent in self.agents}
         return observations, infos
 
@@ -96,6 +100,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         dict[AgentID, Info],
     ]:
         observations, infos = self.game.step(actions)
+        observations = {agent: observation.as_dict() for agent, observation in observations.items()}
         # You probably want to set your truncation based on self.game.time
         truncation = False if self.truncation is None else self.game.time >= self.truncation
         truncated = {agent: truncation for agent in self.agents}
@@ -128,14 +133,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         done: bool,
         info: Info,
     ) -> Reward:
-        """
-        Give 0 if game still running, otherwise 1 for winner and -1 for loser.
-        """
-        if done:
-            reward = 1 if observation["observation"]["is_winner"] else -1
-        else:
-            reward = 0
-        return reward
+        return 0
 
     def close(self) -> None:
         if self.render_mode == "human":

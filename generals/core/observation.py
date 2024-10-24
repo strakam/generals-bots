@@ -10,10 +10,10 @@ class Observation:
         generals: np.ndarray,
         cities: np.ndarray,
         mountains: np.ndarray,
+        neutral_cells: np.ndarray,
         owned_cells: np.ndarray,
         opponent_cells: np.ndarray,
-        neutral_cells: np.ndarray,
-        visible_cells: np.ndarray,
+        fog_cells: np.ndarray,
         structures_in_fog: np.ndarray,
         owned_land_count: int,
         owned_army_count: int,
@@ -25,16 +25,17 @@ class Observation:
         self.generals = generals
         self.cities = cities
         self.mountains = mountains
+        self.neutral_cells = neutral_cells
         self.owned_cells = owned_cells
         self.opponent_cells = opponent_cells
-        self.neutral_cells = neutral_cells
-        self.visible_cells = visible_cells
+        self.fog_cells = fog_cells
         self.structures_in_fog = structures_in_fog
         self.owned_land_count = owned_land_count
         self.owned_army_count = owned_army_count
         self.opponent_land_count = opponent_land_count
         self.opponent_army_count = opponent_army_count
         self.timestep = timestep
+        # armies, generals, cities, mountains, empty, owner, fogged, structure in fog
 
     def action_mask(self) -> np.ndarray:
         """
@@ -86,10 +87,10 @@ class Observation:
             "generals": self.generals,
             "cities": self.cities,
             "mountains": self.mountains,
+            "neutral_cells": self.neutral_cells,
             "owned_cells": self.owned_cells,
             "opponent_cells": self.opponent_cells,
-            "neutral_cells": self.neutral_cells,
-            "visible_cells": self.visible_cells,
+            "fog_cells": self.fog_cells,
             "structures_in_fog": self.structures_in_fog,
             "owned_land_count": self.owned_land_count,
             "owned_army_count": self.owned_army_count,

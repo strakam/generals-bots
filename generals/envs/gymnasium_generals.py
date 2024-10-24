@@ -1,16 +1,19 @@
+from collections.abc import Callable
 from copy import deepcopy
-from typing import Any, SupportsFloat
+from typing import Any, SupportsFloat, TypeAlias
 
 import gymnasium as gym
 
 from generals.agents import Agent, AgentFactory
-from generals.core.config import Reward, RewardFn
 from generals.core.game import Action, Game, Info
 from generals.core.grid import GridFactory
 from generals.core.observation import Observation
 from generals.core.replay import Replay
 from generals.gui import GUI
 from generals.gui.properties import GuiMode
+
+Reward: TypeAlias = float
+RewardFn: TypeAlias = Callable[[Observation, Action, bool, Info], Reward]
 
 
 class GymnasiumGenerals(gym.Env):
@@ -91,20 +94,21 @@ class GymnasiumGenerals(gym.Env):
         self.observation_space = self.game.observation_space
         self.action_space = self.game.action_space
 
-        observation = self.game.agent_observation(self.agent_id)
+        observation = self.game.agent_observation(self.agent_id).as_dict()
         info: dict[str, Any] = {}
         return observation, info
 
     def step(self, action: Action) -> tuple[Observation, SupportsFloat, bool, bool, dict[str, Any]]:
         # Get action of NPC
-        npc_observation = self.game.agent_observation(self.npc.id)
+        npc_observation = self.game.agent_observation(self.npc.id).as_dict()
         npc_action = self.npc.act(npc_observation)
         actions = {self.agent_id: action, self.npc.id: npc_action}
 
         observations, infos = self.game.step(actions)
         infos = {agent_id: {} for agent_id in self.agent_ids}
+
         # From observations of all agents, pick only those relevant for the main agent
-        obs = observations[self.agent_id]
+        obs = observations[self.agent_id].as_dict()
         info = infos[self.agent_id]
         reward = self.reward_fn(obs, action, self.game.is_done(), info)
         terminated = self.game.is_done()
@@ -127,14 +131,7 @@ class GymnasiumGenerals(gym.Env):
         done: bool,
         info: Info,
     ) -> Reward:
-        """
-        Give 0 if game still running, otherwise 1 for winner and -1 for loser.
-        """
-        if done:
-            reward = 1 if observation["observation"]["is_winner"] else -1
-        else:
-            reward = 0
-        return reward
+        return 0
 
     def close(self) -> None:
         if self.render_mode == "human":
