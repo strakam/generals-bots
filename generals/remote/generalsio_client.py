@@ -1,9 +1,8 @@
 import numpy as np
-from scipy.ndimage import maximum_filter  # type: ignore
 from socketio import SimpleClient  # type: ignore
 
 from generals.agents.agent import Agent
-from generals.core.game import Direction
+from generals.core.config import Direction
 from generals.core.observation import Observation
 
 DIRECTIONS = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
@@ -36,7 +35,7 @@ class RegisterAgentError(GeneralsIOClientError):
 
 def apply_diff(old: list[int], diff: list[int]) -> list[int]:
     i = 0
-    new = []
+    new: list[int] = []
     while i < len(diff):
         if diff[i] > 0:  # matching
             new.extend(old[len(new) : len(new) + diff[i]])
@@ -68,8 +67,8 @@ class GeneralsIOself:
 
         self.n_players = len(self.usernames)
 
-        self.map = []
-        self.cities = []
+        self.map: list[int] = []
+        self.cities: list[int] = []
 
     def update(self, data: dict) -> None:
         self.turn = data["turn"]
@@ -100,7 +99,7 @@ class GeneralsIOself:
         opponent_cells = np.where(terrain == self.opponent_index, 1, 0)
         neutral_cells = np.where(terrain == -1, 1, 0)
         mountain_cells = np.where(terrain == -2, 1, 0)
-        visible_cells = maximum_filter(np.where(terrain == self.player_index, 1, 0), size=3)
+        fog_cells = np.where(terrain == -3, 1, 0)
         structures_in_fog = np.where(terrain == -4, 1, 0)
         owned_land_count = self.scores[self.player_index]["tiles"]
         owned_army_count = self.scores[self.player_index]["total"]
@@ -113,10 +112,10 @@ class GeneralsIOself:
             generals=generals,
             cities=cities,
             mountains=mountain_cells,
+            neutral_cells=neutral_cells,
             owned_cells=owned_cells,
             opponent_cells=opponent_cells,
-            neutral_cells=neutral_cells,
-            visible_cells=visible_cells,
+            fog_cells=fog_cells,
             structures_in_fog=structures_in_fog,
             owned_land_count=owned_land_count,
             owned_army_count=owned_army_count,
@@ -210,8 +209,8 @@ class GeneralsIOClient(SimpleClient):
                     # This code here should be made way prettier, its just POC
                     action = self.agent.act(obs)
                     if not action["pass"]:
-                        source = action["cell"]
-                        direction = DIRECTIONS[action["direction"]].value
+                        source: np.ndarray = np.array(action["cell"])
+                        direction = np.array(DIRECTIONS[action["direction"]].value)
                         split = action["split"]
                         destination = source + direction
                         # convert to index

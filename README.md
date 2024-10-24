@@ -159,19 +159,19 @@ An observation for one agent is a dictionary `{"observation": observation, "acti
 The `observation` is a `Dict`. Values are either `numpy` matrices with shape `(N,M)`, or simple `int` constants:
 | Key                  | Shape     | Description                                                                  |
 | -------------------- | --------- | ---------------------------------------------------------------------------- |
-| `army`               | `(N,M)`   | Number of units in a cell regardless of the owner                            |
-| `general`            | `(N,M)`   | Mask indicating cells containing a general                                   |
-| `city`               | `(N,M)`   | Mask indicating cells containing a city                                      |
-| `visible_cells`      | `(N,M)`   | Mask indicating cells that are visible to the agent                          |
-| `owned_cells`        | `(N,M)`   | Mask indicating cells owned by the agent                                     |
-| `opponent_cells`     | `(N,M)`   | Mask indicating cells owned by the opponent                                  |
-| `neutral_cells`      | `(N,M)`   | Mask indicating cells that are not owned by any agent                        |
-| `structures_in_fog`  | `(N,M)`   | Mask indicating whether cells contain cities or mountains (in fog)           |
+| `armies`             | `(N,M)`   | Number of units in a visible cell regardless of the owner                    |
+| `generals`           | `(N,M)`   | Mask indicating visible cells containing a general                           |
+| `cities`             | `(N,M)`   | Mask indicating visible cells containing a city                              |
+| `mountains`          | `(N,M)`   | Mask indicating visible cells containing mountains                           |
+| `neutral_cells`      | `(N,M)`   | Mask indicating visible cells that are not owned by any agent                |
+| `owned_cells`        | `(N,M)`   | Mask indicating visible cells owned by the agent                             |
+| `opponent_cells`     | `(N,M)`   | Mask indicating visible cells owned by the opponent                          |
+| `fog_cells`          | `(N,M)`   | Mask indicating fog cells that are not mountains or cities                   |
+| `structures_in_fog`  | `(N,M)`   | Mask showing cells containing either cities or mountains in fog              |
 | `owned_land_count`   |     —     | Number of cells the agent owns                                               |
 | `owned_army_count`   |     —     | Total number of units owned by the agent                                     |
 | `opponent_land_count`|     —     | Number of cells owned by the opponent                                        |
 | `opponent_army_count`|     —     | Total number of units owned by the opponent                                  |
-| `is_winner`          |     —     | Indicates whether the agent won                                              |
 | `timestep`           |     —     | Current timestep of the game                                                 |
 
 The `action_mask` is a 3D array with shape `(N, M, 4)`, where each element corresponds to whether a move is valid from cell

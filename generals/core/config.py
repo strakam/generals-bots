@@ -1,17 +1,6 @@
-from collections.abc import Callable
 from enum import Enum, IntEnum, StrEnum
 from importlib.resources import files
-from typing import Any, Literal, TypeAlias
-
-import numpy as np
-
-# Type aliases
-Action: TypeAlias = dict[str, int | np.ndarray]
-Info: TypeAlias = dict[str, Any]
-
-Reward: TypeAlias = float
-RewardFn: TypeAlias = Callable[["Observation", Action, bool, Info], Reward]
-AgentID: TypeAlias = str
+from typing import Literal
 
 # Game Literals
 PASSABLE: Literal["."] = "."

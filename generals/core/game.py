@@ -1,12 +1,16 @@
-from typing import Any
+from typing import Any, TypeAlias
 
 import gymnasium as gym
 import numpy as np
 
 from .channels import Channels
-from .config import DIRECTIONS, Action, Info
+from .config import DIRECTIONS
 from .grid import Grid
 from .observation import Observation
+
+# Type aliases
+Action: TypeAlias = dict[str, int | np.ndarray]
+Info: TypeAlias = dict[str, Any]
 
 
 class Game:
@@ -42,10 +46,10 @@ class Game:
                         "generals": grid_multi_binary,
                         "cities": grid_multi_binary,
                         "mountains": grid_multi_binary,
+                        "neutral_cells": grid_multi_binary,
                         "owned_cells": grid_multi_binary,
                         "opponent_cells": grid_multi_binary,
-                        "neutral_cells": grid_multi_binary,
-                        "visible_cells": grid_multi_binary,
+                        "fog_cells": grid_multi_binary,
                         "structures_in_fog": grid_multi_binary,
                         "owned_land_count": gym.spaces.Discrete(self.max_army_value),
                         "owned_army_count": gym.spaces.Discrete(self.max_army_value),
@@ -211,10 +215,11 @@ class Game:
         mountains = self.channels.mountains * visible
         generals = self.channels.generals * visible
         cities = self.channels.cities * visible
+        neutral_cells = self.channels.ownership_neutral * visible
         owned_cells = self.channels.ownership[agent] * visible
         opponent_cells = self.channels.ownership[opponent] * visible
-        neutral_cells = self.channels.ownership_neutral * visible
         structures_in_fog = invisible * (self.channels.mountains + self.channels.cities)
+        fog_cells = invisible - structures_in_fog
         owned_land_count = scores[agent]["land"]
         owned_army_count = scores[agent]["army"]
         opponent_land_count = scores[opponent]["land"]
@@ -226,17 +231,17 @@ class Game:
             generals=generals,
             cities=cities,
             mountains=mountains,
+            neutral_cells=neutral_cells,
             owned_cells=owned_cells,
             opponent_cells=opponent_cells,
-            neutral_cells=neutral_cells,
-            visible_cells=visible,
+            fog_cells=fog_cells,
             structures_in_fog=structures_in_fog,
             owned_land_count=owned_land_count,
             owned_army_count=owned_army_count,
             opponent_land_count=opponent_land_count,
             opponent_army_count=opponent_army_count,
             timestep=timestep,
-        ).as_dict()
+        )
 
     def agent_won(self, agent: str) -> bool:
         """
