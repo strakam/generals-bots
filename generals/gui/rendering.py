@@ -180,7 +180,7 @@ class Renderer:
             ownership = self.game.channels.ownership[agent]
             owned_map = np.logical_or(owned_map, ownership)
             if self.agent_fov[agent]:
-                visibility = self.game.visibility_channel(ownership)
+                visibility = self.game.channels.get_visibility(agent)
                 visible_map = np.logical_or(visible_map, visibility)
 
         # Helper maps for not owned and invisible cells
@@ -194,7 +194,7 @@ class Renderer:
             self.draw_channel(visible_ownership, self.agent_data[agent]["color"])
 
         # Draw visible generals
-        visible_generals = np.logical_and(self.game.channels.general, visible_map)
+        visible_generals = np.logical_and(self.game.channels.generals, visible_map)
         self.draw_images(visible_generals, self._general_img)
 
         # Draw background of visible but not owned squares
@@ -205,27 +205,27 @@ class Renderer:
         self.draw_channel(invisible_map, FOG_OF_WAR)
 
         # Draw background of visible mountains
-        visible_mountain = np.logical_and(self.game.channels.mountain, visible_map)
+        visible_mountain = np.logical_and(self.game.channels.mountains, visible_map)
         self.draw_channel(visible_mountain, VISIBLE_MOUNTAIN)
 
         # Draw mountains (even if they are not visible)
-        self.draw_images(self.game.channels.mountain, self._mountain_img)
+        self.draw_images(self.game.channels.mountains, self._mountain_img)
 
         # Draw background of visible neutral cities
-        visible_cities = np.logical_and(self.game.channels.city, visible_map)
+        visible_cities = np.logical_and(self.game.channels.cities, visible_map)
         visible_cities_neutral = np.logical_and(visible_cities, self.game.channels.ownership_neutral)
         self.draw_channel(visible_cities_neutral, NEUTRAL_CASTLE)
 
         # Draw invisible cities as mountains
-        invisible_cities = np.logical_and(self.game.channels.city, invisible_map)
+        invisible_cities = np.logical_and(self.game.channels.cities, invisible_map)
         self.draw_images(invisible_cities, self._mountain_img)
 
         # Draw visible cities
         self.draw_images(visible_cities, self._city_img)
 
         # Draw nonzero army counts on visible squares
-        visible_army = self.game.channels.army * visible_map
-        visible_army_indices = self.game.channel_to_indices(visible_army)
+        visible_army = self.game.channels.armies * visible_map
+        visible_army_indices = self.channel_to_indices(visible_army)
         for i, j in visible_army_indices:
             self.render_cell_text(
                 self.tiles[i][j],
@@ -240,12 +240,18 @@ class Renderer:
             self.game_area.blit(self.tiles[i][j], (j * square_size, i * square_size))
         self.screen.blit(self.game_area, (0, 0))
 
+    def channel_to_indices(self, channel: np.ndarray) -> np.ndarray:
+        """
+        Returns a list of indices of cells with non-zero values from specified a channel.
+        """
+        return np.argwhere(channel != 0)
+
     def draw_channel(self, channel: np.ndarray, color: Color):
         """
         Draw background and borders (left and top) for grid tiles of a given channel
         """
         square_size = Dimension.SQUARE_SIZE.value
-        for i, j in self.game.channel_to_indices(channel):
+        for i, j in self.channel_to_indices(channel):
             self.tiles[i][j].fill(color)
             pygame.draw.line(self.tiles[i][j], BLACK, (0, 0), (0, square_size), 1)
             pygame.draw.line(self.tiles[i][j], BLACK, (0, 0), (square_size, 0), 1)
@@ -254,5 +260,5 @@ class Renderer:
         """
         Draw images on grid tiles of a given channel
         """
-        for i, j in self.game.channel_to_indices(channel):
+        for i, j in self.channel_to_indices(channel):
             self.tiles[i][j].blit(image, (3, 2))

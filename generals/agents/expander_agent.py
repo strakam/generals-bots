@@ -1,6 +1,8 @@
 import numpy as np
 
-from generals.core.config import Action, Direction, Observation
+from generals.core.config import Direction
+from generals.core.game import Action
+from generals.core.observation import Observation
 
 from .agent import Agent
 
@@ -26,7 +28,7 @@ class ExpanderAgent(Agent):
                 "split": 0,
             }
 
-        army = observation["army"]
+        army = observation["armies"]
         opponent = observation["opponent_cells"]
         neutral = observation["neutral_cells"]
 
