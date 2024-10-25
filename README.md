@@ -22,7 +22,7 @@ Highlights:
 * ⚡ **blazing-fast simulator**: run thousands of steps per second with `numpy`-powered efficiency
 * 🤝 **seamless integration**: fully compatible with RL standards 🤸[Gymnasium](https://gymnasium.farama.org/) and 🦁[PettingZoo](https://pettingzoo.farama.org/)
 * 🔧 **extensive customization**: easily tailor environments to your specific needs
-* 🚀 **effortless deployment**: launch your agents to generalsio
+* 🚀 **effortless deployment**: launch your agents to [generals.io](https://generals.io)
 * 🔬 **analysis tools**: leverage features like replays for deeper insights
 
 > [!Note]
@@ -41,7 +41,7 @@ cd generals-bots
 make install
 ```
 > [!Note]
-> Under the hood, `make install` installs [poetry](https://python-poetry.org/) and the package using poetry.
+> Under the hood, `make install` installs [poetry](https://python-poetry.org/) and the package using `poetry`.
 
 ## 🌱 Getting Started
 Creating an agent is very simple. Start by subclassing an `Agent` class just like
@@ -141,7 +141,7 @@ replay = Replay.load("my_replay")
 replay.play()
 ```
 ### 🕹️ Replay controls
-You can control your replays to your liking! Currently we support these controls:
+You can control your replays to your liking! Currently, we support these controls:
 - `q` — quit/close the replay
 - `r` — restart replay from the beginning
 - `←/→` — increase/decrease the replay speed
@@ -206,14 +206,14 @@ observations, info = env.reset()
 
 ## 🚀 Deployment to Live Servers
 Complementary to local development, it is possible to run agents online against other agents and players.
-We use `socketio` for communication and you can either use out `autopilot` to run agent in a specified lobby indefinitely,
+We use `socketio` for communication, and you can either use our `autopilot` to run agent in a specified lobby indefinitely,
 or create your own connection workflow. Our implementations expect that your agent inherits from the `Agent` class, and has
-implemented required methods.
+implemented the required methods.
 ```python
 from generals.remote import autopilot
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument("--user_id", type=str, default=...) # Register yourself at generalsio and use this id
+parser.add_argument("--user_id", type=str, default=...) # Register yourself at generals.io and use this id
 parser.add_argument("--lobby_id", type=str, default="psyo") # The last part of the lobby url
 parser.add_argument("--agent_id", type=str, default="Expander") # agent_id should be "registered" in AgentFactory
 
@@ -224,9 +224,9 @@ if __name__ == "__main__":
 This script will run your `ExpanderAgent` in lobby `psyo`.
 ## 🙌 Contributing
 You can contribute to this project in multiple ways:
-- 🤖 If you implement ANY non-trivial agent, send it to us! We will publish it so others can play against it
+- 🤖 If you implement ANY non-trivial agent, send it to us! We will publish it, so others can play against it.
 - 💡 If you have an idea on how to improve the game, submit an issue or create a PR, we are happy to improve!
-  We also have some ideas (see [issues](https://github.com/strakam/generals-bots/issues)), so you can see what we plan to work on
+  We also have some ideas (see [issues](https://github.com/strakam/generals-bots/issues)), so you can see what we plan to work on.
 
 > [!Tip]
 > Check out [wiki](https://github.com/strakam/generals-bots/wiki) to learn in more detail on how to contribute.
