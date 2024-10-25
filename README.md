@@ -19,9 +19,10 @@ challenging players to balance micro and macro-level decision-making.
 The combination of these elements makes the game highly engaging and complex.
 
 Highlights:
-* 🚀 **blazing-fast simulator**: run thousands of steps per second with `numpy`-powered efficiency
+* ⚡ **blazing-fast simulator**: run thousands of steps per second with `numpy`-powered efficiency
 * 🤝 **seamless integration**: fully compatible with RL standards 🤸[Gymnasium](https://gymnasium.farama.org/) and 🦁[PettingZoo](https://pettingzoo.farama.org/)
-* 🔧 **effortless customization**: easily tailor environments to your specific needs
+* 🔧 **extensive customization**: easily tailor environments to your specific needs
+* 🚀 **effortless deployment**: launch your agents to generalsio
 * 🔬 **analysis tools**: leverage features like replays for deeper insights
 
 > [!Note]
@@ -42,7 +43,7 @@ make install
 > [!Note]
 > Under the hood, `make install` installs [poetry](https://python-poetry.org/) and the package using poetry.
 
-## 🚀 Getting Started
+## 🌱 Getting Started
 Creating an agent is very simple. Start by subclassing an `Agent` class just like
 [`RandomAgent`](./generals/agents/random_agent.py) or [`ExpanderAgent`](./generals/agents/expander_agent.py).
 You can specify your agent `id` (name) and `color` and the only thing remaining is to implement the `act` function,
@@ -203,7 +204,25 @@ env = gym.make(..., reward_fn=custom_reward_fn)
 observations, info = env.reset()
 ```
 
-## 🌱 Contributing
+## 🚀 Deployment to Live Servers
+Complementary to local development, it is possible to run agents online against other agents and players.
+We use `socketio` for communication and you can either use out `autopilot` to run agent in a specified lobby indefinitely,
+or create your own connection workflow. Our implementations expect that your agent inherits from the `Agent` class, and has
+implemented required methods.
+```python
+from generals.remote import autopilot
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--user_id", type=str, default=...) # Register yourself at generalsio and use this id
+parser.add_argument("--lobby_id", type=str, default="psyo") # The last part of the lobby url
+parser.add_argument("--agent_id", type=str, default="Expander") # agent_id should be "registered" in AgentFactory
+
+if __name__ == "__main__":
+    args = parser.parse_args()
+    autopilot(args.agent_id, args.user_id, args.lobby_id)
+```
+This script will run your `ExpanderAgent` in lobby `psyo`.
+## 🙌 Contributing
 You can contribute to this project in multiple ways:
 - 🤖 If you implement ANY non-trivial agent, send it to us! We will publish it so others can play against it
 - 💡 If you have an idea on how to improve the game, submit an issue or create a PR, we are happy to improve!
