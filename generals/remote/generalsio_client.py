@@ -4,6 +4,7 @@ from socketio import SimpleClient  # type: ignore
 from generals.agents import Agent, AgentFactory
 from generals.core.config import Direction
 from generals.core.observation import Observation
+from generals.remote.generalsio_state import GeneralsIOstate
 
 DIRECTIONS = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
 
@@ -48,87 +49,6 @@ class RegisterAgentError(GeneralsIOClientError):
         return f"Failed to register the agent. Error: {self.msg}"
 
 
-def apply_diff(old: list[int], diff: list[int]) -> list[int]:
-    i = 0
-    new: list[int] = []
-    while i < len(diff):
-        if diff[i] > 0:  # matching
-            new.extend(old[len(new) : len(new) + diff[i]])
-        i += 1
-        if i < len(diff) and diff[i] > 0:  # applying diffs
-            new.extend(diff[i + 1 : i + 1 + diff[i]])
-            i += diff[i]
-        i += 1
-    return new
-
-
-class GeneralsIOstate:
-    def __init__(self, data: dict):
-        self.replay_id = data["replay_id"]
-        self.usernames = data["usernames"]
-        self.player_index = data["playerIndex"]
-        self.opponent_index = 1 - self.player_index  # works only for 1v1
-
-        self.n_players = len(self.usernames)
-
-        self.map: list[int] = []
-        self.cities: list[int] = []
-
-    def update(self, data: dict) -> None:
-        self.turn = data["turn"]
-        self.map = apply_diff(self.map, data["map_diff"])
-        self.cities = apply_diff(self.cities, data["cities_diff"])
-        self.generals = data["generals"]
-        self.scores = data["scores"]
-        if "stars" in data:
-            self.stars = data["stars"]
-
-    def get_observation(self) -> Observation:
-        width, height = self.map[0], self.map[1]
-        size = height * width
-
-        armies = np.array(self.map[2 : 2 + size]).reshape((height, width))
-        terrain = np.array(self.map[2 + size : 2 + 2 * size]).reshape((height, width))
-        cities = np.zeros((height, width))
-        for city in self.cities:
-            cities[city // width, city % width] = 1
-
-        generals = np.zeros((height, width))
-        for general in self.generals:
-            if general != -1:
-                generals[general // width, general % width] = 1
-
-        army = armies
-        owned_cells = np.where(terrain == self.player_index, 1, 0)
-        opponent_cells = np.where(terrain == self.opponent_index, 1, 0)
-        neutral_cells = np.where(terrain == -1, 1, 0)
-        mountain_cells = np.where(terrain == -2, 1, 0)
-        fog_cells = np.where(terrain == -3, 1, 0)
-        structures_in_fog = np.where(terrain == -4, 1, 0)
-        owned_land_count = self.scores[self.player_index]["tiles"]
-        owned_army_count = self.scores[self.player_index]["total"]
-        opponent_land_count = self.scores[self.opponent_index]["tiles"]
-        opponent_army_count = self.scores[self.opponent_index]["total"]
-        timestep = self.turn
-
-        return Observation(
-            armies=army,
-            generals=generals,
-            cities=cities,
-            mountains=mountain_cells,
-            neutral_cells=neutral_cells,
-            owned_cells=owned_cells,
-            opponent_cells=opponent_cells,
-            fog_cells=fog_cells,
-            structures_in_fog=structures_in_fog,
-            owned_land_count=owned_land_count,
-            owned_army_count=owned_army_count,
-            opponent_land_count=opponent_land_count,
-            opponent_army_count=opponent_army_count,
-            timestep=timestep,
-        )
-
-
 class GeneralsIOClient(SimpleClient):
     """
     Wrapper around socket.io client to enable Agent to join
@@ -141,6 +61,7 @@ class GeneralsIOClient(SimpleClient):
         self.user_id = user_id
         self.agent = agent
         self._queue_id = ""
+        self._replay_id = ""
         self._status = "off"  # can be "off","game","lobby","queue"
 
     @property
@@ -149,6 +70,12 @@ class GeneralsIOClient(SimpleClient):
             raise GeneralsIOClientError("Queue ID is not set.\nIs agent in the game lobby?")
 
         return self._queue_id
+
+    @property
+    def replay_id(self):
+        if not self._replay_id:
+            print("No replay ID available.")
+        return self._replay_id
 
     @property
     def status(self):
@@ -194,14 +121,29 @@ class GeneralsIOClient(SimpleClient):
                 self._play_game()
                 break
 
+    def join_1v1_queue(self) -> None:
+        """
+        Join 1v1 queue.
+        """
+        self._status = "queue"
+        self._emit_receive("join_1v1", self.user_id)
+        while True:
+            event, *data = self.receive()
+            if event == "game_start":
+                self._status = "game"
+                self._initialize_game(data)
+                self._play_game()
+                break
+
     def _initialize_game(self, data: dict) -> None:
         """
         Triggered after server starts the game.
         :param data: dictionary of information received in the beginning
         """
         self.game_state = GeneralsIOstate(data[0])
+        self._replay_id = data[0]["replay_id"]
 
-    def _generate_action(self, observation: Observation) -> None:
+    def _generate_action(self, observation: Observation) -> tuple[int, int, int] | None:
         """
         Translate action from Agent to the server format.
         :param action: dictionary representing the action
@@ -216,7 +158,8 @@ class GeneralsIOClient(SimpleClient):
             # convert to index
             source_index = source[0] * self.game_state.map[0] + source[1]
             destination_index = destination[0] * self.game_state.map[0] + destination[1]
-            self.emit("attack", (int(source_index), int(destination_index), int(split)))
+            return (int(source_index), int(destination_index), int(split))
+        return None
 
     def _play_game(self) -> None:
         """
@@ -229,7 +172,9 @@ class GeneralsIOClient(SimpleClient):
                 case "game_update":
                     self.game_state.update(data)
                     obs = self.game_state.get_observation()
-                    self._generate_action(obs)
+                    action = self._generate_action(obs)
+                    if action:
+                        self.emit("attack", action)
                 case "game_lost" | "game_won":
                     self._finish_game(event == "game_won")
                     break
@@ -241,5 +186,5 @@ class GeneralsIOClient(SimpleClient):
         """
         self._status = "off"
         status = "won!" if is_winner else "lost."
-        print(f"Game is finished, you {status}")
+        print(f"Game is finished, you {status}, replay ID: https://bot.generals.io/replays/{self.replay_id}")
         self.emit("leave_game")
