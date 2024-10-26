@@ -214,14 +214,14 @@ from generals.remote import autopilot
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--user_id", type=str, default=...) # Register yourself at generals.io and use this id
-parser.add_argument("--lobby_id", type=str, default="psyo") # The last part of the lobby url
+parser.add_argument("--lobby_id", type=str, default=...) # The last part of the lobby url
 parser.add_argument("--agent_id", type=str, default="Expander") # agent_id should be "registered" in AgentFactory
 
 if __name__ == "__main__":
     args = parser.parse_args()
     autopilot(args.agent_id, args.user_id, args.lobby_id)
 ```
-This script will run your `ExpanderAgent` in lobby `psyo`.
+This script will run `ExpanderAgent` in the specified lobby.
 ## 🙌 Contributing
 You can contribute to this project in multiple ways:
 - 🤖 If you implement ANY non-trivial agent, send it to us! We will publish it, so others can play against it.
