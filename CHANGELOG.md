@@ -1,5 +1,43 @@
 # Changelog
 
+## [2.0.0](https://github.com/strakam/generals-bots/compare/v1.0.0...v2.0.0) (2024-10-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* **generalsio:** Update docs with deployment comments
+
+### 🚀 Features
+
+* Add client autopilot mode ([6c1f6e6](https://github.com/strakam/generals-bots/commit/6c1f6e61b47211fe3ae29d914516b4ae442f6114))
+* First game between human and bot made by this repo! ([5f504ec](https://github.com/strakam/generals-bots/commit/5f504ec744f24060a2ed2fd38405d81cca3b4acd))
+* **generalsio:** Add patch parsing ([39b30d0](https://github.com/strakam/generals-bots/commit/39b30d0a14b7fe664a1b5465f2421f161cc8eed8))
+* **generalsio:** handle basic game progress ([5457624](https://github.com/strakam/generals-bots/commit/545762418ca01b2fc0757f1991f61d3b52acfd95))
+* **generalsio:** implement GeneralsIO client ([0ca4c43](https://github.com/strakam/generals-bots/commit/0ca4c4391a386bb88c9bd5a48cbff20222942ed9))
+* **generalsio:** read agent index ([68a10b5](https://github.com/strakam/generals-bots/commit/68a10b5e5337eb872913e484ecf5cf566f100eef))
+* **generalsio:** read game updates ([e643ee6](https://github.com/strakam/generals-bots/commit/e643ee682083e287dec53fe847be3a17abe43494))
+
+
+### 🐛 Bug Fixes
+
+* Fix deterministicity.. seeds now work properly ([d56c63c](https://github.com/strakam/generals-bots/commit/d56c63c1b17590882246210ce270cc6443c68671))
+* Generals are now generated sufficiently apart, with free path between them ([ccbb1dc](https://github.com/strakam/generals-bots/commit/ccbb1dc3a01e9fd28e1a28cc890324977babdb17))
+* Make truncation as a parameter to the env ([8af020e](https://github.com/strakam/generals-bots/commit/8af020e362acf016c7079ce3bc96d6459e2b470e))
+* Update complete example ([e588cfa](https://github.com/strakam/generals-bots/commit/e588cfaff1056bbbbfb62b76846195936dc11b52))
+
+
+### 🛠️ Refactor
+
+* Align observations more with generalsio ([0c80b93](https://github.com/strakam/generals-bots/commit/0c80b9392c14bdd220406aa604d0eaa9a7a6326e))
+* Codebase combing and docs update ([12f194c](https://github.com/strakam/generals-bots/commit/12f194c2a3c905000c38a913edbe82ffc40a0d0d))
+* Make Channels properties settable, progress on generalsio client ([f745832](https://github.com/strakam/generals-bots/commit/f7458323a967ec34bc2f57343deaea65f5023a1a))
+* Make Observation a standalone object ([ba6970a](https://github.com/strakam/generals-bots/commit/ba6970a847596159ef362fd169a2dea0a449cd7c))
+
+
+### Documentation
+
+* **generalsio:** Update docs with deployment comments ([48b608d](https://github.com/strakam/generals-bots/commit/48b608d5512e91e8a8b9d3d1836ab67d98ebec1f))
+
 ## [1.0.0](https://github.com/strakam/generals-bots/compare/v0.5.1...v1.0.0) (2024-10-14)
 
 
