@@ -10,6 +10,7 @@ from pettingzoo.utils.conversions import (
     parallel_to_aec_wrapper,
     turn_based_aec_to_parallel_wrapper,
 )
+from generals.envs import PettingZooGenerals
 from pettingzoo.utils.env import ActionType, AgentID, ObsType, ParallelEnv
 from pettingzoo.utils.wrappers import BaseWrapper
 
@@ -28,12 +29,22 @@ def sample_action(
         # pick random index of the mask with a 1, it should be 3 numbers
         valid_actions = np.argwhere(mask == 1)
         if len(valid_actions) == 0:
-            return (1, np.array([0, 0]), 0, 0)
+            return {
+                "pass": 1,
+                "cell": np.array([0, 0]),
+                "direction": 0,
+                "split": 0,
+            }
         action_index = np.random.choice(len(valid_actions))
         action = valid_actions[action_index]
         cell = action[:2]
         direction = action[2]
-        return (0, cell, direction, 0)
+        return {
+            "pass": 0,
+            "cell": cell,
+            "direction": direction,
+            "split": 0,
+        }
     return env.action_space(agent).sample()
 
 
@@ -128,14 +139,13 @@ def parallel_api_test(par_env: ParallelEnv, num_cycles=1000):
 
 
 if __name__ == "__main__":
-    mapper = GridFactory()
-    agent1 = AgentFactory.make_agent("expander", id="A")
-    agent2 = AgentFactory.make_agent("random", id="B")
+    agent1 = AgentFactory.make_agent("Expander", id="A")
+    agent2 = AgentFactory.make_agent("Random", id="B")
     agents = {
         agent1.id: agent1,
         agent2.id: agent2,
     }
-    env = gym.make("pz-generals-v0", agents=list(agents.keys()), grid_factory=mapper)
+    env = PettingZooGenerals(agents=agents, render_mode=None)
     # test the environment with parallel_api_test
     import time
 
