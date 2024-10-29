@@ -1,0 +1,17 @@
+name: Code Embedder
+
+on:
+  push:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+          ref: ${{ github.event.pull_request.head.ref }}
+      - name: Embed Code
+        uses: kvankova/code-embedder@v0.3.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.CODE_EMBEDDER }}

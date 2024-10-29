@@ -52,24 +52,7 @@ that has the signature explained in sections down below.
 
 ### Usage Example (🤸 Gymnasium)
 The example loop for running the game looks like this
-```python
-import gymnasium as gym
-
-from generals.agents import RandomAgent, ExpanderAgent
-
-# Initialize agents
-agent = RandomAgent()
-npc = ExpanderAgent()
-
-# Create environment
-env = gym.make("gym-generals-v0", agent=agent, npc=npc, render_mode="human")
-
-observation, info = env.reset()
-terminated = truncated = False
-while not (terminated or truncated):
-    action = agent.act(observation)
-    observation, reward, terminated, truncated, info = env.step(action)
-    env.render()
+```python:examples/gymnasium_example.py
 ```
 
 > [!TIP]
