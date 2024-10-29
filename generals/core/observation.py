@@ -20,6 +20,7 @@ class Observation:
         opponent_land_count: int,
         opponent_army_count: int,
         timestep: int,
+        priority: int = 0,
     ):
         self.armies = armies
         self.generals = generals
@@ -35,6 +36,7 @@ class Observation:
         self.opponent_land_count = opponent_land_count
         self.opponent_army_count = opponent_army_count
         self.timestep = timestep
+        self.priority = priority
         # armies, generals, cities, mountains, empty, owner, fogged, structure in fog
 
     def action_mask(self) -> np.ndarray:
@@ -97,6 +99,7 @@ class Observation:
             "opponent_land_count": self.opponent_land_count,
             "opponent_army_count": self.opponent_army_count,
             "timestep": self.timestep,
+            "priority": self.priority,
         }
         if with_mask:
             obs = {
