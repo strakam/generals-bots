@@ -17,6 +17,7 @@ class Game:
     def __init__(self, grid: Grid, agents: list[str]):
         # Agents
         self.agents = agents
+        self.agent_order = self.agents[:]
 
         # Grid
         _grid = grid.grid
@@ -56,6 +57,7 @@ class Game:
                         "opponent_land_count": gym.spaces.Discrete(self.max_army_value),
                         "opponent_army_count": gym.spaces.Discrete(self.max_army_value),
                         "timestep": gym.spaces.Discrete(self.max_timestep),
+                        "priority": gym.spaces.Discrete(2),
                     }
                 ),
                 "action_mask": gym.spaces.MultiBinary(self.grid_dims + (4,)),
@@ -99,8 +101,9 @@ class Game:
                 continue
             moves[agent] = (i, j, direction, army_to_move)
 
-        # Evaluate moves (smaller army movements are prioritized)
-        for agent in sorted(moves, key=lambda x: moves[x][3]):
+        for agent in self.agent_order:
+            if agent not in moves:
+                continue
             si, sj, direction, army_to_move = moves[agent]
 
             # Cap the amount of army to move (previous moves may have lowered available army)
@@ -134,6 +137,9 @@ class Game:
                 self.channels.ownership[square_winner][di, dj] = 1
                 if square_winner != target_square_owner:
                     self.channels.ownership[target_square_owner][di, dj] = 0
+
+        # Swap agent order (because priority is alternating)
+        self.agent_order = self.agent_order[::-1]
 
         if not done_before_actions:
             self.time += 1
@@ -225,6 +231,7 @@ class Game:
         opponent_land_count = scores[opponent]["land"]
         opponent_army_count = scores[opponent]["army"]
         timestep = self.time
+        priority = 1 if agent == self.agents[0] else 0
 
         return Observation(
             armies=armies,
@@ -241,6 +248,7 @@ class Game:
             opponent_land_count=opponent_land_count,
             opponent_army_count=opponent_army_count,
             timestep=timestep,
+            priority=priority,
         )
 
     def agent_won(self, agent: str) -> bool:
