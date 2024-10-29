@@ -52,23 +52,7 @@ that has the signature explained in sections down below.
 
 ### Usage Example (🤸 Gymnasium)
 The example loop for running the game looks like this
-```python
-import gymnasium as gym
-from generals.agents import RandomAgent, ExpanderAgent # import your agent
-
-# Initialize agents
-agent = RandomAgent()
-npc = ExpanderAgent()
-
-# Create environment
-env = gym.make("gym-generals-v0", agent=agent, npc=npc, render_mode="human")
-
-observation, info = env.reset()
-terminated = truncated = False
-while not (terminated or truncated):
-    action = agent.act(observation)
-    observation, reward, terminated, truncated, info = env.step(action)
-    env.render()
+```python:examples/gymnasium_example.py
 ```
 
 > [!TIP]
@@ -174,6 +158,7 @@ The `observation` is a `Dict`. Values are either `numpy` matrices with shape `(N
 | `opponent_land_count`|     —     | Number of cells owned by the opponent                                        |
 | `opponent_army_count`|     —     | Total number of units owned by the opponent                                  |
 | `timestep`           |     —     | Current timestep of the game                                                 |
+| `priority`           |     —     | `1` if your move is evaluted first, `0` otherwise                            |
 
 The `action_mask` is a 3D array with shape `(N, M, 4)`, where each element corresponds to whether a move is valid from cell
 `[i, j]` in one of four directions: `0 (up)`, `1 (down)`, `2 (left)`, or `3 (right)`.
