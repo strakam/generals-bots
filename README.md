@@ -52,7 +52,7 @@ that has the signature explained in sections down below.
 
 ### Usage Example (🤸 Gymnasium)
 The example loop for running the game looks like this
-```python
+```python:examples/gymnasium_example.py
 import gymnasium as gym
 
 from generals.agents import RandomAgent, ExpanderAgent
@@ -70,6 +70,7 @@ while not (terminated or truncated):
     action = agent.act(observation)
     observation, reward, terminated, truncated, info = env.step(action)
     env.render()
+
 ```
 
 > [!TIP]
