@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.1](https://github.com/strakam/generals-bots/compare/v2.0.0...v2.0.1) (2024-10-29)
+
+
+### 🐛 Bug Fixes
+
+* Align priority moves with generalsio ([0b87dea](https://github.com/strakam/generals-bots/commit/0b87deaf6d91480e8a730a27717d5a81606ee2c3))
+* Make online observations include priority ([5000702](https://github.com/strakam/generals-bots/commit/5000702a99983a540215cb7b74327caff55f932f))
+
 ## [2.0.0](https://github.com/strakam/generals-bots/compare/v1.0.0...v2.0.0) (2024-10-26)
 
 
