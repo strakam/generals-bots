@@ -6,6 +6,8 @@ from generals.core.config import Direction
 from generals.core.observation import Observation
 from generals.remote.generalsio_state import GeneralsIOstate
 
+from .exceptions import GeneralsIOClientError, RegisterAgentError
+
 DIRECTIONS = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
 
 
@@ -22,31 +24,6 @@ def autopilot(agent_id: str, user_id: str, lobby_id: str) -> None:
                 client.join_private_lobby(lobby_id)
             if client.status == "lobby":
                 client.join_game()
-
-
-class GeneralsBotError(Exception):
-    """Base generals-bot exception
-    TODO: find a place for exceptions
-    """
-
-    pass
-
-
-class GeneralsIOClientError(GeneralsBotError):
-    """Base GeneralsIOClient exception"""
-
-    pass
-
-
-class RegisterAgentError(GeneralsIOClientError):
-    """Registering bot error"""
-
-    def __init__(self, msg: str) -> None:
-        super().__init__()
-        self.msg = msg
-
-    def __str__(self) -> str:
-        return f"Failed to register the agent. Error: {self.msg}"
 
 
 class GeneralsIOClient(SimpleClient):
