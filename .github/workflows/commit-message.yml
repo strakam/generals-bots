@@ -1,14 +1,13 @@
 name: Check commits for Conventional Commits practices
 
 on:
-  pull_request:
-    branches: [master]
+  push:
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Check Commit Messages
         uses: webiny/action-conventional-commits@v1.3.0
         with:
