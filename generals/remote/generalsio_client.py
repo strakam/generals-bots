@@ -6,6 +6,8 @@ from generals.core.config import Direction
 from generals.core.observation import Observation
 from generals.remote.generalsio_state import GeneralsIOstate
 
+from .exceptions import GeneralsIOClientError, RegisterAgentError
+
 DIRECTIONS = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
 
 
@@ -22,8 +24,6 @@ def autopilot(agent_id: str, user_id: str, lobby_id: str) -> None:
                 client.join_private_lobby(lobby_id)
             if client.status == "lobby":
                 client.join_game()
-
-from .exceptions import GeneralsIOClientError, RegisterAgentError
 
 
 class GeneralsIOClient(SimpleClient):
