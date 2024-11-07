@@ -1,6 +1,7 @@
 name: Check commits for Conventional Commits practices
 
 on:
+  pull_request:
   push:
 
 jobs:
