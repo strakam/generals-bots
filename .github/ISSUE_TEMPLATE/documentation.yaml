@@ -1,0 +1,13 @@
+name: '📖 Documentation improvement'
+description: Report an issue with the documentation.
+labels: [documentation]
+
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: >
+        Describe the issue with the documentation and how it can be fixed or improved.
+    validations:
+      required: true
