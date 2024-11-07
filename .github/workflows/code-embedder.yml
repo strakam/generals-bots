@@ -1,6 +1,6 @@
 name: Code Embedder
 
-on: pull_request
+on: pull_request_target
 
 permissions:
   contents: write
@@ -12,10 +12,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
 
 
       - name: Run code embedder
