@@ -32,7 +32,7 @@ class Game:
         self.increment_rate = 50
 
         # Limits
-        self.max_army_value = 10_000
+        self.max_army_value = 100_000
         self.max_land_value = np.prod(self.grid_dims)
         self.max_timestep = 100_000
 
@@ -52,9 +52,9 @@ class Game:
                         "opponent_cells": grid_multi_binary,
                         "fog_cells": grid_multi_binary,
                         "structures_in_fog": grid_multi_binary,
-                        "owned_land_count": gym.spaces.Discrete(self.max_army_value),
+                        "owned_land_count": gym.spaces.Discrete(self.max_land_value),
                         "owned_army_count": gym.spaces.Discrete(self.max_army_value),
-                        "opponent_land_count": gym.spaces.Discrete(self.max_army_value),
+                        "opponent_land_count": gym.spaces.Discrete(self.max_land_value),
                         "opponent_army_count": gym.spaces.Discrete(self.max_army_value),
                         "timestep": gym.spaces.Discrete(self.max_timestep),
                         "priority": gym.spaces.Discrete(2),
@@ -118,6 +118,12 @@ class Game:
                 si + DIRECTIONS[direction].value[0],
                 sj + DIRECTIONS[direction].value[1],
             )  # destination indices
+
+            # Skip if the destination cell is not passable or out of bounds
+            if di < 0 or di >= self.grid_dims[0] or dj < 0 or dj >= self.grid_dims[1]:
+                continue
+            if self.channels.passable[di, dj] == 0:
+                continue
 
             # Figure out the target square owner and army size
             target_square_army = self.channels.armies[di, dj]
