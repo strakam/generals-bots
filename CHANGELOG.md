@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.1.0](https://github.com/strakam/generals-bots/compare/v2.0.1...v2.1.0) (2024-11-22)
+
+
+### 🚀 Features
+
+* Add new better wrappers ([96b27b4](https://github.com/strakam/generals-bots/commit/96b27b4f31acd54635cebf0dc41d9993f1c542b5))
+
+
+### 🐛 Bug Fixes
+
+* Update RemoveActionMaskWrapper ([8b9676e](https://github.com/strakam/generals-bots/commit/8b9676ec96403b99337c9eeb476d8ece40396268))
+
 ## [2.0.1](https://github.com/strakam/generals-bots/compare/v2.0.0...v2.0.1) (2024-10-29)
 
 
