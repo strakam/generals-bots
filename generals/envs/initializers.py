@@ -1,7 +1,7 @@
 from generals import GridFactory
 from generals.agents import Agent
 from generals.envs.gymnasium_generals import GymnasiumGenerals, RewardFn
-from generals.envs.gymnasium_wrappers import NormalizedObservationWrapper, ObservationAsImageWrapper
+from generals.envs.gymnasium_wrappers import ObservationAsImageWrapper, RemoveActionMaskWrapper
 
 """
 Here we can define environment initialization functions that
@@ -14,27 +14,6 @@ to create "pre-wrapped" envs, or envs with custom maps or other
 custom settings.
 """
 
-
-def gym_generals_normalized_v0(
-    grid_factory: GridFactory | None = None,
-    npc: Agent | None = None,
-    agent: Agent | None = None,
-    render_mode: str | None = None,
-    reward_fn: RewardFn | None = None,
-):
-    """
-    Example of a Gymnasium environment initializer that creates
-    an environment that returns normalized observations.
-    """
-    _env = GymnasiumGenerals(
-        grid_factory=grid_factory,
-        npc=npc,
-        agent=agent,
-        render_mode=render_mode,
-        reward_fn=reward_fn,
-    )
-    env = NormalizedObservationWrapper(_env)
-    return env
 
 def gym_image_observations(
     grid_factory: GridFactory | None = None,
@@ -56,3 +35,26 @@ def gym_image_observations(
     )
     env = ObservationAsImageWrapper(_env)
     return env
+
+
+def gym_rllib(
+    grid_factory: GridFactory | None = None,
+    npc: Agent | None = None,
+    agent: Agent | None = None,
+    render_mode: str | None = None,
+    reward_fn: RewardFn | None = None,
+):
+    """
+    Example of a Gymnasium environment initializer that creates
+    an environment that returns image observations.
+    """
+    env = GymnasiumGenerals(
+        grid_factory=grid_factory,
+        npc=npc,
+        agent=agent,
+        render_mode=render_mode,
+        reward_fn=reward_fn,
+    )
+    image_env = ObservationAsImageWrapper(env)
+    no_action_env = RemoveActionMaskWrapper(image_env)
+    return no_action_env
