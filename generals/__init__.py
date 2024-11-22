@@ -30,5 +30,10 @@ def _register_gym_generals_envs():
         entry_point="generals.envs.initializers:gyms_generals_normalized_v0",
     )
 
+    register(
+        id="gym-generals-image-v0",
+        entry_point="generals.envs.initializers:gym_image_observations",
+    )
+
 
 _register_gym_generals_envs()

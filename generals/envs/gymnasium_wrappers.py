@@ -57,24 +57,25 @@ class NormalizedObservationWrapper(gym.ObservationWrapper):
 class RemoveActionMaskWrapper(gym.ObservationWrapper):
     def __init__(self, env):
         super().__init__(env)
-        grid_multi_binary = gym.spaces.MultiBinary(self.game.grid_dims)
-        unit_box = gym.spaces.Box(low=0, high=1, dtype=np.float32)
+        grid_multi_binary = gym.spaces.MultiBinary(self.grid_dims)
+        grid_discrete = np.ones(self.grid_dims, dtype=int) * self.max_army_value
         self.observation_space = gym.spaces.Dict(
             {
-                "army": gym.spaces.Box(low=0, high=1, shape=self.game.grid_dims, dtype=np.float32),
-                "general": grid_multi_binary,
-                "city": grid_multi_binary,
+                "armies": gym.spaces.MultiDiscrete(grid_discrete),
+                "generals": grid_multi_binary,
+                "cities": grid_multi_binary,
+                "mountains": grid_multi_binary,
+                "neutral_cells": grid_multi_binary,
                 "owned_cells": grid_multi_binary,
                 "opponent_cells": grid_multi_binary,
-                "neutral_cells": grid_multi_binary,
-                "visible_cells": grid_multi_binary,
+                "fog_cells": grid_multi_binary,
                 "structures_in_fog": grid_multi_binary,
-                "owned_land_count": unit_box,
-                "owned_army_count": unit_box,
-                "opponent_land_count": unit_box,
-                "opponent_army_count": unit_box,
-                "is_winner": gym.spaces.Discrete(2),
-                "timestep": unit_box,
+                "owned_land_count": gym.spaces.Discrete(self.max_army_value),
+                "owned_army_count": gym.spaces.Discrete(self.max_army_value),
+                "opponent_land_count": gym.spaces.Discrete(self.max_army_value),
+                "opponent_army_count": gym.spaces.Discrete(self.max_army_value),
+                "timestep": gym.spaces.Discrete(self.max_timestep),
+                "priority": gym.spaces.Discrete(2),
             }
         )
 
