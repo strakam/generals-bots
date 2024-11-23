@@ -16,6 +16,7 @@ class ObservationAsImageWrapper(gym.ObservationWrapper):
     def __init__(self, env):
         super().__init__(env)
         n_obs_keys = len(self.observation_space["observation"].items())
+        self.game = env.game
         self.observation_space = gym.spaces.Dict(
             {
                 "observation": gym.spaces.Box(
