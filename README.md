@@ -129,7 +129,7 @@ import gymnasium as gym
 
 env = gym.make("gym-generals-v0", ...)
 
-options = {"replay": "my_replay"}
+options = {"replay_file": "my_replay"}
 env.reset(options=options) # The next game will be encoded in my_replay.pkl
 ```
 
