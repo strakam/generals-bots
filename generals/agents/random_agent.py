@@ -36,7 +36,7 @@ class RandomAgent(Agent):
         cell = valid_actions[action_index][:2]
         direction = valid_actions[action_index][2]
 
-        action = [pass_turn, cell, direction, split_army]
+        action = [pass_turn, cell[0], cell[1], direction, split_army]
         return action
 
     def reset(self):

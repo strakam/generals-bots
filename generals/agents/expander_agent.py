@@ -51,8 +51,7 @@ class ExpanderAgent(Agent):
             action_index = np.random.choice(len(valid_actions))
             action = valid_actions[action_index]
 
-        action = np.array([0] + action[0] + action[1] + action[2] + [0])
-        print(action)
+        action = np.array([0, action[0], action[1], action[2], 0])
         return action
 
     def reset(self):
