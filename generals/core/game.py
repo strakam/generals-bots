@@ -9,7 +9,7 @@ from .grid import Grid
 from .observation import Observation
 
 # Type aliases
-Action: TypeAlias = dict[str, int | np.ndarray]
+Action: TypeAlias = np.ndarray
 Info: TypeAlias = dict[str, Any]
 
 
@@ -64,14 +64,8 @@ class Game:
             }
         )
 
-        self.action_space = gym.spaces.Dict(
-            {
-                "pass": gym.spaces.Discrete(2),
-                "cell": gym.spaces.MultiDiscrete(list(self.grid_dims)),
-                "direction": gym.spaces.Discrete(4),
-                "split": gym.spaces.Discrete(2),
-            }
-        )
+        # Action format is: [pass, cell_i, cell_j, direction, split]
+        self.action_space = gym.spaces.MultiDiscrete([2, self.grid_dims[0], self.grid_dims[1], 4, 2])
 
     def step(self, actions: dict[str, Action]) -> tuple[dict[str, Observation], dict[str, Any]]:
         """
@@ -82,14 +76,7 @@ class Game:
         # and calculate intended amount of army to move (all available or split)
         moves = {}
         for agent, move in actions.items():
-            pass_turn = move["pass"]
-            if isinstance(move["cell"], np.ndarray):
-                i = move["cell"][0]
-                j = move["cell"][1]
-            else:
-                raise ValueError('Action key "cell" should be a numpy array.')
-            direction = move["direction"]
-            split_army = move["split"]
+            pass_turn, i, j, direction, split_army = move
             # Skip if agent wants to pass the turn
             if pass_turn == 1:
                 continue

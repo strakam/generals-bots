@@ -21,12 +21,7 @@ class ExpanderAgent(Agent):
 
         valid_actions = np.argwhere(mask == 1)
         if len(valid_actions) == 0:  # No valid actions
-            return {
-                "pass": 1,
-                "cell": np.array([0, 0]),
-                "direction": 0,
-                "split": 0,
-            }
+            return np.array([1, 0, 0, 0, 0])
 
         army = observation["armies"]
         opponent = observation["opponent_cells"]
@@ -56,12 +51,8 @@ class ExpanderAgent(Agent):
             action_index = np.random.choice(len(valid_actions))
             action = valid_actions[action_index]
 
-        action = {
-            "pass": 0,
-            "cell": action[:2],
-            "direction": action[2],
-            "split": 0,
-        }
+        action = np.array([0] + action[0] + action[1] + action[2] + [0])
+        print(action)
         return action
 
     def reset(self):

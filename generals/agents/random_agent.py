@@ -28,12 +28,7 @@ class RandomAgent(Agent):
 
         valid_actions = np.argwhere(mask == 1)
         if len(valid_actions) == 0:  # No valid actions
-            return {
-                "pass": 1,
-                "cell": np.array([0, 0]),
-                "direction": 0,
-                "split": 0,
-            }
+            return [1, 0, 0, 0, 0]
         pass_turn = 0 if np.random.rand() > self.idle_probability else 1
         split_army = 0 if np.random.rand() > self.split_probability else 1
 
@@ -41,12 +36,7 @@ class RandomAgent(Agent):
         cell = valid_actions[action_index][:2]
         direction = valid_actions[action_index][2]
 
-        action = {
-            "pass": pass_turn,
-            "cell": cell,
-            "direction": direction,
-            "split": split_army,
-        }
+        action = [pass_turn, cell, direction, split_army]
         return action
 
     def reset(self):
