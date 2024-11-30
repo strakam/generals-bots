@@ -182,9 +182,10 @@ The `action_mask` is a 3D array with shape `(N, M, 4)`, where each element corre
 `[i, j]` in one of four directions: `0 (up)`, `1 (down)`, `2 (left)`, or `3 (right)`.
 
 ### ⚡ Action
-Actions are in a `dict` format with the following `key: value` format:
+Actions are lists of 5 values `[pass, cell_i, cell_j, direction, split]`, where
 - `pass` indicates whether you want to `1 (pass)` or `0 (play)`.
-- `cell` value is an `np.array([i,j])` where `i,j` are indices of the cell you want to move from
+- `cell_i` is an `i` index of the source cell (height)
+- `cell_j` is a `j` index of the source cell (width)
 - `direction` indicates whether you want to move `0 (up)`, `1 (down)`, `2 (left)`, or `3 (right)`
 - `split` indicates whether you want to `1 (split)` units and send only half, or `0 (no split)` where you send all units to the next cell
 
