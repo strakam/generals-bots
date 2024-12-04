@@ -37,7 +37,7 @@ class Channels:
 
     def get_visibility(self, agent_id: str) -> np.ndarray:
         channel = self._ownership[agent_id]
-        return maximum_filter(channel, size=3)
+        return maximum_filter(channel, size=3).astype(bool)
 
     @staticmethod
     def channel_to_indices(channel: np.ndarray) -> np.ndarray:
