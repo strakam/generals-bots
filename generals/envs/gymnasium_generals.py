@@ -105,7 +105,6 @@ class GymnasiumGenerals(gym.Env):
         actions = {self.agent_id: action, self.npc.id: npc_action}
 
         observations, infos = self.game.step(actions)
-        infos = {agent_id: {} for agent_id in self.agent_ids}
 
         # From observations of all agents, pick only those relevant for the main agent
         obs = observations[self.agent_id].as_dict()
@@ -131,6 +130,8 @@ class GymnasiumGenerals(gym.Env):
         done: bool,
         info: Info,
     ) -> Reward:
+        if done:
+            return 1 if info["is_winner"] else -1
         return 0
 
     def close(self) -> None:
