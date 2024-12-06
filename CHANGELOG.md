@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.2.0](https://github.com/strakam/generals-bots/compare/v2.1.0...v2.2.0) (2024-12-06)
+
+
+### 🚀 Features
+
+* Add default reward based on win/lose ([7b2b5b8](https://github.com/strakam/generals-bots/commit/7b2b5b837b88b98e59ab21adbbf008dc86bec97d))
+
+
+### 🐛 Bug Fixes
+
+* Actions now MultiDiscrete instead of Dict ([9b909ca](https://github.com/strakam/generals-bots/commit/9b909cadb12d7ae4928229c0ff8ce717fdca84f6))
+* Channels dont change type from bool to int ([0e540b6](https://github.com/strakam/generals-bots/commit/0e540b6b7c50aa3aef84e9db8813e82fd4849a92))
+* Fix wrapper handling in gymnasium v1.0.0 ([aaf4d43](https://github.com/strakam/generals-bots/commit/aaf4d43b82178382af20f64a69a16066924533db))
+* Pass pre-commit checks ([6230e5d](https://github.com/strakam/generals-bots/commit/6230e5ddfc5724cece59134fb243a7de722e5b54))
+
 ## [2.1.0](https://github.com/strakam/generals-bots/compare/v2.0.1...v2.1.0) (2024-11-22)
 
 

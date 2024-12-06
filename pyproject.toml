@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "generals-bots"
-version = "2.1.0"
+version = "2.2.0"
 description = "Develop your agent for generals.io!"
 authors = ["Matej Straka <strakammm@gmail.com>"]
 license = "MIT"
