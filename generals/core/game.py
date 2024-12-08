@@ -224,7 +224,7 @@ class Game:
         opponent_land_count = scores[opponent]["land"]
         opponent_army_count = scores[opponent]["army"]
         timestep = self.time
-        priority = 1 if agent == self.agents[0] else 0
+        priority = 1 if agent == self.agent_order[0] else 0
 
         return Observation(
             armies=armies,
