@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.1](https://github.com/strakam/generals-bots/compare/v2.2.0...v2.2.1) (2024-12-08)
+
+
+### 🐛 Bug Fixes
+
+* Agent order is now alternating, instead of one player having always priority ([bb06696](https://github.com/strakam/generals-bots/commit/bb066961961f1f1bc811b8913d7679717e4f9710))
+
 ## [2.2.0](https://github.com/strakam/generals-bots/compare/v2.1.0...v2.2.0) (2024-12-06)
 
 
