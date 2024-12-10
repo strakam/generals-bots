@@ -38,7 +38,7 @@ or clone the repo for the most up-to-date features
 ```bash
 git clone https://github.com/strakam/generals-bots
 cd generals-bots
-make install
+pip install -e .
 ```
 > [!Note]
 > Under the hood, `make install` installs [poetry](https://python-poetry.org/) and the package using `poetry`.
