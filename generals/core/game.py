@@ -142,7 +142,7 @@ class Game:
             winner = self.agents[0] if self.agent_won(self.agents[0]) else self.agents[1]
             loser = self.agents[1] if winner == self.agents[0] else self.agents[0]
             self.channels.ownership[winner] += self.channels.ownership[loser]
-            self.channels.ownership[loser] = self.channels.passable * 0
+            self.channels.ownership[loser] = (self.channels.passable * 0).astype(bool)
         else:
             self._global_game_update()
 
