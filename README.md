@@ -119,7 +119,7 @@ Grids are created using a string format where:
 - `#` indicates impassable mountains
 - `A, B` mark the positions of generals
 - numbers `0-9` and `x`, where `x=10`, represent cities, where the number specifies amount of neutral army in the city,
-  which is calculated as `40 + number`. The reason for `x=10` is that the official games has cities in range `[40, 50]`.
+  which is calculated as `40 + number`. The reason for `x=10` is that the official game has cities in range `[40, 50]`
 
 ## 🔬 Interactive Replays
 We can store replays and then analyze them in an interactive fashion. `Replay` class handles replay related functionality.
