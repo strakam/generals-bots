@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.2.1](https://github.com/strakam/generals-bots/compare/v2.2.0...v2.2.1) (2024-12-22)
+
+
+### 🐛 Bug Fixes
+
+* Agent order is now alternating, instead of one player having always priority ([bb06696](https://github.com/strakam/generals-bots/commit/bb066961961f1f1bc811b8913d7679717e4f9710))
+* Allow cities with 50 army as in the original generals.io ([0fe5087](https://github.com/strakam/generals-bots/commit/0fe50876d2ed6874bf4393229179b538bf1cd727))
+* Resolve very corner cases when priority takes a role ([6eb0db7](https://github.com/strakam/generals-bots/commit/6eb0db774caabace7c455db2fa95dab77af0e101))
+
 ## [2.2.0](https://github.com/strakam/generals-bots/compare/v2.1.0...v2.2.0) (2024-12-06)
 
 
