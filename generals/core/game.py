@@ -72,26 +72,18 @@ class Game:
         Perform one step of the game
         """
         done_before_actions = self.is_done()
-        # Process validity of moves, whether agents want to pass the turn,
-        # and calculate intended amount of army to move (all available or split)
-        moves = {}
-        for agent, move in actions.items():
-            pass_turn, i, j, direction, split_army = move
+        for agent in self.agent_order:
+            pass_turn, si, sj, direction, split_army = actions[agent]
+
             # Skip if agent wants to pass the turn
             if pass_turn == 1:
                 continue
             if split_army == 1:  # Agent wants to split the army
-                army_to_move = self.channels.armies[i, j] // 2
+                army_to_move = self.channels.armies[si, sj] // 2
             else:  # Leave just one army in the source cell
-                army_to_move = self.channels.armies[i, j] - 1
+                army_to_move = self.channels.armies[si, sj] - 1
             if army_to_move < 1:  # Skip if army size to move is less than 1
                 continue
-            moves[agent] = (i, j, direction, army_to_move)
-
-        for agent in self.agent_order:
-            if agent not in moves:
-                continue
-            si, sj, direction, army_to_move = moves[agent]
 
             # Cap the amount of army to move (previous moves may have lowered available army)
             army_to_move = min(army_to_move, self.channels.armies[si, sj] - 1)
@@ -127,9 +119,9 @@ class Game:
                 square_winner = agent if target_square_army < army_to_move else target_square_owner
                 self.channels.armies[di, dj] = remaining_army
                 self.channels.armies[si, sj] = army_to_stay
-                self.channels.ownership[square_winner][di, dj] = 1
+                self.channels.ownership[square_winner][di, dj] = True
                 if square_winner != target_square_owner:
-                    self.channels.ownership[target_square_owner][di, dj] = 0
+                    self.channels.ownership[target_square_owner][di, dj] = False
 
         # Swap agent order (because priority is alternating)
         self.agent_order = self.agent_order[::-1]
@@ -142,7 +134,7 @@ class Game:
             winner = self.agents[0] if self.agent_won(self.agents[0]) else self.agents[1]
             loser = self.agents[1] if winner == self.agents[0] else self.agents[0]
             self.channels.ownership[winner] += self.channels.ownership[loser]
-            self.channels.ownership[loser] = (self.channels.passable * 0).astype(bool)
+            self.channels.ownership[loser] = self.channels.passable * 0
         else:
             self._global_game_update()
 
