@@ -93,7 +93,7 @@ class GridFactory:
         """
         Args:
             min_grid_dims: The minimum (inclusive) height & width of the grid.
-            max_grid_dims: The maximum (inclusive) height & width of the grid. 
+            max_grid_dims: The maximum (inclusive) height & width of the grid.
             mountain_density: The probability any given square is a mountain.
             city_density: The probability any given square is a city.
             general_positions: The (row, col) of each general.

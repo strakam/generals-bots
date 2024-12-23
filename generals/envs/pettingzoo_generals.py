@@ -38,7 +38,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
             agents: A dictionary of the agent-ids & agents.
             grid_factory: Can be used to specify the game-board i.e. grid generator.
             truncation: The maximum number of turns a game can last before it's truncated.
-            reward_fn: A function which maps an (observation, action) pair to a reward. 
+            reward_fn: A function which maps an (observation, action) pair to a reward.
             render_mode: "human" will provide a real-time graphic of the game. None will
                 show no graphics and run the game as fast as possible.
             speed_multiplier: Relatively increase or decrease the speed of the real-time
