@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.3.0](https://github.com/strakam/generals-bots/compare/v2.2.1...v2.3.0) (2024-12-23)
+
+
+### 🚀 Features
+
+* Random grid sizes, speed multipliers and better docstrings ([af2535d](https://github.com/strakam/generals-bots/commit/af2535d8f58663543b2f7d297026741eb035458c))
+
+
+### 🛠️ Refactor
+
+* improve clarity of grid & gridfactory ([731f7f2](https://github.com/strakam/generals-bots/commit/731f7f2d56f2662fae82d2d463ac03a71d656e55))
+
 ## [2.2.1](https://github.com/strakam/generals-bots/compare/v2.2.0...v2.2.1) (2024-12-22)
 
 
