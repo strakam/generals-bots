@@ -84,7 +84,8 @@ import gymnasium as gym
 from generals import GridFactory
 
 grid_factory = GridFactory(
-    grid_dims=(10, 10),                    # Dimensions of the grid (height, width)
+    min_grid_dims=(10, 10),                # Grid height and width are randomly selected
+    max_grid_dims=(15, 15),
     mountain_density=0.2,                  # Probability of a mountain in a cell
     city_density=0.05,                     # Probability of a city in a cell
     general_positions=[(0,3),(5,7)],       # Positions of generals (i, j)
