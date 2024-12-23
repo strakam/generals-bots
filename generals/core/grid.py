@@ -1,5 +1,4 @@
 import numpy as np
-from numpy.random import Generator
 
 from .config import MOUNTAIN, PASSABLE
 
@@ -84,26 +83,28 @@ class Grid:
 class GridFactory:
     def __init__(
         self,
-        grid_dims: tuple[int, int] = (10, 10),
+        min_grid_dims: tuple[int, int] = (10, 10),
+        max_grid_dims: tuple[int, int] = (15, 15),
         mountain_density: float = 0.2,
         city_density: float = 0.05,
         general_positions: list[tuple[int, int]] | None = None,
         seed: int | None = None,
     ):
-        self.grid_height = grid_dims[0]
-        self.grid_width = grid_dims[1]
+        """
+        Args:
+            min_grid_dims: The minimum (inclusive) height & width of the grid.
+            max_grid_dims: The maximum (inclusive) height & width of the grid.
+            mountain_density: The probability any given square is a mountain.
+            city_density: The probability any given square is a city.
+            general_positions: The (row, col) of each general.
+            seed: A random seed i.e. a way to make the randomness repeatable.
+        """
+        self.rng = np.random.default_rng(seed)
+        self.grid_height = self.rng.integers(min_grid_dims[0], max_grid_dims[0] + 1)
+        self.grid_width = self.rng.integers(min_grid_dims[0], max_grid_dims[0] + 1)
         self.mountain_density = mountain_density
         self.city_density = city_density
         self.general_positions = general_positions
-        self._rng = np.random.default_rng(seed)
-
-    @property
-    def rng(self):
-        return self._rng
-
-    @rng.setter
-    def rng(self, number_generator: Generator):
-        self._rng = number_generator
 
     def grid_from_string(self, grid: str) -> Grid:
         return Grid(grid)

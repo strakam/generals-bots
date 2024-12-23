@@ -19,6 +19,7 @@ class GUI:
         game: Game,
         agent_data: dict[str, dict[str, Any]],
         mode: GuiMode = GuiMode.TRAIN,
+        speed_multiplier: float = 1.0,
     ):
         pygame.init()
         pygame.display.set_caption("Generals")
@@ -26,7 +27,7 @@ class GUI:
         # Handle key repeats
         pygame.key.set_repeat(500, 64)
 
-        self.properties = Properties(game, agent_data, mode)
+        self.properties = Properties(game, agent_data, mode, speed_multiplier)
         self.__renderer = Renderer(self.properties)
         self.__event_handler = EventHandler.from_mode(self.properties.mode, self.properties)
 

@@ -10,7 +10,8 @@ from generals.core.grid import Grid, GridFactory
 def get_game(grid=None):
     if grid is None:
         grid_factory = GridFactory(
-            grid_dims=(4, 4),
+            min_grid_dims=(4, 4),
+            max_grid_dims=(4, 4),
             mountain_density=0.1,
             city_density=0.1,
             general_positions=[[3, 3], [1, 3]],

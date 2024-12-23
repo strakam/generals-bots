@@ -30,9 +30,23 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         grid_factory: GridFactory | None = None,
         truncation: int | None = None,
         reward_fn: RewardFn | None = None,
-        render_mode=None,
+        render_mode: str | None = None,
+        speed_multiplier: float = 1.0,
     ):
+        """
+        Args:
+            agents: A dictionary of the agent-ids & agents.
+            grid_factory: Can be used to specify the game-board i.e. grid generator.
+            truncation: The maximum number of turns a game can last before it's truncated.
+            reward_fn: A function which maps an (observation, action) pair to a reward.
+            render_mode: "human" will provide a real-time graphic of the game. None will
+                show no graphics and run the game as fast as possible.
+            speed_multiplier: Relatively increase or decrease the speed of the real-time
+                game graphic. This has no effect if render_mode is None.
+        """
         self.render_mode = render_mode
+        self.speed_multiplier = speed_multiplier
+
         self.grid_factory = grid_factory if grid_factory is not None else GridFactory()
         self.reward_fn = reward_fn if reward_fn is not None else self._default_reward
 
@@ -58,7 +72,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
 
     def render(self):
         if self.render_mode == "human":
-            _ = self.gui.tick(fps=self.metadata["render_fps"])
+            _ = self.gui.tick(fps=self.speed_multiplier * self.metadata["render_fps"])
 
     def reset(
         self, seed: int | None = None, options: dict | None = None
@@ -74,7 +88,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         self.game = Game(grid, self.agents)
 
         if self.render_mode == "human":
-            self.gui = GUI(self.game, self.agent_data, GuiMode.TRAIN)
+            self.gui = GUI(self.game, self.agent_data, GuiMode.TRAIN, self.speed_multiplier)
 
         if "replay_file" in options:
             self.replay = Replay(
