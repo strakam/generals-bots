@@ -16,7 +16,7 @@ def get_game(grid=None):
             city_density=0.1,
             general_positions=[[3, 3], [1, 3]],
         )
-        grid = grid_factory.grid_from_generator()
+        grid = grid_factory.generate()
     return game.Game(grid, ["red", "blue"])
 
 

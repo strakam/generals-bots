@@ -6,7 +6,7 @@ import gymnasium as gym
 
 from generals.agents import Agent, AgentFactory
 from generals.core.game import Action, Game, Info
-from generals.core.grid import GridFactory
+from generals.core.grid import Grid, GridFactory
 from generals.core.observation import Observation
 from generals.core.replay import Replay
 from generals.gui import GUI
@@ -51,7 +51,7 @@ class GymnasiumGenerals(gym.Env):
         assert self.agent_id != npc.id, "Agent ids must be unique - you can pass custom ids to agent constructors."
 
         # Game
-        grid = self.grid_factory.grid_from_generator()
+        grid = self.grid_factory.generate()
         self.game = Game(grid, [self.agent_id, self.npc.id])
         self.observation_space = self.game.observation_space
         self.action_space = self.game.action_space
@@ -69,10 +69,12 @@ class GymnasiumGenerals(gym.Env):
             options = {}
 
         if "grid" in options:
-            grid = self.grid_factory.grid_from_string(options["grid"])
+            grid = Grid(options["grid"])
         else:
-            self.grid_factory.rng = self.np_random
-            grid = self.grid_factory.grid_from_generator()
+            # Provide the np.random.Generator instance created in Env.reset()
+            # as opposed to creating a new one with the same seed.
+            self.grid_factory.set_rng(rng=self.np_random)
+            grid = self.grid_factory.generate()
 
         # Create game for current run
         self.game = Game(grid, self.agent_ids)
