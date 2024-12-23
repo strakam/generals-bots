@@ -25,7 +25,7 @@ def test_verify_grid():
 ...B.
     """
     _grid = Grid(map)
-    assert Grid.verify_grid_connectivity(_grid.grid)
+    assert Grid.are_generals_connected(_grid.grid)
 
     map = """
 .....
@@ -36,7 +36,7 @@ def test_verify_grid():
     """
 
     map = Grid.numpify_grid(map)
-    assert not Grid.verify_grid_connectivity(map)
+    assert not Grid.are_generals_connected(map)
 
     map = """
 .....
@@ -46,7 +46,7 @@ BA2#2
 .....
     """
     map = Grid.numpify_grid(map)
-    assert Grid.verify_grid_connectivity(map)
+    assert Grid.are_generals_connected(map)
 
     map = """
 ...#.
@@ -56,7 +56,7 @@ BA2#2
 .....
     """
     map = Grid.numpify_grid(map)
-    assert not Grid.verify_grid_connectivity(map)
+    assert not Grid.are_generals_connected(map)
 
     map = """
 ...#.
@@ -66,14 +66,14 @@ A#2#2
 .....
     """
     map = Grid.numpify_grid(map)
-    assert not Grid.verify_grid_connectivity(map)
+    assert not Grid.are_generals_connected(map)
 
 def test_grid_factory():
     generator = GridFactory()
     generator.rng = np.random.default_rng()
     for _ in range(10):
-        grid = generator.grid_from_generator()
-        assert Grid.verify_grid_connectivity(grid.grid)
+        grid = generator.generate()
+        assert Grid.are_generals_connected(grid.grid)
         height, width = grid.grid.shape
         assert Grid.generals_distance(grid) >= max(height, width) // 2
 

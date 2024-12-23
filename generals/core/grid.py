@@ -3,36 +3,35 @@ import numpy as np
 from .config import MOUNTAIN, PASSABLE
 
 
+class InvalidGridError(Exception):
+    pass
+
+
 class Grid:
     def __init__(self, grid: str | np.ndarray):
+        if not isinstance(grid, str | np.ndarray):
+            raise ValueError(f"grid must be a str or np.ndarray. Received grid with type: {type(grid)}.")
+
+        if isinstance(grid, str):
+            grid = grid.strip()
+            grid = Grid.numpify_grid(grid)
+
+        Grid.ensure_grid_is_valid(grid)
         self.grid = grid
 
-    def __eq__(self, other):
-        return np.array_equal(self.grid, other.grid)
+    @staticmethod
+    def ensure_grid_is_valid(grid: np.ndarray):
+        if not Grid.are_generals_connected(grid):
+            raise InvalidGridError("Invalid grid layout - generals cannot reach each other.")
 
-    @property
-    def grid(self):
-        return self._grid
-
-    @grid.setter
-    def grid(self, grid: str | np.ndarray):
-        match grid:
-            case str(grid):
-                grid = grid.strip()
-                grid = Grid.numpify_grid(grid)
-            case np.ndarray():
-                pass
-            case _:
-                raise ValueError("Grid must be encoded as a string or a numpy array.")
-        if not Grid.verify_grid_connectivity(grid):
-            raise ValueError("Invalid grid layout - generals cannot reach each other.")
         # check that exactly one 'A' and one 'B' are present in the grid
         first_general = np.argwhere(np.isin(grid, ["A"]))
         second_general = np.argwhere(np.isin(grid, ["B"]))
         if len(first_general) != 1 or len(second_general) != 1:
-            raise ValueError("Exactly one 'A' and one 'B' should be present in the grid.")
+            raise InvalidGridError("Exactly one 'A' and one 'B' should be present in the grid.")
 
-        self._grid = grid
+    def __eq__(self, other):
+        return np.array_equal(self.grid, other.grid)
 
     @staticmethod
     def generals_distance(grid: "Grid") -> int:
@@ -48,10 +47,9 @@ class Grid:
         return "\n".join(["".join(row) for row in grid])
 
     @staticmethod
-    def verify_grid_connectivity(grid: np.ndarray | str) -> bool:
+    def are_generals_connected(grid: np.ndarray | str) -> bool:
         """
-        Verify grid layout (can generals reach each other?)
-        Returns True if grid is valid, False otherwise
+        Returns True if there is a path connecting the two generals.
         """
         if isinstance(grid, str):
             grid = Grid.numpify_grid(grid)
@@ -100,37 +98,23 @@ class GridFactory:
             seed: A random seed i.e. a way to make the randomness repeatable.
         """
         self.rng = np.random.default_rng(seed)
-        self.grid_height = self.rng.integers(min_grid_dims[0], max_grid_dims[0] + 1)
-        self.grid_width = self.rng.integers(min_grid_dims[0], max_grid_dims[0] + 1)
+        self.min_grid_dims = min_grid_dims
+        self.max_grid_dims = max_grid_dims
         self.mountain_density = mountain_density
         self.city_density = city_density
         self.general_positions = general_positions
 
-    def grid_from_string(self, grid: str) -> Grid:
-        return Grid(grid)
+    def set_rng(self, rng: np.random.Generator):
+        self.rng = rng
 
-    def grid_from_generator(
-        self,
-        grid_dims: tuple[int, int] | None = None,
-        mountain_density: float | None = None,
-        city_density: float | None = None,
-        general_positions: list[tuple[int, int]] | None = None,
-        seed: int | None = None,
-    ) -> Grid:
-        if grid_dims is None:
-            grid_dims = (self.grid_height, self.grid_width)
-        if mountain_density is None:
-            mountain_density = self.mountain_density
-        if city_density is None:
-            city_density = self.city_density
-        if general_positions is None:
-            general_positions = self.general_positions
-        if seed is not None:
-            self.rng = np.random.default_rng(seed)
+    def generate(self) -> Grid:
+        grid_height = self.rng.integers(self.min_grid_dims[0], self.max_grid_dims[0] + 1)
+        grid_width = self.rng.integers(self.min_grid_dims[0], self.max_grid_dims[0] + 1)
+        grid_dims = (grid_height, grid_width)
 
         # Probabilities of each cell type
-        p_neutral = 1 - mountain_density - city_density
-        probs = [p_neutral, mountain_density] + [city_density / 10] * 10
+        p_neutral = 1 - self.mountain_density - self.city_density
+        probs = [p_neutral, self.mountain_density] + [self.city_density / 10] * 10
 
         # Place cells on the map
         map = self.rng.choice(
@@ -139,14 +123,17 @@ class GridFactory:
             p=probs,
         )
 
-        # Place generals on random squares, they should be atleast some distance apart
-        min_distance = max(grid_dims) // 2
-        p1 = self.rng.integers(0, grid_dims[0]), self.rng.integers(0, grid_dims[1])
-        while True:
-            p2 = self.rng.integers(0, grid_dims[0]), self.rng.integers(0, grid_dims[1])
-            if abs(p1[0] - p2[0]) + abs(p1[1] - p2[1]) >= min_distance:
-                break
-        general_positions = [p1, p2]
+        general_positions = self.general_positions
+        if general_positions is None:
+            # Select each generals location, they should be atleast some distance apart
+            min_distance = max(grid_dims) // 2
+            p1 = self.rng.integers(0, grid_dims[0]), self.rng.integers(0, grid_dims[1])
+            while True:
+                p2 = self.rng.integers(0, grid_dims[0]), self.rng.integers(0, grid_dims[1])
+                if abs(p1[0] - p2[0]) + abs(p1[1] - p2[1]) >= min_distance:
+                    break
+            general_positions = [p1, p2]
+
         for i, idx in enumerate(general_positions):
             map[idx[0], idx[1]] = chr(ord("A") + i)
 
@@ -155,11 +142,6 @@ class GridFactory:
 
         try:
             return Grid(map_string)
-        except ValueError:
-            return self.grid_from_generator(
-                grid_dims=grid_dims,
-                mountain_density=mountain_density,
-                city_density=city_density,
-                general_positions=general_positions,
-                seed=None,
-            )
+        except InvalidGridError:
+            # Keep randomly generating grids until one works!
+            return self.generate()

@@ -8,7 +8,8 @@ agent = AgentFactory.make_agent("Random")
 
 # Initialize grid factory
 grid_factory = GridFactory(
-    grid_dims=(4, 4),  # Grid height and width
+    min_grid_dims=(4, 4),  # Grid height and width
+    max_grid_dims=(4, 4),
     mountain_density=0.0,  # Expected percentage of mountains
     city_density=0.05,  # Expected percentage of cities
     general_positions=[(0, 0), (3, 3)],  # Positions of the generals

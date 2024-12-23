@@ -3,12 +3,13 @@ from collections.abc import Callable
 from copy import deepcopy
 from typing import Any, TypeAlias
 
+import numpy as np
 import pettingzoo  # type: ignore
 from gymnasium import spaces
 
 from generals.agents.agent import Agent
 from generals.core.game import Action, Game, Info, Observation
-from generals.core.grid import GridFactory
+from generals.core.grid import Grid, GridFactory
 from generals.core.replay import Replay
 from generals.gui import GUI
 from generals.gui.properties import GuiMode
@@ -81,9 +82,13 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
             options = {}
         self.agents = deepcopy(self.possible_agents)
         if "grid" in options:
-            grid = self.grid_factory.grid_from_string(options["grid"])
+            grid = Grid(options["grid"])
         else:
-            grid = self.grid_factory.grid_from_generator(seed=seed)
+            # The pettingzoo.Parallel_Env's reset() notably differs
+            # from gymnasium.Env's reset() in that it does not create
+            # a random generator which should be re-used.
+            self.grid_factory.set_rng(rng=np.random.default_rng(seed))
+            grid = self.grid_factory.generate()
 
         self.game = Game(grid, self.agents)
 
