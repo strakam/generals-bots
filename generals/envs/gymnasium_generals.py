@@ -96,20 +96,20 @@ class GymnasiumGenerals(gym.Env):
         self.observation_space = self.game.observation_space
         self.action_space = self.game.action_space
 
-        observation = self.game.agent_observation(self.agent_id).as_dict()
+        observation = self.game.agent_observation(self.agent_id)
         info: dict[str, Any] = {}
         return observation, info
 
     def step(self, action: Action) -> tuple[Observation, SupportsFloat, bool, bool, dict[str, Any]]:
         # Get action of NPC
-        npc_observation = self.game.agent_observation(self.npc.id).as_dict()
+        npc_observation = self.game.agent_observation(self.npc.id)
         npc_action = self.npc.act(npc_observation)
         actions = {self.agent_id: action, self.npc.id: npc_action}
 
         observations, infos = self.game.step(actions)
 
         # From observations of all agents, pick only those relevant for the main agent
-        obs = observations[self.agent_id].as_dict()
+        obs = observations[self.agent_id]
         info = infos[self.agent_id]
         reward = self.reward_fn(obs, action, self.game.is_done(), info)
         terminated = self.game.is_done()

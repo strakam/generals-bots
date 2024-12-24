@@ -125,8 +125,7 @@ class GeneralsIOClient(SimpleClient):
         Translate action from Agent to the server format.
         :param action: dictionary representing the action
         """
-        obs = observation.as_dict()
-        action = self.agent.act(obs)
+        action = self.agent.act(observation)
         if not action["pass"]:
             source: np.ndarray = np.array(action["cell"])
             direction = np.array(DIRECTIONS[action["direction"]].value)

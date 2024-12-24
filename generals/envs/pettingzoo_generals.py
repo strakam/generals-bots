@@ -105,7 +105,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         elif hasattr(self, "replay"):
             del self.replay
 
-        observations = {agent: self.game.agent_observation(agent).as_dict() for agent in self.agents}
+        observations = {agent: self.game.agent_observation(agent) for agent in self.agents}
         infos: dict[str, Any] = {agent: {} for agent in self.agents}
         return observations, infos
 
@@ -119,7 +119,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         dict[AgentID, Info],
     ]:
         observations, infos = self.game.step(actions)
-        observations = {agent: observation.as_dict() for agent, observation in observations.items()}
+        observations = {agent: observation for agent, observation in observations.items()}
         # You probably want to set your truncation based on self.game.time
         truncation = False if self.truncation is None else self.game.time >= self.truncation
         truncated = {agent: truncation for agent in self.agents}

@@ -1,6 +1,6 @@
 import numpy as np
 
-from generals.core.game import Action
+from generals.core.action import Action, compute_valid_action_mask
 from generals.core.observation import Observation
 
 from .agent import Agent
@@ -23,8 +23,8 @@ class RandomAgent(Agent):
         """
         Randomly selects a valid action.
         """
-        mask = observation["action_mask"]
-        observation = observation["observation"]
+
+        mask = compute_valid_action_mask(observation)
 
         valid_actions = np.argwhere(mask == 1)
         if len(valid_actions) == 0:  # No valid actions
