@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.1](https://github.com/strakam/generals-bots/compare/v2.3.0...v2.3.1) (2024-12-24)
+
+
+### 🛠️ Refactor
+
+* observation & action for clarity ([ddb1a88](https://github.com/strakam/generals-bots/commit/ddb1a88ab44f8d2e3dac50123546b9a128175e26))
+
 ## [2.3.0](https://github.com/strakam/generals-bots/compare/v2.2.1...v2.3.0) (2024-12-23)
 
 
