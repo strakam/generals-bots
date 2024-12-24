@@ -1,7 +1,7 @@
 import numpy as np
 
+from generals.core.action import Action, compute_valid_action_mask
 from generals.core.config import Direction
-from generals.core.game import Action
 from generals.core.observation import Observation
 
 from .agent import Agent
@@ -16,16 +16,15 @@ class ExpanderAgent(Agent):
         Heuristically selects a valid (expanding) action.
         Prioritizes capturing opponent and then neutral cells.
         """
-        mask = observation["action_mask"]
-        observation = observation["observation"]
 
+        mask = compute_valid_action_mask(observation)
         valid_actions = np.argwhere(mask == 1)
         if len(valid_actions) == 0:  # No valid actions
             return np.array([1, 0, 0, 0, 0])
 
-        army = observation["armies"]
-        opponent = observation["opponent_cells"]
-        neutral = observation["neutral_cells"]
+        army = observation.armies
+        opponent = observation.opponent_cells
+        neutral = observation.neutral_cells
 
         # Find actions that capture opponent or neutral cells
         actions_capture_opponent = np.zeros(len(valid_actions))

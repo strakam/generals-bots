@@ -158,9 +158,7 @@ You can control your replays to your liking! Currently, we support these control
 
 ## 🌍 Environment
 ### 🔭 Observation
-An observation for one agent is a dictionary `{"observation": observation, "action_mask": action_mask}`.
-
-The `observation` is a `Dict`. Values are either `numpy` matrices with shape `(N,M)`, or simple `int` constants:
+An agents observation contains a broad swath of information about their position in the game. Values are either `numpy` matrices with shape `(N,M)`, or `int` constants:
 | Key                  | Shape     | Description                                                                  |
 | -------------------- | --------- | ---------------------------------------------------------------------------- |
 | `armies`             | `(N,M)`   | Number of units in a visible cell regardless of the owner                    |
@@ -179,9 +177,6 @@ The `observation` is a `Dict`. Values are either `numpy` matrices with shape `(N
 | `timestep`           |     —     | Current timestep of the game                                                 |
 | `priority`           |     —     | `1` if your move is evaluted first, `0` otherwise                            |
 
-The `action_mask` is a 3D array with shape `(N, M, 4)`, where each element corresponds to whether a move is valid from cell
-`[i, j]` in one of four directions: `0 (up)`, `1 (down)`, `2 (left)`, or `3 (right)`.
-
 ### ⚡ Action
 Actions are lists of 5 values `[pass, cell_i, cell_j, direction, split]`, where
 - `pass` indicates whether you want to `1 (pass)` or `0 (play)`.
@@ -189,6 +184,9 @@ Actions are lists of 5 values `[pass, cell_i, cell_j, direction, split]`, where
 - `cell_j` is a `j` index of the source cell (width)
 - `direction` indicates whether you want to move `0 (up)`, `1 (down)`, `2 (left)`, or `3 (right)`
 - `split` indicates whether you want to `1 (split)` units and send only half, or `0 (no split)` where you send all units to the next cell
+
+A convenience function `compute_valid_action_mask` is also provided for detailing the set of legal moves an agent can make based on its `observation`. The `valid_action_mask` is a 3D array with shape `(N, M, 4)`, where each element corresponds to whether a move is valid from cell
+`[i, j]` in one of four directions: `0 (up)`, `1 (down)`, `2 (left)`, or `3 (right)`.
 
 > [!TIP]
 > You can see how actions and observations look like by printing a sample form the environment:
@@ -203,7 +201,7 @@ and gives `1` for winner and `-1` for loser, otherwise `0`.
 ```python
 def custom_reward_fn(observation, action, done, info):
     # Give agent a reward based on the number of cells they own
-    return observation["observation"]["owned_land_count"]
+    return observation["owned_land_count"]
 
 env = gym.make(..., reward_fn=custom_reward_fn)
 observations, info = env.reset()
