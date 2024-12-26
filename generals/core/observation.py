@@ -37,3 +37,9 @@ class Observation(dict):
 
     def keys(self):
         return dataclasses.asdict(self).keys()
+
+    def values(self):
+        return dataclasses.asdict(self).values()
+
+    def items(self):
+        return dataclasses.asdict(self).items()
