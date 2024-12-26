@@ -1,7 +1,7 @@
 import numpy as np
 
-from generals.core.action import Action, compute_valid_action_mask
-from generals.core.config import Direction
+from generals.core.action import Action, compute_valid_move_mask
+from generals.core.config import DIRECTIONS
 from generals.core.observation import Observation
 
 from .agent import Agent
@@ -17,40 +17,43 @@ class ExpanderAgent(Agent):
         Prioritizes capturing opponent and then neutral cells.
         """
 
-        mask = compute_valid_action_mask(observation)
-        valid_actions = np.argwhere(mask == 1)
-        if len(valid_actions) == 0:  # No valid actions
-            return np.array([1, 0, 0, 0, 0])
+        mask = compute_valid_move_mask(observation)
+        valid_moves = np.argwhere(mask == 1)
 
-        army = observation.armies
-        opponent = observation.opponent_cells
-        neutral = observation.neutral_cells
+        # Skip the turn if there are no valid moves.
+        if len(valid_moves) == 0:
+            return Action(to_pass=True)
 
-        # Find actions that capture opponent or neutral cells
-        actions_capture_opponent = np.zeros(len(valid_actions))
-        actions_capture_neutral = np.zeros(len(valid_actions))
+        army_mask = observation.armies
+        opponent_mask = observation.opponent_cells
+        neutral_mask = observation.neutral_cells
 
-        directions = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
-        for i, action in enumerate(valid_actions):
-            di, dj = action[:-1] + directions[action[-1]].value  # Destination cell indices
-            if army[action[0], action[1]] <= army[di, dj] + 1:  # Can't capture
-                continue
-            elif opponent[di, dj]:
-                actions_capture_opponent[i] = 1
-            elif neutral[di, dj]:
-                actions_capture_neutral[i] = 1
+        # Find moves that capture opponent or neutral cells
+        capture_opponent_moves = np.zeros(len(valid_moves))
+        capture_neutral_moves = np.zeros(len(valid_moves))
 
-        if np.any(actions_capture_opponent):  # Capture random opponent cell if possible
-            action_index = np.random.choice(np.nonzero(actions_capture_opponent)[0])
-            action = valid_actions[action_index]
-        elif np.any(actions_capture_neutral):  # Capture random neutral cell if possible
-            action_index = np.random.choice(np.nonzero(actions_capture_neutral)[0])
-            action = valid_actions[action_index]
+        for move_idx, move in enumerate(valid_moves):
+            orig_row, orig_col, direction = move
+            row_offset, col_offset = DIRECTIONS[direction].value
+            dest_row, dest_col = (orig_row + row_offset, orig_col + col_offset)
+            enough_armies_to_capture = army_mask[orig_row, orig_col] > army_mask[dest_row, dest_col] + 1
+
+            if opponent_mask[dest_row, dest_col] and enough_armies_to_capture:
+                capture_opponent_moves[move_idx] = 1
+            elif neutral_mask[dest_row, dest_col] and enough_armies_to_capture:
+                capture_neutral_moves[move_idx] = 1
+
+        if np.any(capture_opponent_moves):  # Capture random opponent cell if possible
+            move_index = np.random.choice(np.nonzero(capture_opponent_moves)[0])
+            move = valid_moves[move_index]
+        elif np.any(capture_neutral_moves):  # Capture random neutral cell if possible
+            move_index = np.random.choice(np.nonzero(capture_neutral_moves)[0])
+            move = valid_moves[move_index]
         else:  # Otherwise, select a random valid action
-            action_index = np.random.choice(len(valid_actions))
-            action = valid_actions[action_index]
+            move_index = np.random.choice(len(valid_moves))
+            move = valid_moves[move_index]
 
-        action = np.array([0, action[0], action[1], action[2], 0])
+        action = Action(to_pass=False, row=move[0], col=move[1], direction=move[2], to_split=False)
         return action
 
     def reset(self):
