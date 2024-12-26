@@ -168,6 +168,8 @@ class Game:
         Keys and values are as follows:
         - army: total army size
         - land: total land size
+        - is_done: True if the game is over, False otherwise
+        - is_winner: True if the player won, False otherwise
         """
         players_stats = {}
         for agent in self.agents:
@@ -176,6 +178,7 @@ class Game:
             players_stats[agent] = {
                 "army": army_size,
                 "land": land_size,
+                "is_done": self.is_done(),
                 "is_winner": self.agent_won(agent),
             }
         return players_stats
