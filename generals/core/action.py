@@ -1,33 +1,49 @@
-from typing import TypeAlias
-
 import numpy as np
 
-from generals.core.config import DIRECTIONS
+from generals.core.config import DIRECTIONS, Direction
 
 from .observation import Observation
 
-"""
-Action is intentionally a numpy array rather than a class for the sake of optimization. Granted,
-this hasn't been performance tested, so take that decision with a grain of salt.
 
-The action format is an array with 5 entries: [pass, row, col, direction, split]
-Args:
-    pass: boolean integer (0 or 1) indicating whether the agent should pass/skip this turn and do nothing.
-    row: The row the agent should move from. In the closed-interval: [0, (grid_height - 1)].
-    col: The column the agent should move from. In the closed-interval: [0, (grid_width - 1)].
-    direction: An integer indicating which direction to move. 0 (up), 1 (down), 2 (left), 3 (right).
-        Note: the integer is effecitlvey an index into the DIRECTIONS enum.
-    split: boolean integer (0 or 1) indicating whether to split the army when moving.
-"""
-Action: TypeAlias = np.ndarray
-
-
-def compute_valid_action_mask(observation: Observation) -> np.ndarray:
+class Action(np.ndarray):
     """
-    Return a mask of the valid actions for a given observation.
+    Action objects walk & talk like typical numpy-arrays, but have a more descriptive and narrow interface.
+    """
 
-    A valid action is an action that originates from an agent's cell, has
-    at least 2 units and does not attempt to enter a mountain nor exit the grid.
+    def __new__(cls, to_pass: bool, row: int = 0, col: int = 0, direction: int | Direction = 0, to_split: bool = False):
+        """
+        Args:
+            cls: This argument is automatically provided by Python and is the Action class.
+            to_pass: Indicates whether the agent should pass/skip this turn i.e. do nothing. If to_pass is True,
+                the other arguments, like row & col, are effectively ignored.
+            row: The row the agent should move from. In the closed-interval: [0, (grid_height - 1)].
+            col: The column the agent should move from. In the closed-interval: [0, (grid_width - 1)].
+            direction: The direction the agent should move from the tile (row, col). Can either pass an enum-member
+                of Directions or the integer representation of the direction, which is the relevant index into the
+                config.DIRECTIONS array.
+            to_split: Indicates whether the army in (row, col) should be split, then moved in direction.
+        """
+        if isinstance(direction, Direction):
+            direction = DIRECTIONS.index(direction)
+
+        # Note: np.array.view casts the np.array object to type cls, i.e. Action, without modifying
+        # any of the arrays internal representation.
+        action_array = np.array([to_pass, row, col, direction, to_split], dtype=np.int8).view(cls)
+        return action_array
+
+    def is_pass(self) -> bool:
+        return self[0] == 1
+
+
+def compute_valid_move_mask(observation: Observation) -> np.ndarray:
+    """
+    Return a mask of the valid moves for a given observation.
+
+    A valid move originates from a cell the agent owns, has at least 2 armies on
+    and does not attempt to enter a mountain nor exit the grid.
+
+    A move is distinct from an action. A move only has 3 dimensions: (row, col, direction).
+    Whereas an action also includes to_pass & to_split.
 
     Returns:
         np.ndarray: an NxNx4 array, where each channel is a boolean mask
