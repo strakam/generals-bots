@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.4.0](https://github.com/strakam/generals-bots/compare/v2.3.0...v2.4.0) (2024-12-27)
+
+
+### 🚀 Features
+
+* Info dict from the environment now contains whether game is done and who won ([0d8990b](https://github.com/strakam/generals-bots/commit/0d8990b45a6e2f6aa2615a1dd99b1ed8b9810916))
+
+
+### 🛠️ Refactor
+
+* action to a subclass of ndarray for a clearer interface and consistent repr. ([ba73902](https://github.com/strakam/generals-bots/commit/ba73902a1b06e90b231ee7dc1a1d738d3c8f17de))
+* observation & action for clarity ([ddb1a88](https://github.com/strakam/generals-bots/commit/ddb1a88ab44f8d2e3dac50123546b9a128175e26))
+
 ## [2.3.0](https://github.com/strakam/generals-bots/compare/v2.2.1...v2.3.0) (2024-12-23)
 
 
