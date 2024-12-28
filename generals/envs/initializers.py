@@ -1,7 +1,8 @@
 from generals import GridFactory
 from generals.agents import Agent
-from generals.envs.gymnasium_generals import GymnasiumGenerals, RewardFn
+from generals.envs.gymnasium_generals import GymnasiumGenerals
 from generals.envs.gymnasium_wrappers import ObservationAsImageWrapper, RemoveActionMaskWrapper
+from generals.rewards.reward_fn import RewardFn
 
 """
 Here we can define environment initialization functions that

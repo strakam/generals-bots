@@ -196,14 +196,19 @@ A convenience function `compute_valid_action_mask` is also provided for detailin
 > ```
 
 ### 🎁 Reward
-It is possible to implement custom reward function. The default reward is awarded only at the end of a game
-and gives `1` for winner and `-1` for loser, otherwise `0`.
-```python
-def custom_reward_fn(observation, action, done, info):
-    # Give agent a reward based on the number of cells they own
-    return observation["owned_land_count"]
+It is possible to implement your own custom reward function. The default reward function for the environments is one that awards only at the end of a game and gives `1` for winning or `-1` for losing.
 
-env = gym.make(..., reward_fn=custom_reward_fn)
+There's another provided reward function available: FrequentAssetRewardFn. It provides frequent rewards (i.e. most turns will see a non-zero reward) based on the change in assets, i.e. land, army, cities.
+
+```python
+from generals.rewards.reward_fn import RewardFn
+
+class ConstantRewardFn(RewardFn):
+    def __call__(self, prior_obs: Observation, prior_action: Action, obs: Observation) -> float:
+        # Note: this would be a bad reward function!
+        return 42.0
+
+env = gym.make(..., reward_fn=ConstantRewardFn())
 observations, info = env.reset()
 ```
 
