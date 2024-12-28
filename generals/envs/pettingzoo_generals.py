@@ -1,5 +1,4 @@
 import functools
-from collections.abc import Callable
 from copy import deepcopy
 from typing import Any, TypeAlias
 
@@ -13,10 +12,10 @@ from generals.core.grid import Grid, GridFactory
 from generals.core.replay import Replay
 from generals.gui import GUI
 from generals.gui.properties import GuiMode
+from generals.rewards.reward_fn import RewardFn
+from generals.rewards.win_lose_reward_fn import WinLoseRewardFn
 
 AgentID: TypeAlias = str
-Reward: TypeAlias = float
-RewardFn: TypeAlias = Callable[[Observation, Action, bool, Info], Reward]
 
 
 class PettingZooGenerals(pettingzoo.ParallelEnv):
@@ -39,7 +38,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
             agents: A dictionary of the agent-ids & agents.
             grid_factory: Can be used to specify the game-board i.e. grid generator.
             truncation: The maximum number of turns a game can last before it's truncated.
-            reward_fn: A function which maps an (observation, action) pair to a reward.
+            reward_fn: An instance of the RewardFn abstract base class.
             render_mode: "human" will provide a real-time graphic of the game. None will
                 show no graphics and run the game as fast as possible.
             speed_multiplier: Relatively increase or decrease the speed of the real-time
@@ -49,12 +48,15 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         self.speed_multiplier = speed_multiplier
 
         self.grid_factory = grid_factory if grid_factory is not None else GridFactory()
-        self.reward_fn = reward_fn if reward_fn is not None else self._default_reward
+        self.reward_fn = reward_fn if reward_fn is not None else WinLoseRewardFn()
 
         # Agents
         self.agent_data = {agents[id].id: {"color": agents[id].color} for id in agents}
         self.agents = [agents[id].id for id in agents]
         self.possible_agents = self.agents
+
+        # Observations for each agent at the prior time-step.
+        self.prior_observations: dict[str, Observation] | None = None
 
         assert len(self.possible_agents) == len(
             set(self.possible_agents)
@@ -124,15 +126,22 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         truncation = False if self.truncation is None else self.game.time >= self.truncation
         truncated = {agent: truncation for agent in self.agents}
         terminated = {agent: True if self.game.is_done() else False for agent in self.agents}
-        rewards = {
-            agent: self.reward_fn(
-                observations[agent],
-                actions[agent],
-                terminated[agent] or truncated[agent],
-                infos[agent],
-            )
-            for agent in self.agents
-        }
+
+        if self.prior_observations is None:
+            # Cannot compute rewards without prior-observations. This should only happen
+            # on the first time-step.
+            rewards = {agent: 0.0 for agent in self.agents}
+        else:
+            rewards = {
+                agent: self.reward_fn(
+                    prior_obs=self.prior_observations[agent],
+                    # Technically actions are the prior-actions, since they are what will give
+                    # rise to the current-observations.
+                    prior_action=actions[agent],
+                    obs=observations[agent],
+                )
+                for agent in self.agents
+            }
 
         if hasattr(self, "replay"):
             self.replay.add_state(deepcopy(self.game.channels))
@@ -143,17 +152,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
             self.agents = []
             if hasattr(self, "replay"):
                 self.replay.store()
+
+        self.prior_observations = observations
+
         return observations, rewards, terminated, truncated, infos
-
-    @staticmethod
-    def _default_reward(
-        observation: Observation,
-        action: Action,
-        done: bool,
-        info: Info,
-    ) -> Reward:
-        return 0
-
-    def close(self) -> None:
-        if self.render_mode == "human":
-            self.gui.close()

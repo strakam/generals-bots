@@ -1,19 +1,17 @@
-from collections.abc import Callable
 from copy import deepcopy
-from typing import Any, SupportsFloat, TypeAlias
+from typing import Any, SupportsFloat
 
 import gymnasium as gym
 
 from generals.agents import Agent, AgentFactory
-from generals.core.game import Action, Game, Info
+from generals.core.game import Action, Game
 from generals.core.grid import Grid, GridFactory
 from generals.core.observation import Observation
 from generals.core.replay import Replay
 from generals.gui import GUI
 from generals.gui.properties import GuiMode
-
-Reward: TypeAlias = float
-RewardFn: TypeAlias = Callable[[Observation, Action, bool, Info], Reward]
+from generals.rewards.reward_fn import RewardFn
+from generals.rewards.win_lose_reward_fn import WinLoseRewardFn
 
 
 class GymnasiumGenerals(gym.Env):
@@ -33,7 +31,9 @@ class GymnasiumGenerals(gym.Env):
     ):
         self.render_mode = render_mode
         self.grid_factory = grid_factory if grid_factory is not None else GridFactory()
-        self.reward_fn = reward_fn if reward_fn is not None else GymnasiumGenerals._default_reward
+        self.reward_fn = reward_fn if reward_fn is not None else WinLoseRewardFn()
+        # Observation for the agent at the prior time-step.
+        self.prior_observation: None | Observation = None
 
         # Agents
         if npc is None:
@@ -111,7 +111,19 @@ class GymnasiumGenerals(gym.Env):
         # From observations of all agents, pick only those relevant for the main agent
         obs = observations[self.agent_id]
         info = infos[self.agent_id]
-        reward = self.reward_fn(obs, action, self.game.is_done(), info)
+        if self.prior_observation is None:
+            # Cannot compute a reward without a prior-observation. This should only happen
+            # on the first time-step.
+            reward = 0.0
+        else:
+            reward = self.reward_fn(
+                prior_obs=self.prior_observation,
+                # Technically, action is the prior-action, since it's what gives rise to the
+                # current observation.
+                prior_action=action,
+                obs=obs,
+            )
+
         terminated = self.game.is_done()
         truncated = False
         if self.truncation is not None:
@@ -123,18 +135,9 @@ class GymnasiumGenerals(gym.Env):
         if terminated or truncated:
             if hasattr(self, "replay"):
                 self.replay.store()
-        return obs, reward, terminated, truncated, info
 
-    @staticmethod
-    def _default_reward(
-        observation: Observation,
-        action: Action,
-        done: bool,
-        info: Info,
-    ) -> Reward:
-        if done:
-            return 1 if info["is_winner"] else -1
-        return 0
+        self.prior_observation = observations[self.agent_id]
+        return obs, reward, terminated, truncated, info
 
     def close(self) -> None:
         if self.render_mode == "human":
