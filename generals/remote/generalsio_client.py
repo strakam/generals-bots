@@ -1,3 +1,4 @@
+import time
 import numpy as np
 from socketio import SimpleClient  # type: ignore
 
@@ -90,6 +91,7 @@ class GeneralsIOClient(SimpleClient):
         """
         self._status = "queue"
         while True:
+            time.sleep(2)
             event, *data = self.receive()
             self.emit("set_force_start", (self.queue_id, force_start))
             if event == "game_start":
