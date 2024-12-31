@@ -52,12 +52,12 @@ class GeneralsIOstate:
                 generals[general // width, general % width] = 1
 
         army = armies
-        owned_cells = np.where(terrain == self.player_index, 1, 0)
-        opponent_cells = np.where(terrain == self.opponent_index, 1, 0)
-        neutral_cells = np.where(terrain == -1, 1, 0)
-        mountain_cells = np.where(terrain == -2, 1, 0)
-        fog_cells = np.where(terrain == -3, 1, 0)
-        structures_in_fog = np.where(terrain == -4, 1, 0)
+        owned_cells = np.where(terrain == self.player_index, 1, 0).astype(bool)
+        opponent_cells = np.where(terrain == self.opponent_index, 1, 0).astype(bool)
+        neutral_cells = np.where(terrain == -1, 1, 0).astype(bool)
+        mountain_cells = np.where(terrain == -2, 1, 0).astype(bool)
+        fog_cells = np.where(terrain == -3, 1, 0).astype(bool)
+        structures_in_fog = np.where(terrain == -4, 1, 0).astype(bool)
         owned_land_count = self.scores[self.player_index]["tiles"]
         owned_army_count = self.scores[self.player_index]["total"]
         opponent_land_count = self.scores[self.opponent_index]["tiles"]
