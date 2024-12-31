@@ -34,6 +34,22 @@ class Action(np.ndarray):
     def is_pass(self) -> bool:
         return self[0] == 1
 
+    def is_split(self) -> bool:
+        return self[4] == 1
+
+    def __str__(self) -> str:
+        if self.is_pass():
+            return "Action(pass)"
+
+        direction_str = DIRECTIONS[self[3]].name.lower()
+        row, col = self[1], self[2]
+        if self.is_split():
+            return f"Action(split-move {direction_str} from ({row}, {col}))"
+        return f"Action(move {direction_str} from ({row}, {col}))"
+
+    def __repr__(self) -> str:
+        return str(self)
+
 
 def compute_valid_move_mask(observation: Observation) -> np.ndarray:
     """
