@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.5.0](https://github.com/strakam/generals-bots/compare/v2.4.0...v2.5.0) (2024-12-31)
+
+
+### 🚀 Features
+
+* Add a clearer action repr to aid debugging. ([0621905](https://github.com/strakam/generals-bots/commit/062190514b76518c77b0da08bb6f597d646c9de3))
+* Flesh out rewards with a base class & add a new reward fn: FrequentAssetRewardFn. ([60ba3e0](https://github.com/strakam/generals-bots/commit/60ba3e0f713253abed4ac97f45a7f40fc91f6d3b))
+
+
+### 🐛 Bug Fixes
+
+* Make short sleep between requests when playing online, preventing temporary bans ([f139efb](https://github.com/strakam/generals-bots/commit/f139efb62d2a948729dc63a21a9c9db0b0c6bc7d))
+
 ## [2.4.0](https://github.com/strakam/generals-bots/compare/v2.3.0...v2.4.0) (2024-12-27)
 
 
