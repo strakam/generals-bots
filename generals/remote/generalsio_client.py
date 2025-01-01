@@ -3,7 +3,7 @@ import time
 import numpy as np
 from socketio import SimpleClient  # type: ignore
 
-from generals.agents import Agent, AgentFactory
+from generals.agents import Agent
 from generals.core.config import Direction
 from generals.core.observation import Observation
 from generals.remote.generalsio_state import GeneralsIOstate
@@ -13,13 +13,12 @@ from .exceptions import GeneralsIOClientError, RegisterAgentError
 DIRECTIONS = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
 
 
-def autopilot(agent_id: str, user_id: str, lobby_id: str) -> None:
+def autopilot(agent: Agent, user_id: str, lobby_id: str) -> None:
     """
     Start the autopilot for the GeneralsIO client.
     This means that agent will join the lobby and force starts,
     so he plays indefinitely.
     """
-    agent = AgentFactory.make_agent(agent_id)
     with GeneralsIOClient(agent, user_id) as client:
         while True:
             if client.status == "off":

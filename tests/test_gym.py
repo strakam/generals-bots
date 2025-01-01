@@ -1,11 +1,11 @@
 import gymnasium as gym
 import gymnasium.utils.env_checker as env_checker
 
-from generals.agents import AgentFactory
+from generals.agents import RandomAgent
 
 
 def test_gym_runs():
-    npc = AgentFactory.make_agent("Random")
+    npc = RandomAgent()
 
     env = gym.make(
         "gym-generals-v0",

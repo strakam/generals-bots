@@ -3,7 +3,7 @@ from typing import Any, SupportsFloat
 
 import gymnasium as gym
 
-from generals.agents import Agent, AgentFactory
+from generals.agents import Agent, RandomAgent
 from generals.core.game import Action, Game
 from generals.core.grid import Grid, GridFactory
 from generals.core.observation import Observation
@@ -38,7 +38,7 @@ class GymnasiumGenerals(gym.Env):
         # Agents
         if npc is None:
             print('No NPC agent provided. Creating "Random" NPC as a fallback.')
-            npc = AgentFactory.make_agent("random")
+            npc = RandomAgent()
         else:
             assert isinstance(npc, Agent), "NPC must be an instance of Agent class."
         self.npc = npc

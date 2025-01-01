@@ -1,6 +1,6 @@
 from gymnasium.envs.registration import register
 
-from generals.agents import AgentFactory
+from generals.agents.agent import Agent
 from generals.core.exceptions import GeneralsBotError
 from generals.core.game import Action
 from generals.core.grid import Grid, GridFactory
@@ -11,7 +11,7 @@ from generals.remote.exceptions import GeneralsIOClientError, RegisterAgentError
 
 __all__ = [
     "Action",
-    "AgentFactory",
+    "Agent",
     "GridFactory",
     "PettingZooGenerals",
     "Grid",
