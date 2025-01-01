@@ -1,10 +1,11 @@
 import gymnasium as gym
 
-from generals import AgentFactory, GridFactory
+from generals import GridFactory
+from generals.agents import RandomAgent, ExpanderAgent
 
-# Initialize agents -- see generals/agents/agent_factory.py for more options
-npc = AgentFactory.make_agent("Expander")
-agent = AgentFactory.make_agent("Random")
+# Initialize agents
+npc = ExpanderAgent()
+agent = RandomAgent()
 
 # Initialize grid factory
 grid_factory = GridFactory(
