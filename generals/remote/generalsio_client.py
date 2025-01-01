@@ -129,10 +129,13 @@ class GeneralsIOClient(SimpleClient):
         :param action: dictionary representing the action
         """
         action = self.agent.act(observation)
-        if not action["pass"]:
-            source: np.ndarray = np.array(action["cell"])
-            direction = np.array(DIRECTIONS[action["direction"]].value)
-            split = action["split"]
+        pass_or_play = action[0]
+        i, j = action[1], action[2]
+        direction = action[3]
+        split = action[4]
+        if not pass_or_play:
+            source: np.ndarray = np.array([i, j])
+            direction = np.array(DIRECTIONS[direction].value)
             destination = source + direction
             # convert to index
             source_index = source[0] * self.game_state.map[0] + source[1]
