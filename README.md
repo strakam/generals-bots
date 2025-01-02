@@ -89,6 +89,7 @@ grid_factory = GridFactory(
     mountain_density=0.2,                  # Probability of a mountain in a cell
     city_density=0.05,                     # Probability of a city in a cell
     general_positions=[(0,3),(5,7)],       # Positions of generals (i, j)
+    padding=True                           # Whether to pad grids to max_grid_dims with mountains (default=True)
 )
 
 # Create environment
