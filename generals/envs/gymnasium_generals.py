@@ -2,6 +2,8 @@ from copy import deepcopy
 from typing import Any, SupportsFloat
 
 import gymnasium as gym
+import numpy as np
+from gymnasium import spaces
 
 from generals.agents import Agent, RandomAgent
 from generals.core.game import Action, Game
@@ -53,9 +55,54 @@ class GymnasiumGenerals(gym.Env):
         # Game
         grid = self.grid_factory.generate()
         self.game = Game(grid, [self.agent_id, self.npc.id])
-        self.observation_space = self.game.observation_space
-        self.action_space = self.game.action_space
         self.truncation = truncation
+        self.observation_space = self.set_observation_space()
+        self.action_space = self.set_action_space()
+
+    def set_observation_space(self) -> spaces.Space:
+        """
+        If grid_factory has padding on, grid (and therefore observations) will be padded to the same shape,
+        which corresponds to the maximum grid dimensions of grid_factory.
+        Otherwise, the observatoin shape might change depending on the currently generated grid.
+
+        Note: The grid is padded with mountains from right and bottom. We recommend using the padded
+        grids for training purposes, as it will make the observations consistent across episodes.
+        """
+        if self.grid_factory.padding:
+            dims = self.grid_factory.max_grid_dims
+        else:
+            dims = self.game.grid_dims
+        max_army_value = 100_000
+        max_timestep = 100_000
+        max_land_value = np.prod(dims)
+        grid_multi_binary = spaces.MultiBinary(dims)
+        grid_discrete = np.ones(dims, dtype=int) * 100_000
+        return spaces.Dict(
+            {
+                "armies": spaces.MultiDiscrete(grid_discrete),
+                "generals": grid_multi_binary,
+                "cities": grid_multi_binary,
+                "mountains": grid_multi_binary,
+                "neutral_cells": grid_multi_binary,
+                "owned_cells": grid_multi_binary,
+                "opponent_cells": grid_multi_binary,
+                "fog_cells": grid_multi_binary,
+                "structures_in_fog": grid_multi_binary,
+                "owned_land_count": spaces.Discrete(max_land_value),
+                "owned_army_count": spaces.Discrete(max_army_value),
+                "opponent_land_count": spaces.Discrete(max_land_value),
+                "opponent_army_count": spaces.Discrete(max_army_value),
+                "timestep": spaces.Discrete(max_timestep),
+                "priority": spaces.Discrete(2),
+            }
+        )
+
+    def set_action_space(self) -> spaces.Space:
+        if self.grid_factory.padding:
+            dims = self.grid_factory.max_grid_dims
+        else:
+            dims = self.game.grid_dims
+        return spaces.MultiDiscrete([2, dims[0], dims[1], 4, 2])
 
     def render(self):
         if self.render_mode == "human":
@@ -92,9 +139,6 @@ class GymnasiumGenerals(gym.Env):
             self.replay.add_state(deepcopy(self.game.channels))
         elif hasattr(self, "replay"):
             del self.replay
-
-        self.observation_space = self.game.observation_space
-        self.action_space = self.game.action_space
 
         observation = self.game.agent_observation(self.agent_id)
         info: dict[str, Any] = {}
@@ -135,6 +179,9 @@ class GymnasiumGenerals(gym.Env):
         if terminated or truncated:
             if hasattr(self, "replay"):
                 self.replay.store()
+
+        self.observation_space = self.set_observation_space()
+        self.action_space = self.set_action_space()
 
         self.prior_observation = observations[self.agent_id]
         return obs, reward, terminated, truncated, info

@@ -74,7 +74,7 @@ def test_grid_factory():
     for _ in range(10):
         grid = generator.generate()
         assert Grid.are_generals_connected(grid.grid)
-        height, width = grid.grid.shape
+        height, width = grid.shape
         assert Grid.generals_distance(grid) >= max(height, width) // 2
 
 

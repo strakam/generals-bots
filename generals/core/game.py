@@ -1,6 +1,5 @@
 from typing import Any, TypeAlias
 
-import gymnasium as gym
 import numpy as np
 
 from .action import Action
@@ -36,32 +35,6 @@ class Game:
         self.max_army_value = 100_000
         self.max_land_value = np.prod(self.grid_dims)
         self.max_timestep = 100_000
-
-        # Spaces
-        grid_multi_binary = gym.spaces.MultiBinary(self.grid_dims)
-        grid_discrete = np.ones(self.grid_dims, dtype=int) * self.max_army_value
-        self.observation_space = gym.spaces.Dict(
-            {
-                "armies": gym.spaces.MultiDiscrete(grid_discrete),
-                "generals": grid_multi_binary,
-                "cities": grid_multi_binary,
-                "mountains": grid_multi_binary,
-                "neutral_cells": grid_multi_binary,
-                "owned_cells": grid_multi_binary,
-                "opponent_cells": grid_multi_binary,
-                "fog_cells": grid_multi_binary,
-                "structures_in_fog": grid_multi_binary,
-                "owned_land_count": gym.spaces.Discrete(self.max_land_value),
-                "owned_army_count": gym.spaces.Discrete(self.max_army_value),
-                "opponent_land_count": gym.spaces.Discrete(self.max_land_value),
-                "opponent_army_count": gym.spaces.Discrete(self.max_army_value),
-                "timestep": gym.spaces.Discrete(self.max_timestep),
-                "priority": gym.spaces.Discrete(2),
-            }
-        )
-
-        # Action format is: [pass, cell_i, cell_j, direction, split]
-        self.action_space = gym.spaces.MultiDiscrete([2, self.grid_dims[0], self.grid_dims[1], 4, 2])
 
     def step(self, actions: dict[str, Action]) -> tuple[dict[str, Observation], dict[str, Any]]:
         """

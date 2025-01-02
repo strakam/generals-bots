@@ -5,9 +5,9 @@ from generals.envs import PettingZooGenerals
 random = RandomAgent()
 expander = ExpanderAgent()
 
-# Store agents in a dictionary
-
+# Names are used for the environment
 agent_names = [random.id, expander.id]
+# Store agents in a dictionary
 agents = {
     random.id: random,
     expander.id: expander
