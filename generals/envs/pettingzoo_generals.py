@@ -6,7 +6,6 @@ import numpy as np
 import pettingzoo  # type: ignore
 from gymnasium import spaces
 
-from generals.agents.agent import Agent
 from generals.core.game import Action, Game, Info, Observation
 from generals.core.grid import Grid, GridFactory
 from generals.core.replay import Replay
@@ -26,7 +25,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
 
     def __init__(
         self,
-        agents: dict[AgentID, Agent],
+        agents: list[str],
         grid_factory: GridFactory | None = None,
         truncation: int | None = None,
         reward_fn: RewardFn | None = None,
@@ -51,8 +50,9 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         self.reward_fn = reward_fn if reward_fn is not None else WinLoseRewardFn()
 
         # Agents
-        self.agent_data = {agents[id].id: {"color": agents[id].color} for id in agents}
-        self.agents = [agents[id].id for id in agents]
+        self.agents = agents
+        self.colors = [(255, 107, 108), (0, 130, 255)]
+        self.agent_data = {id: {"color": color} for id, color in zip(agents, self.colors)}
         self.possible_agents = self.agents
 
         # Observations for each agent at the prior time-step.

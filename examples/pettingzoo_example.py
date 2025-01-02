@@ -6,13 +6,15 @@ random = RandomAgent()
 expander = ExpanderAgent()
 
 # Store agents in a dictionary
+
+agent_names = [random.id, expander.id]
 agents = {
     random.id: random,
-    expander.id: expander,
+    expander.id: expander
 }
 
 # Create environment
-env = PettingZooGenerals(agents=agents, render_mode="human")
+env = PettingZooGenerals(agents=agent_names, render_mode="human")
 observations, info = env.reset()
 
 done = False
