@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.6.0](https://github.com/strakam/generals-bots/compare/v2.5.0...v2.6.0) (2025-01-03)
+
+
+### 🚀 Features
+
+* Add new environment that can be vectorized and used for self-play ([b9e9477](https://github.com/strakam/generals-bots/commit/b9e94777c299c8bd56e1916c0edf1dece7eecec6))
+* Grid factory can now pad grids with mountains to a fixed size -&gt; better for neural nets ([e622e7a](https://github.com/strakam/generals-bots/commit/e622e7a9ff25cd121238c492850b176ece056a45))
+
+
+### 🐛 Bug Fixes
+
+* Align online client action interface with simulator ([56f907e](https://github.com/strakam/generals-bots/commit/56f907e151b3098b45700c8453bc1140939fcc91))
+
+
+### 🛠️ Refactor
+
+* Flatten info dictionary for vectorized environments ([5caac61](https://github.com/strakam/generals-bots/commit/5caac6173de6ddf542c430c4936af5b52a1e658b))
+* Pass only agent names to environment, this is better with libs ([ac39647](https://github.com/strakam/generals-bots/commit/ac396470e9bf6e67af14a0edf36afa432d6273e4))
+* Remove AgentFactory as it is a useless construct ([a50bea0](https://github.com/strakam/generals-bots/commit/a50bea08789473cd257beadb027c4af9220e7e9a))
+* Return info dict right after reset ([1156440](https://github.com/strakam/generals-bots/commit/115644069b4148db5a0aadafa9e941a9b0daa7f3))
+
 ## [2.5.0](https://github.com/strakam/generals-bots/compare/v2.4.0...v2.5.0) (2024-12-31)
 
 
