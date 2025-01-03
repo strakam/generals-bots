@@ -6,7 +6,7 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
-from generals.core.action import Action
+from generals.core.action import Action, compute_valid_move_mask
 from generals.core.game import Game
 from generals.core.grid import Grid, GridFactory
 from generals.core.observation import Observation
@@ -124,6 +124,18 @@ class MultiAgentGymnasiumGenerals(gym.Env):
         obs1 = self.game.agent_observation(self.agents[0]).as_tensor()
         obs2 = self.game.agent_observation(self.agents[1]).as_tensor()
         obs = np.stack([obs1, obs2])
+
+        # flatten infos
+        infos = {
+            agent: [
+                infos[agent]["army"],
+                infos[agent]["land"],
+                infos[agent]["is_done"],
+                infos[agent]["is_winner"],
+                compute_valid_move_mask(observations[agent]),
+            ]
+            for agent in self.agents
+        }
 
         # From observations of all agents, pick only those relevant for the main agent
         if self.prior_observations is None:
