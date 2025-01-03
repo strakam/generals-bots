@@ -43,3 +43,29 @@ class Observation(dict):
 
     def items(self):
         return dataclasses.asdict(self).items()
+
+    def as_tensor(self):
+        """
+        Returns a 3D tensor of shape (15, rows, cols). Suitable for neural nets.
+        """
+        shape = self.armies.shape
+        return np.stack(
+            [
+                self.armies,
+                self.generals,
+                self.cities,
+                self.mountains,
+                self.neutral_cells,
+                self.owned_cells,
+                self.opponent_cells,
+                self.fog_cells,
+                self.structures_in_fog,
+                np.ones(shape) * self.owned_land_count,
+                np.ones(shape) * self.owned_army_count,
+                np.ones(shape) * self.opponent_land_count,
+                np.ones(shape) * self.opponent_army_count,
+                np.ones(shape) * self.timestep,
+                np.ones(shape) * self.priority,
+            ],
+            axis=0,
+        )

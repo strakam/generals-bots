@@ -218,7 +218,7 @@ Complementary to local development, it is possible to run agents online against 
 We use `socketio` for communication, and you can either use our `autopilot` to run agent in a specified lobby indefinitely,
 or create your own connection workflow. Our implementations expect that your agent inherits from the `Agent` class, and has
 implemented the required methods.
-```python
+```python:examples/client_example.py
 from generals.remote import autopilot
 import argparse
 parser = argparse.ArgumentParser()

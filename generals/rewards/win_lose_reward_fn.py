@@ -10,4 +10,4 @@ class WinLoseRewardFn(RewardFn):
     def __call__(self, prior_obs: Observation, prior_action: Action, obs: Observation) -> float:
         change_in_num_generals_owned = compute_num_generals_owned(obs) - compute_num_generals_owned(prior_obs)
 
-        return 1 * change_in_num_generals_owned
+        return float(1 * change_in_num_generals_owned)
