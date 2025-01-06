@@ -44,11 +44,26 @@ class Observation(dict):
     def items(self):
         return dataclasses.asdict(self).items()
 
-    def as_tensor(self):
+    def as_tensor(self, pad_to: int | None = None) -> np.ndarray:
         """
         Returns a 3D tensor of shape (15, rows, cols). Suitable for neural nets.
         """
         shape = self.armies.shape
+        if pad_to is not None:
+            shape = (pad_to, pad_to)
+            assert pad_to >= max(self.armies.shape), "Can't pad to a smaller size than the original observation."
+            # pad every channel with zeros, except for neutral_cells and mountains, those are padded with ones
+            h_pad = (0, pad_to - self.armies.shape[0])
+            w_pad = (0, pad_to - self.armies.shape[1])
+            self.armies = np.pad(self.armies, (h_pad, w_pad), mode="constant", constant_values=0)
+            self.generals = np.pad(self.generals, (h_pad, w_pad), mode="constant", constant_values=0)
+            self.cities = np.pad(self.cities, (h_pad, w_pad), mode="constant", constant_values=0)
+            self.mountains = np.pad(self.mountains, (h_pad, w_pad), mode="constant", constant_values=1)
+            self.neutral_cells = np.pad(self.neutral_cells, (h_pad, w_pad), mode="constant", constant_values=1)
+            self.owned_cells = np.pad(self.owned_cells, (h_pad, w_pad), mode="constant", constant_values=0)
+            self.opponent_cells = np.pad(self.opponent_cells, (h_pad, w_pad), mode="constant", constant_values=0)
+            self.fog_cells = np.pad(self.fog_cells, (h_pad, w_pad), mode="constant", constant_values=0)
+            self.structures_in_fog = np.pad(self.structures_in_fog, (h_pad, w_pad), mode="constant", constant_values=0)
         return np.stack(
             [
                 self.armies,
