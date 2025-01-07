@@ -8,8 +8,8 @@ from .agent import Agent
 
 
 class ExpanderAgent(Agent):
-    def __init__(self, id: str = "Expander", color: tuple[int, int, int] = (0, 130, 255)):
-        super().__init__(id, color)
+    def __init__(self, id: str = "Expander"):
+        super().__init__(id)
 
     def act(self, observation: Observation) -> Action:
         """

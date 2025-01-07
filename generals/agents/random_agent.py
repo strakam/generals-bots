@@ -10,11 +10,10 @@ class RandomAgent(Agent):
     def __init__(
         self,
         id: str = "Random",
-        color: tuple[int, int, int] = (242, 61, 106),
         split_prob: float = 0.25,
         idle_prob: float = 0.05,
     ):
-        super().__init__(id, color)
+        super().__init__(id)
 
         self.idle_probability = idle_prob
         self.split_probability = split_prob

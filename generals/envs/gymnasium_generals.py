@@ -46,10 +46,8 @@ class GymnasiumGenerals(gym.Env):
         self.npc = npc
         self.agent_id = "Agent" if agent is None else agent.id
         self.agent_ids = [self.agent_id, self.npc.id]
-        self.agent_data = {
-            self.agent_id: {"color": (67, 70, 86) if agent is None else agent.color},
-            self.npc.id: {"color": self.npc.color},
-        }
+        self.colors = [(255, 107, 108), (0, 130, 255)]
+        self.agent_data = {id: {"color": color} for id, color in zip(self.agent_ids, self.colors)}
         assert self.agent_id != npc.id, "Agent ids must be unique - you can pass custom ids to agent constructors."
 
         # Game
