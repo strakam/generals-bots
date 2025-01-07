@@ -79,7 +79,7 @@ class Grid:
         return visited[end[0], end[1]]
 
     def __str__(self):
-        return Grid.stringify_grid(self._grid)
+        return Grid.stringify_grid(self.grid)
 
 
 class GridFactory:
