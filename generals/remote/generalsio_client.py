@@ -1,5 +1,3 @@
-import time
-
 import numpy as np
 from socketio import SimpleClient  # type: ignore
 
@@ -8,9 +6,10 @@ from generals.core.config import Direction
 from generals.core.observation import Observation
 from generals.remote.generalsio_state import GeneralsIOstate
 
-from .exceptions import GeneralsIOClientError, RegisterAgentError
-
 DIRECTIONS = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
+
+PUBLIC_ENDPOINT = "https://ws.generals.io/"
+BOT_ENDPOINT = "https://botws.generals.io/"
 
 
 def autopilot(agent: Agent, user_id: str, lobby_id: str) -> None:
@@ -33,19 +32,23 @@ class GeneralsIOClient(SimpleClient):
     GeneralsIO lobby.
     """
 
-    def __init__(self, agent: Agent, user_id: str):
+    def __init__(self, agent: Agent, user_id: str, public_server: bool = False):
         super().__init__()
-        self.connect("https://botws.generals.io")
+        self.public_server = public_server
         self.user_id = user_id
         self.agent = agent
         self._queue_id = ""
         self._replay_id = ""
         self._status = "off"  # can be "off","game","lobby","queue"
+        self.bot_key = "sd09fjd203i0ejwi_changeme"
+
+        self.connect(PUBLIC_ENDPOINT if public_server else BOT_ENDPOINT)
+        print("Connected to server!")
 
     @property
     def queue_id(self):
         if not self._queue_id:
-            raise GeneralsIOClientError("Queue ID is not set.\nIs agent in the game lobby?")
+            raise ValueError("No queue ID available.")
 
         return self._queue_id
 
@@ -70,19 +73,22 @@ class GeneralsIOClient(SimpleClient):
         :param user_id: secret ID of Agent
         :param username: agent username, must be prefixed with `[Bot]`
         """
-        event, response = self._emit_receive("set_username", (self.user_id, username))
-        if response:
-            # in case of success the response is empty
-            raise RegisterAgentError(response)
+        payload = (self.user_id, username, self.bot_key)
+        _, response = self._emit_receive("set_username", payload)
+        if response:  # in case of success the response is empty
+            raise ValueError(f"Failed to register the agent: {response}.")
+        print(f"Agent {username} registered!")
 
-    def join_private_lobby(self, queue_id: str) -> None:
+    def join_private_lobby(self, lobby_id: str) -> None:
         """
         Join (or create) private game lobby.
         :param queue_id: Either URL or lobby ID number
         """
         self._status = "lobby"
-        self._emit_receive("join_private", (queue_id, self.user_id))
-        self._queue_id = queue_id
+        payload = (lobby_id, self.user_id, self.bot_key)
+        self._emit_receive("join_private", payload)
+        self._queue_id = lobby_id
+        print(f"Joined private lobby {lobby_id}.")
 
     def join_game(self, force_start: bool = True) -> None:
         """
@@ -91,7 +97,6 @@ class GeneralsIOClient(SimpleClient):
         """
         self._status = "queue"
         while True:
-            time.sleep(2)
             event, *data = self.receive()
             self.emit("set_force_start", (self.queue_id, force_start))
             if event == "game_start":
@@ -105,7 +110,8 @@ class GeneralsIOClient(SimpleClient):
         Join 1v1 queue.
         """
         self._status = "queue"
-        self._emit_receive("join_1v1", self.user_id)
+        payload = (self.user_id, self.bot_key)
+        self._emit_receive("join_1v1", payload)
         while True:
             event, *data = self.receive()
             if event == "game_start":
@@ -121,11 +127,13 @@ class GeneralsIOClient(SimpleClient):
         """
         self.game_state = GeneralsIOstate(data[0])
         self._replay_id = data[0]["replay_id"]
+        print("Game started!")
 
     def _generate_action(self, observation: Observation) -> tuple[int, int, int] | None:
         """
         Translate action from Agent to the server format.
         :param action: dictionary representing the action
+        If your agent passes actions correctly into our simulator, it will work here too.
         """
         action = self.agent.act(observation)
         pass_or_play = action[0]
@@ -136,7 +144,6 @@ class GeneralsIOClient(SimpleClient):
             source: np.ndarray = np.array([i, j])
             direction = np.array(DIRECTIONS[direction].value)
             destination = source + direction
-            # convert to index
             source_index = source[0] * self.game_state.map[0] + source[1]
             destination_index = destination[0] * self.game_state.map[0] + destination[1]
             return (int(source_index), int(destination_index), int(split))
@@ -148,7 +155,12 @@ class GeneralsIOClient(SimpleClient):
         TODO: spawn a new thread in which Agent will calculate its moves
         """
         while True:
-            event, data, _ = self.receive()
+            try:
+                event, data, _ = self.receive()
+            except ValueError:
+                print(event)
+                print("Opponent disconnected, you won!")
+                return
             match event:
                 case "game_update":
                     self.game_state.update(data)
@@ -158,7 +170,7 @@ class GeneralsIOClient(SimpleClient):
                         self.emit("attack", action)
                 case "game_lost" | "game_won":
                     self._finish_game(event == "game_won")
-                    break
+                    return
 
     def _finish_game(self, is_winner: bool) -> None:
         """
@@ -166,6 +178,7 @@ class GeneralsIOClient(SimpleClient):
         :param is_winner: True if Agent won the game
         """
         self._status = "off"
-        status = "won!" if is_winner else "lost."
-        print(f"Game is finished, you {status}, replay ID: https://bot.generals.io/replays/{self.replay_id}")
+        status = "Won!" if is_winner else "Lost."
+        prefix = "bot." if not self.public_server else ""
+        print(f"You {status}, replay link: https://{prefix}generals.io/replays/{self.replay_id}")
         self.emit("leave_game")

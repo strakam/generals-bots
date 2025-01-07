@@ -1,7 +1,6 @@
-from .generalsio_client import GeneralsIOClient, GeneralsIOClientError, autopilot
+from .generalsio_client import GeneralsIOClient, autopilot
 
 __all__ = [
     "autopilot",
-    "GeneralsIOClientError",
     "GeneralsIOClient",
 ]
