@@ -1,13 +1,11 @@
 from gymnasium.envs.registration import register
 
 from generals.agents.agent import Agent
-from generals.core.exceptions import GeneralsBotError
 from generals.core.game import Action
 from generals.core.grid import Grid, GridFactory
 from generals.core.observation import Observation
 from generals.core.replay import Replay
 from generals.envs.pettingzoo_generals import PettingZooGenerals
-from generals.remote.exceptions import GeneralsIOClientError, RegisterAgentError
 
 __all__ = [
     "Action",
@@ -17,9 +15,7 @@ __all__ = [
     "Grid",
     "Replay",
     "Observation",
-    "GeneralsBotError",
     "GeneralsIOClientError",
-    "RegisterAgentError",
 ]
 
 
