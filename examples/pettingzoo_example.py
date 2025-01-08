@@ -14,7 +14,7 @@ agents = {
 }
 
 # Create environment
-env = PettingZooGenerals(agents=agent_names, render_mode="human")
+env = PettingZooGenerals(agent_ids=agent_names, render_mode="human")
 observations, info = env.reset()
 
 done = False

@@ -5,11 +5,10 @@ from generals.agents import RandomAgent
 
 
 def test_gym_runs():
-    npc = RandomAgent()
-
     env = gym.make(
         "gym-generals-v0",
-        npc=npc,
+        npc=RandomAgent(id="thing-1"),
+        agent=RandomAgent(id="thing-2"),
     )
     env_checker.check_env(env.unwrapped)
     print("Gymnasium check passed!")

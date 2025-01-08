@@ -36,4 +36,5 @@ exclude = ["tests", "examples"]
 
 [tool.mypy]
 exclude = ["tests/", "examples/", "generals/agents/"]
+strict_optional = false
 follow_imports="silent"

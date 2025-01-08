@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
-from generals.core.game import Action, Observation
+from generals.core.action import Action
+from generals.core.observation import Observation
 
 
 class Agent(ABC):
