@@ -1,6 +1,10 @@
 import dataclasses
+from typing import Any, TypeAlias
 
 import numpy as np
+
+# Type aliases
+Info: TypeAlias = dict[str, Any]
 
 
 @dataclasses.dataclass
@@ -44,43 +48,47 @@ class Observation(dict):
     def items(self):
         return dataclasses.asdict(self).items()
 
-    def as_tensor(self, pad_to: int | None = None) -> np.ndarray:
+    def to_tensor(self, pad_to: int = None) -> np.ndarray:
         """
-        Returns a 3D tensor of shape (15, rows, cols). Suitable for neural nets.
+        Returns a uniformly sized tensor with shape: (15, height, width).
+        Scalar fields such as timestep or opponent_land_count are
+        upsampled to the size of the grid.
+
+        Optionally increases the size of each channel to pad_to by effectively
+        filling the lower-right corner of the game-board with mountains.
+        The returned shape becomes: (15, pad_to, pad_to).
         """
-        shape = self.armies.shape
+
+        grid_dims = self.armies.shape
+
         if pad_to is not None:
-            shape = (pad_to, pad_to)
-            assert pad_to >= max(self.armies.shape), "Can't pad to a smaller size than the original observation."
-            # pad every channel with zeros, except for mountains, those are padded with ones
-            h_pad = (0, pad_to - self.armies.shape[0])
-            w_pad = (0, pad_to - self.armies.shape[1])
-            self.armies = np.pad(self.armies, (h_pad, w_pad), "constant")
-            self.generals = np.pad(self.generals, (h_pad, w_pad), "constant")
-            self.cities = np.pad(self.cities, (h_pad, w_pad), "constant")
-            self.mountains = np.pad(self.mountains, (h_pad, w_pad), "constant", constant_values=1)
-            self.neutral_cells = np.pad(self.neutral_cells, (h_pad, w_pad), "constant")
-            self.owned_cells = np.pad(self.owned_cells, (h_pad, w_pad), "constant")
-            self.opponent_cells = np.pad(self.opponent_cells, (h_pad, w_pad), "constant")
-            self.fog_cells = np.pad(self.fog_cells, (h_pad, w_pad), "constant")
-            self.structures_in_fog = np.pad(self.structures_in_fog, (h_pad, w_pad), "constant")
-        return np.stack(
-            [
-                self.armies,
-                self.generals,
-                self.cities,
-                self.mountains,
-                self.neutral_cells,
-                self.owned_cells,
-                self.opponent_cells,
-                self.fog_cells,
-                self.structures_in_fog,
-                np.ones(shape) * self.owned_land_count,
-                np.ones(shape) * self.owned_army_count,
-                np.ones(shape) * self.opponent_land_count,
-                np.ones(shape) * self.opponent_army_count,
-                np.ones(shape) * self.timestep,
-                np.ones(shape) * self.priority,
-            ],
-            axis=0,
-        )
+            assert pad_to >= max(grid_dims), "Can't pad to a size smaller than the original observation."
+            # Numpy expects a tuple representing the amount to pad each dimension before the
+            # data already in the array & after that data.
+            height_padding = (0, pad_to - grid_dims[0])
+            width_padding = (0, pad_to - grid_dims[1])
+            grid_dims = (pad_to, pad_to)
+
+        else:
+            height_padding = (0, 0)
+            width_padding = (0, 0)
+
+        channels = []
+        for attribute_name in self.keys():
+            channel = self[attribute_name]
+            is_arr = isinstance(channel, np.ndarray)
+            is_mountain_channel = attribute_name == "mountains"
+            is_scalar = isinstance(channel, int | np.integer)
+
+            if is_arr and not is_mountain_channel:
+                channel = np.pad(channel, (height_padding, width_padding), mode="constant", constant_values=0)
+            elif is_arr and is_mountain_channel:
+                channel = np.pad(channel, (height_padding, width_padding), mode="constant", constant_values=1)
+            elif is_scalar:
+                channel = channel * np.ones(shape=grid_dims)
+            else:
+                raise Exception(f"Unable to appropriately process channel: {channel}.")
+
+            channels.append(channel)
+
+        return np.stack(channels, axis=0)

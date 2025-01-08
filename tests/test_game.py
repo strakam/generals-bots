@@ -1,48 +1,50 @@
 import itertools
 
 import numpy as np
-import pytest
 
-import generals.core.game as game
+from generals.core.environment import Environment
 from generals.core.grid import Grid, GridFactory
+from generals.core.channels import Channels
 
+def get_env(grid: Grid = None) -> Environment:
 
-def get_game(grid=None):
-    if grid is None:
-        grid_factory = GridFactory(
-            min_grid_dims=(4, 4),
-            max_grid_dims=(4, 4),
-            mountain_density=0.1,
-            city_density=0.1,
-            general_positions=[[3, 3], [1, 3]],
-        )
-        grid = grid_factory.generate()
-    return game.Game(grid, ["red", "blue"])
+    grid_factory = GridFactory(
+        min_grid_dims=(4, 4),
+        max_grid_dims=(4, 4),
+        mountain_density=0.1,
+        city_density=0.1,
+        general_positions=[[3, 3], [1, 3]],
+    )
+    agent_ids = ["red", "blue"]
+    env = Environment(agent_ids=agent_ids, grid_factory=grid_factory)
+    if grid is not None:
+        env.channels = Channels(grid.grid, agent_ids)
 
+    return env
 
 def test_grid_creation():
     """
     For given configuration, we should get grid of given size.
     """
     for _ in range(10):
-        game = get_game()
-        assert game.grid_dims == (4, 4)
+        env = get_env()
+        assert env.grid_dims == (4, 4)
 
         # mountain and city should be disjoint
-        assert np.logical_and(game.channels.mountains, game.channels.cities).sum() == 0
+        assert np.logical_and(env.channels.mountains, env.channels.cities).sum() == 0
 
-        owners = ["neutral"] + game.agents
+        owners = ["neutral"] + env.agent_ids
         # for every pair of agents, the ownership channels should be disjoint
         pairs = itertools.combinations(owners, 2)
         for pair in pairs:
-            ownership_a = game.channels.ownership[pair[0]]
-            ownership_b = game.channels.ownership[pair[1]]
+            ownership_a = env.channels.ownership[pair[0]]
+            ownership_b = env.channels.ownership[pair[1]]
             assert np.logical_and(ownership_a, ownership_b).sum() == 0
 
         # but union of all ownerships should be equal to passable channel
-        ownerships = [game.channels.ownership[owner] for owner in owners]
+        ownerships = [env.channels.ownership[owner] for owner in owners]
         union = np.logical_or.reduce(ownerships)
-        assert (union == game.channels.passable).all()
+        assert (union == env.channels.passable).all()
 
 
 def test_channel_to_indices():
@@ -55,16 +57,16 @@ def test_channel_to_indices():
 .#.B
 """
     grid = Grid(map)
-    game = get_game(grid)
+    env = get_env(grid)
 
     channel = np.array([[1, 0, 1], [0, 1, 0], [1, 0, 1]])
     reference = np.array([(0, 0), (0, 2), (1, 1), (2, 0), (2, 2)])
-    indices = game.channels.channel_to_indices(channel)
+    indices = env.channels.channel_to_indices(channel)
     assert (indices == reference).all()
 
     channel = np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0]])
     reference = np.empty((0, 2))
-    indices = game.channels.channel_to_indices(channel)
+    indices = env.channels.channel_to_indices(channel)
     assert (indices == reference).all()
 
 

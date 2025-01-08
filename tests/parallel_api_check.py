@@ -145,7 +145,7 @@ if __name__ == "__main__":
         agent1.id: agent1,
         agent2.id: agent2,
     }
-    env = PettingZooGenerals(agents=agents, render_mode=None)
+    env = PettingZooGenerals(agent_ids=agents, render_mode=None)
     # test the environment with parallel_api_test
     import time
 

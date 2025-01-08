@@ -17,11 +17,11 @@ custom settings.
 
 
 def gym_image_observations(
-    grid_factory: GridFactory | None = None,
-    npc: Agent | None = None,
-    agent: Agent | None = None,
-    render_mode: str | None = None,
-    reward_fn: RewardFn | None = None,
+    grid_factory: GridFactory = None,
+    npc: Agent = None,
+    agent: Agent = None,
+    to_render: bool = None,
+    reward_fn: RewardFn = None,
 ):
     """
     Example of a Gymnasium environment initializer that creates
@@ -31,7 +31,7 @@ def gym_image_observations(
         grid_factory=grid_factory,
         npc=npc,
         agent=agent,
-        render_mode=render_mode,
+        to_render=to_render,
         reward_fn=reward_fn,
     )
     env = ObservationAsImageWrapper(_env)
@@ -39,11 +39,11 @@ def gym_image_observations(
 
 
 def gym_rllib(
-    grid_factory: GridFactory | None = None,
-    npc: Agent | None = None,
-    agent: Agent | None = None,
-    render_mode: str | None = None,
-    reward_fn: RewardFn | None = None,
+    grid_factory: GridFactory = None,
+    npc: Agent = None,
+    agent: Agent = None,
+    to_render: bool = None,
+    reward_fn: RewardFn = None,
 ):
     """
     Example of a Gymnasium environment initializer that creates
@@ -53,7 +53,7 @@ def gym_rllib(
         grid_factory=grid_factory,
         npc=npc,
         agent=agent,
-        render_mode=render_mode,
+        to_render=to_render,
         reward_fn=reward_fn,
     )
     image_env = ObservationAsImageWrapper(env)
