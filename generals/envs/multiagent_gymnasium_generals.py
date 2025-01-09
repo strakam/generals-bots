@@ -163,6 +163,7 @@ class MultiAgentGymnasiumGenerals(gym.Env):
                 )
                 for agent in self.agents
             ]
+        rewards = 0 # WIP
 
         terminated = self.game.is_done()
         truncated = False
