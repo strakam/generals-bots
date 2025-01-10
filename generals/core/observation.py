@@ -1,20 +1,13 @@
-from collections.abc import Mapping
-from dataclasses import dataclass
+import dataclasses
 
 import numpy as np
 
 
-@dataclass
-class Observation(np.ndarray, Mapping):
+@dataclasses.dataclass
+class Observation(dict):
     """
-    Observation dataclass is by default a 15-channel 3D grid.
-    This is due to its convenience when using ML methods (e.g. CNNs) and vectorized environments.
-    However, you can also access respective channels as attributes, by their name, e.g.:
-
-    obs = Observation(...)
-    print(obs.armies)
-
-    channel_names = obs.keys()
+    Hybrid implementation that maintains dict-like behavior for compatibility
+    while offering memory-efficient tensor operations.
     """
 
     armies: np.ndarray
@@ -32,79 +25,58 @@ class Observation(np.ndarray, Mapping):
     opponent_army_count: int
     timestep: int
     priority: int = 0
+    pad_to: int | None = None
 
-    def __new__(cls, *args, **kwargs):
-        ones = np.ones(kwargs["armies"].shape, dtype=int)
+    def __post_init__(self):
+        if self.pad_to is not None:
+            self.apply_padding()
 
-        stacked = np.stack(
-            [
-                kwargs["armies"],
-                kwargs["generals"],
-                kwargs["cities"],
-                kwargs["mountains"],
-                kwargs["neutral_cells"],
-                kwargs["owned_cells"],
-                kwargs["opponent_cells"],
-                kwargs["fog_cells"],
-                kwargs["structures_in_fog"],
-                kwargs["owned_land_count"] * ones,
-                kwargs["owned_army_count"] * ones,
-                kwargs["opponent_land_count"] * ones,
-                kwargs["opponent_army_count"] * ones,
-                kwargs["timestep"] * ones,
-                kwargs["priority"] * ones,
-            ]
-        )
-        obj = super().__new__(cls, shape=stacked.shape, dtype=stacked.dtype, buffer=stacked)
-        return obj
-
-    def __array_finalize__(self, obj):
-        if obj is None:
-            return
-
-    def __init__(self, *args, **kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-
-    def __getitem__(self, key):
-        return getattr(self, key)
-
-    def __iter__(self):
-        return iter(self.__dataclass_fields__.keys())
-
-    def __len__(self):
-        return len(self.__dataclass_fields__)
-
-    def __contains__(self, key):
-        return key in self.__dataclass_fields__
+    def __getitem__(self, attribute_name: str):
+        return getattr(self, attribute_name)
 
     def keys(self):
-        return list(self.__dataclass_fields__.keys())
+        return dataclasses.asdict(self).keys()
 
-    # should return padded tensor
-    def pad_observation(self, pad_to: int) -> "Observation":
+    def values(self):
+        return dataclasses.asdict(self).values()
+
+    def items(self):
+        return dataclasses.asdict(self).items()
+
+    def apply_padding(self):
+        h_pad = (0, self.pad_to - self.armies.shape[0])
+        w_pad = (0, self.pad_to - self.armies.shape[1])
+
+        for field in dataclasses.fields(self):
+            if isinstance(getattr(self, field.name), np.ndarray):
+                value = 1 if field.name == "mountains" else 0
+                setattr(
+                    self,
+                    field.name,
+                    np.pad(getattr(self, field.name), (h_pad, w_pad), "constant", constant_values=value),
+                )
+
+    def as_tensor(self) -> np.ndarray:
         """
-        Pads the observation to a square grid of size pad_to.
+        Returns a 3D tensor of shape (15, rows, cols). Suitable for neural nets.
         """
-        assert pad_to >= max(self.armies.shape), "Can't pad to a size smaller than the original observation."
-
-        height_padding = (0, pad_to - self.armies.shape[0])
-        width_padding = (0, pad_to - self.armies.shape[1])
-
-        for attribute_name in self.keys():
-            channel = self[attribute_name]
-            is_arr = isinstance(channel, np.ndarray)
-            is_mountain_channel = attribute_name == "mountains"
-            is_scalar = isinstance(channel, int | np.integer)
-
-            if is_arr and not is_mountain_channel:
-                channel = np.pad(channel, (height_padding, width_padding), mode="constant", constant_values=0)
-            elif is_arr and is_mountain_channel:
-                channel = np.pad(channel, (height_padding, width_padding), mode="constant", constant_values=1)
-            elif is_scalar:
-                channel = channel * np.ones(shape=(pad_to, pad_to))
-            else:
-                raise Exception(f"Unable to appropriately process channel: {channel}.")
-
-            setattr(self, attribute_name, channel)
-        return self
+        return np.stack(
+            [
+                self.armies,
+                self.generals,
+                self.cities,
+                self.mountains,
+                self.neutral_cells,
+                self.owned_cells,
+                self.opponent_cells,
+                self.fog_cells,
+                self.structures_in_fog,
+                np.full_like(self.armies, self.owned_land_count),
+                np.full_like(self.armies, self.owned_army_count),
+                np.full_like(self.armies, self.opponent_land_count),
+                np.full_like(self.armies, self.opponent_army_count),
+                np.full_like(self.armies, self.timestep),
+                np.full_like(self.armies, self.priority),
+            ],
+            axis=0,
+        )

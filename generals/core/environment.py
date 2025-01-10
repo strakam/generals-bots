@@ -54,6 +54,7 @@ class Environment:
         to_render: bool = False,
         speed_multiplier: float = 1.0,
         save_replays: bool = False,
+        pad_to: int = None,
     ):
         self.agent_ids = agent_ids
         self.grid_factory = grid_factory if grid_factory is not None else GridFactory()
@@ -62,6 +63,7 @@ class Environment:
         self.to_render = to_render
         self.speed_multiplier = speed_multiplier
         self.save_replays = save_replays
+        self.pad_to = pad_to
 
         self.episode_num = 0
         self._reset()
@@ -88,9 +90,9 @@ class Environment:
 
         self._reset(grid, options)
 
-        observation = self.agent_observation(self.agent_ids[0])
-        info = {}  # type: ignore
-        return observation, info
+        observations = {agent_id: self.agent_observation(agent_id) for agent_id in self.agent_ids}
+        infos = {agent_id: self.get_infos()[agent_id] for agent_id in self.agent_ids}
+        return observations, infos
 
     def reset_from_petting_zoo(self, seed: int = None, options: dict[str, Any] = None):
         """Reset this environment in accordance with PettingZoo's env-resetting expectations."""
@@ -107,7 +109,7 @@ class Environment:
         self._reset(grid, options)
 
         observations = {agent_id: self.agent_observation(agent_id) for agent_id in self.agent_ids}
-        infos = {agent_id: {} for agent_id in self.agent_ids}  # type: ignore
+        infos = {agent_id: self.get_infos()[agent_id] for agent_id in self.agent_ids}
 
         return observations, infos
 
@@ -329,7 +331,6 @@ class Environment:
         opponent_army_count = scores[opponent]["army"]
         timestep = self.num_turns
         priority = 1 if agent == self.agents_in_order_of_prio[0] else 0
-
         return Observation(
             armies=armies,
             generals=generals,
@@ -346,6 +347,7 @@ class Environment:
             opponent_army_count=opponent_army_count,
             timestep=timestep,
             priority=priority,
+            pad_to=self.pad_to,
         )
 
     def agent_won(self, agent: str) -> bool:
