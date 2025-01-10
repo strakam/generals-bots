@@ -161,8 +161,7 @@ class GeneralsIOClient(SimpleClient):
             try:
                 event, data, _ = self.receive()
             except ValueError:
-                print(event)
-                print("Opponent disconnected, you won!")
+                self._finish_game(is_winner=True)
                 return
             match event:
                 case "game_update":
