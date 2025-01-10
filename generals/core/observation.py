@@ -1,23 +1,20 @@
-import dataclasses
-from typing import Any, TypeAlias
+from collections.abc import Mapping
+from dataclasses import dataclass
 
 import numpy as np
 
-# Type aliases
-Info: TypeAlias = dict[str, Any]
 
-
-@dataclasses.dataclass
-class Observation(dict):
+@dataclass
+class Observation(np.ndarray, Mapping):
     """
-    We override some dictionary methods and subclass dict to allow the
-    Observation object to be accessible in dictionary-style format,
-    e.g. observation["armies"]. And to allow for providing a
-    listing of the keys/attributes.
+    Observation dataclass is by default a 15-channel 3D grid.
+    This is due to its convenience when using ML methods (e.g. CNNs) and vectorized environments.
+    However, you can also access respective channels as attributes, by their name, e.g.:
 
-    These steps are necessary because PettingZoo & Gymnasium expect
-    dictionary-like Observation objects, but we want the benefits of
-    knowing the dictionaries' members which a dataclass/class provides.
+    obs = Observation(...)
+    print(obs.armies)
+
+    channel_names = obs.keys()
     """
 
     armies: np.ndarray
@@ -36,44 +33,64 @@ class Observation(dict):
     timestep: int
     priority: int = 0
 
-    def __getitem__(self, attribute_name: str):
-        return getattr(self, attribute_name)
+    def __new__(cls, *args, **kwargs):
+        ones = np.ones(kwargs["armies"].shape, dtype=int)
+
+        stacked = np.stack(
+            [
+                kwargs["armies"],
+                kwargs["generals"],
+                kwargs["cities"],
+                kwargs["mountains"],
+                kwargs["neutral_cells"],
+                kwargs["owned_cells"],
+                kwargs["opponent_cells"],
+                kwargs["fog_cells"],
+                kwargs["structures_in_fog"],
+                kwargs["owned_land_count"] * ones,
+                kwargs["owned_army_count"] * ones,
+                kwargs["opponent_land_count"] * ones,
+                kwargs["opponent_army_count"] * ones,
+                kwargs["timestep"] * ones,
+                kwargs["priority"] * ones,
+            ]
+        )
+        obj = super().__new__(cls, shape=stacked.shape, dtype=stacked.dtype, buffer=stacked)
+        return obj
+
+    def __array_finalize__(self, obj):
+        if obj is None:
+            return
+
+    def __init__(self, *args, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+    def __iter__(self):
+        return iter(self.__dataclass_fields__.keys())
+
+    def __len__(self):
+        return len(self.__dataclass_fields__)
+
+    def __contains__(self, key):
+        return key in self.__dataclass_fields__
 
     def keys(self):
-        return dataclasses.asdict(self).keys()
+        return list(self.__dataclass_fields__.keys())
 
-    def values(self):
-        return dataclasses.asdict(self).values()
-
-    def items(self):
-        return dataclasses.asdict(self).items()
-
-    def to_tensor(self, pad_to: int = None) -> np.ndarray:
+    # should return padded tensor
+    def pad_observation(self, pad_to: int) -> "Observation":
         """
-        Returns a uniformly sized tensor with shape: (15, height, width).
-        Scalar fields such as timestep or opponent_land_count are
-        upsampled to the size of the grid.
-
-        Optionally increases the size of each channel to pad_to by effectively
-        filling the lower-right corner of the game-board with mountains.
-        The returned shape becomes: (15, pad_to, pad_to).
+        Pads the observation to a square grid of size pad_to.
         """
+        assert pad_to >= max(self.armies.shape), "Can't pad to a size smaller than the original observation."
 
-        grid_dims = self.armies.shape
+        height_padding = (0, pad_to - self.armies.shape[0])
+        width_padding = (0, pad_to - self.armies.shape[1])
 
-        if pad_to is not None:
-            assert pad_to >= max(grid_dims), "Can't pad to a size smaller than the original observation."
-            # Numpy expects a tuple representing the amount to pad each dimension before the
-            # data already in the array & after that data.
-            height_padding = (0, pad_to - grid_dims[0])
-            width_padding = (0, pad_to - grid_dims[1])
-            grid_dims = (pad_to, pad_to)
-
-        else:
-            height_padding = (0, 0)
-            width_padding = (0, 0)
-
-        channels = []
         for attribute_name in self.keys():
             channel = self[attribute_name]
             is_arr = isinstance(channel, np.ndarray)
@@ -85,10 +102,9 @@ class Observation(dict):
             elif is_arr and is_mountain_channel:
                 channel = np.pad(channel, (height_padding, width_padding), mode="constant", constant_values=1)
             elif is_scalar:
-                channel = channel * np.ones(shape=grid_dims)
+                channel = channel * np.ones(shape=(pad_to, pad_to))
             else:
                 raise Exception(f"Unable to appropriately process channel: {channel}.")
 
-            channels.append(channel)
-
-        return np.stack(channels, axis=0)
+            setattr(self, attribute_name, channel)
+        return self

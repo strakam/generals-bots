@@ -1,10 +1,9 @@
-from typing import TypeAlias
+from typing import Any, TypeAlias
 
 import numpy as np
 import pygame
 
 from generals.core.config import Dimension, Path
-from generals.core.observation import Info
 from generals.gui.properties import GuiMode, Properties
 
 Color: TypeAlias = tuple[int, int, int]
@@ -67,7 +66,7 @@ class Renderer:
 
         self._font = pygame.font.Font(Path.FONT_PATH, self.properties.font_size)
 
-    def render(self, agent_id_to_infos: dict[str, Info], current_time: int, fps=None):
+    def render(self, agent_id_to_infos: dict[str, Any], current_time: int, fps=None):
         self.render_grid()
         self.render_stats(agent_id_to_infos, current_time)
         pygame.display.flip()
@@ -97,7 +96,7 @@ class Renderer:
             cell.fill(bg_color)
         cell.blit(text_surface, text_surface.get_rect(center=center))
 
-    def render_stats(self, agent_id_to_infos: dict[str, Info], current_time: int):
+    def render_stats(self, agent_id_to_infos: dict[str, Any], current_time: int):
         """
         Draw player stats and additional info on the right panel
         """

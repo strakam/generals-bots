@@ -1,11 +1,11 @@
 import functools
-from typing import TypeAlias
+from typing import Any, TypeAlias
 
 import numpy as np
 import pettingzoo  # type: ignore
 from gymnasium import spaces
 
-from generals.core.environment import Action, Environment, Info, Observation
+from generals.core.environment import Action, Environment, Observation
 from generals.core.grid import GridFactory
 from generals.rewards.reward_fn import RewardFn
 
@@ -28,18 +28,16 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
             grid_factory: Can be used to specify the game-board i.e. grid generator.
             truncation: The maximum number of turns a game can last before it's truncated.
             reward_fn: An instance of the RewardFn abstract base class.
-            render_mode: "human" will provide a real-time graphic of the game. None will
-                show no graphics and run the game as fast as possible.
             speed_multiplier: Relatively increase or decrease the speed of the real-time
                 game graphic. This has no effect if render_mode is None.
-            pad_observations: If True, the observations will be padded to the same shape,
-                defined by maximum grid dimensions of grid_factory.
+            to_render: If True, the game will be rendered in real-time.
         """
         assert len(agent_ids) == len(
             set(agent_ids)
         ), "Agent ids must be unique - you can pass custom ids to agent constructors."
 
         self.truncation = truncation
+        self.agent_ids = agent_ids
         self.environment = Environment(agent_ids, grid_factory, truncation, reward_fn, to_render, speed_multiplier)
 
     @functools.cache
@@ -88,7 +86,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         dict[AgentID, float],
         bool,
         bool,
-        dict[AgentID, Info],
+        dict[AgentID, dict[str, Any]],
     ]:
         observations, rewards, terminated, truncated, infos = self.environment.step(actions)
         return observations, rewards, terminated, truncated, infos

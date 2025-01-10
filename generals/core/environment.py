@@ -16,7 +16,7 @@ from .action import Action
 from .channels import Channels
 from .config import DIRECTIONS
 from .grid import Grid, GridFactory
-from .observation import Info, Observation
+from .observation import Observation
 
 
 class Environment:
@@ -275,7 +275,7 @@ class Environment:
         """
         return any(self.agent_won(agent) for agent in self.agent_ids)
 
-    def get_infos(self) -> dict[str, Info]:
+    def get_infos(self) -> dict[str, dict[str, Any]]:
         """
         Returns a dictionary of player statistics.
         Keys and values are as follows:

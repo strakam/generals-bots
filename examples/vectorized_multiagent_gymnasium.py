@@ -8,7 +8,7 @@ agent_names = ["007", "Generalissimo"]
 
 n_envs = 12
 envs = gym.vector.AsyncVectorEnv(
-    [lambda: MultiAgentGymnasiumGenerals(agents=agent_names, truncation=500) for _ in range(n_envs)],
+    [lambda: MultiAgentGymnasiumGenerals(agent_ids=agent_names, truncation=500) for _ in range(n_envs)],
 )
 
 

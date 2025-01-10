@@ -1,7 +1,8 @@
+from typing import Any
+
 import pygame
 
 from generals.core.channels import Channels
-from generals.core.observation import Info
 
 from .event_handler import (
     Command,
@@ -30,7 +31,7 @@ class GUI:
         self.renderer = Renderer(self.properties)
         self.event_handler = EventHandler.from_mode(self.properties.gui_mode, self.properties)
 
-    def tick(self, agent_id_to_infos: dict[str, Info], current_time: int, fps: int | None = None) -> Command:
+    def tick(self, agent_id_to_infos: dict[str, Any], current_time: int, fps: int | None = None) -> Command:
         command = self.event_handler.handle_events()
 
         if command.quit:
