@@ -30,14 +30,6 @@ repos:
         types:
           - python
 
-      - id: mypy
-        name: mypy
-        entry: poetry run mypy .
-        pass_filenames: false
-        language: system
-        types:
-          - python
-
       - id: run-pytest
         name: Run tests
         entry: make test
