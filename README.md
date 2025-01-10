@@ -50,7 +50,7 @@ You can specify your agent `id` (name) and the only thing remaining is to implem
 that has the signature explained in sections down below.
 
 
-### Usage Example (🤸 Gymnasium)
+### Usage Example (🦁 PettingZoo)
 The example loop for running the game looks like this
 ```python:examples/pettingzoo_example.py
 from generals.agents import RandomAgent, ExpanderAgent
