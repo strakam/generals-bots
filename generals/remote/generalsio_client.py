@@ -1,3 +1,4 @@
+
 import time
 
 import numpy as np
@@ -98,10 +99,12 @@ class GeneralsIOClient(SimpleClient):
         :param force_start: If set to True, the Agent will set `Force Start` flag
         """
         self._status = "queue"
+        last_send_time = time.time()
         while True:
-            time.sleep(2)  # dont spam servers
             event, *data = self.receive()
-            self.emit("set_force_start", (self.queue_id, force_start))
+            if time.time() - last_send_time > 2:
+                self.emit("set_force_start", (self.queue_id, force_start))
+                last_send_time = time.time()
             if event == "game_start":
                 self._status = "game"
                 self._initialize_game(data)
@@ -161,8 +164,7 @@ class GeneralsIOClient(SimpleClient):
             try:
                 event, data, _ = self.receive()
             except ValueError:
-                print(event)
-                print("Opponent disconnected, you won!")
+                self._finish_game(is_winner=True)
                 return
             match event:
                 case "game_update":
