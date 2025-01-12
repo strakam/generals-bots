@@ -1,4 +1,4 @@
-from typing import TypeAlias
+from typing import Any, TypeAlias
 
 import numpy as np
 import pygame
@@ -26,23 +26,11 @@ class Renderer:
 
         self.properties = properties
 
-        self.mode = self.properties.mode
-        self.game = self.properties.game
-
-        self.agent_data = self.properties.agent_data
-        self.agent_fov = self.properties.agent_fov
-
-        self.grid_height = self.properties.grid_height
-        self.grid_width = self.properties.grid_width
-        self.display_grid_width = self.properties.display_grid_width
-        self.display_grid_height = self.properties.display_grid_height
-        self.right_panel_width = self.properties.right_panel_width
-
         ############
         # Surfaces #
         ############
-        window_width = self.display_grid_width + self.right_panel_width
-        window_height = self.display_grid_height + 1
+        window_width = self.properties.display_grid_width + self.properties.right_panel_width
+        window_height = self.properties.display_grid_height + 1
 
         width = Dimension.GUI_CELL_WIDTH.value
         height = Dimension.GUI_CELL_HEIGHT.value
@@ -50,7 +38,7 @@ class Renderer:
         # Main window
         self.screen = pygame.display.set_mode((window_width, window_height), pygame.HWSURFACE | pygame.DOUBLEBUF)
         # Scoreboard
-        self.right_panel = pygame.Surface((self.right_panel_width, window_height))
+        self.right_panel = pygame.Surface((self.properties.right_panel_width, window_height))
         self.score_cols = {}
         for col in ["Player", "Army", "Land"]:
             size = (width, height)
@@ -59,14 +47,17 @@ class Renderer:
             self.score_cols[col] = [pygame.Surface(size) for _ in range(3)]
 
         self.info_panel = {
-            "time": pygame.Surface((self.right_panel_width / 2, height)),
-            "speed": pygame.Surface((self.right_panel_width / 2, height)),
+            "time": pygame.Surface((self.properties.right_panel_width / 2, height)),
+            "speed": pygame.Surface((self.properties.right_panel_width / 2, height)),
         }
         # Game area and tiles
-        self.game_area = pygame.Surface((self.display_grid_width, self.display_grid_height))
+        self.game_area = pygame.Surface((self.properties.display_grid_width, self.properties.display_grid_height))
         self.tiles = [
-            [pygame.Surface((Dimension.SQUARE_SIZE.value, Dimension.SQUARE_SIZE.value)) for _ in range(self.grid_width)]
-            for _ in range(self.grid_height)
+            [
+                pygame.Surface((Dimension.SQUARE_SIZE.value, Dimension.SQUARE_SIZE.value))
+                for _ in range(self.properties.grid_width)
+            ]
+            for _ in range(self.properties.grid_height)
         ]
 
         self._mountain_img = pygame.image.load(str(Path.MOUNTAIN_PATH), "png").convert_alpha()
@@ -75,9 +66,9 @@ class Renderer:
 
         self._font = pygame.font.Font(Path.FONT_PATH, self.properties.font_size)
 
-    def render(self, fps=None):
+    def render(self, agent_id_to_infos: dict[str, Any], current_time: int, fps=None):
         self.render_grid()
-        self.render_stats()
+        self.render_stats(agent_id_to_infos, current_time)
         pygame.display.flip()
         if fps:
             self.properties.clock.tick(fps)
@@ -105,28 +96,28 @@ class Renderer:
             cell.fill(bg_color)
         cell.blit(text_surface, text_surface.get_rect(center=center))
 
-    def render_stats(self):
+    def render_stats(self, agent_id_to_infos: dict[str, Any], current_time: int):
         """
         Draw player stats and additional info on the right panel
         """
-        names = self.game.agents
-        player_stats = self.game.get_infos()
+        names = self.properties.agent_ids
+        player_stats = agent_id_to_infos
         gui_cell_height = Dimension.GUI_CELL_HEIGHT.value
         gui_cell_width = Dimension.GUI_CELL_WIDTH.value
 
         # Write names
         for i, name in enumerate(["Player"] + names):
-            color = self.agent_data[name]["color"] if name in self.agent_data else WHITE
+            color: Color = self.properties.agent_id_to_color.get(name, WHITE)
             # add opacity to the color, where color is a Color(r,g,b)
-            if name in self.agent_fov and not self.agent_fov[name]:
-                color = tuple([int(0.5 * rgb) for rgb in color])
+            if name in self.properties.agent_fov and not self.properties.agent_fov[name]:
+                color = tuple([int(0.5 * rgb) for rgb in color])  # type: ignore
             self.render_cell_text(self.score_cols["Player"][i], name, bg_color=color)
 
         # Write other columns
         for i, col in enumerate(["Army", "Land"]):
             self.render_cell_text(self.score_cols[col][0], col)
             for j, name in enumerate(names):
-                if name in self.agent_fov and not self.agent_fov[name]:
+                if name in self.properties.agent_fov and not self.properties.agent_fov[name]:
                     color = (128, 128, 128)
                 self.render_cell_text(
                     self.score_cols[col][j + 1],
@@ -146,9 +137,9 @@ class Renderer:
                 self.right_panel.blit(cell, position)
 
         info_text = {
-            "time": f"Time: {str(self.game.time // 2) + ('.' if self.game.time % 2 == 1 else '')}",
+            "time": f"Time: {str(current_time // 2) + ('.' if current_time % 2 == 1 else '')}",
             "speed": "Paused"
-            if self.mode == GuiMode.REPLAY and self.properties.paused
+            if self.properties.gui_mode == GuiMode.REPLAY and self.properties.is_paused
             else f"Speed: {str(self.properties.game_speed)}x",
         }
 
@@ -166,21 +157,21 @@ class Renderer:
 
             self.right_panel.blit(self.info_panel[key], (i * 2 * gui_cell_width, 3 * gui_cell_height))
         # Render right_panel on the screen
-        self.screen.blit(self.right_panel, (self.display_grid_width, 0))
+        self.screen.blit(self.right_panel, (self.properties.display_grid_width, 0))
 
     def render_grid(self):
         """
         Render the game grid
         """
-        agents = self.game.agents
+        agents = self.properties.agent_ids
         # Maps of all owned and visible cells
-        owned_map = np.zeros((self.grid_height, self.grid_width), dtype=bool)
-        visible_map = np.zeros((self.grid_height, self.grid_width), dtype=bool)
+        owned_map = np.zeros((self.properties.grid_height, self.properties.grid_width), dtype=bool)
+        visible_map = np.zeros((self.properties.grid_height, self.properties.grid_width), dtype=bool)
         for agent in agents:
-            ownership = self.game.channels.ownership[agent]
+            ownership = self.properties.channels.ownership[agent]
             owned_map = np.logical_or(owned_map, ownership)
-            if self.agent_fov[agent]:
-                visibility = self.game.channels.get_visibility(agent)
+            if self.properties.agent_fov[agent]:
+                visibility = self.properties.channels.get_visibility(agent)
                 visible_map = np.logical_or(visible_map, visibility)
 
         # Helper maps for not owned and invisible cells
@@ -189,12 +180,12 @@ class Renderer:
 
         # Draw background of visible owned squares
         for agent in agents:
-            ownership = self.game.channels.ownership[agent]
+            ownership = self.properties.channels.ownership[agent]
             visible_ownership = np.logical_and(ownership, visible_map)
-            self.draw_channel(visible_ownership, self.agent_data[agent]["color"])
+            self.draw_channel(visible_ownership, self.properties.agent_id_to_color[agent])
 
         # Draw visible generals
-        visible_generals = np.logical_and(self.game.channels.generals, visible_map)
+        visible_generals = np.logical_and(self.properties.channels.generals, visible_map)
         self.draw_images(visible_generals, self._general_img)
 
         # Draw background of visible but not owned squares
@@ -205,26 +196,26 @@ class Renderer:
         self.draw_channel(invisible_map, FOG_OF_WAR)
 
         # Draw background of visible mountains
-        visible_mountain = np.logical_and(self.game.channels.mountains, visible_map)
+        visible_mountain = np.logical_and(self.properties.channels.mountains, visible_map)
         self.draw_channel(visible_mountain, VISIBLE_MOUNTAIN)
 
         # Draw mountains (even if they are not visible)
-        self.draw_images(self.game.channels.mountains, self._mountain_img)
+        self.draw_images(self.properties.channels.mountains, self._mountain_img)
 
         # Draw background of visible neutral cities
-        visible_cities = np.logical_and(self.game.channels.cities, visible_map)
-        visible_cities_neutral = np.logical_and(visible_cities, self.game.channels.ownership_neutral)
+        visible_cities = np.logical_and(self.properties.channels.cities, visible_map)
+        visible_cities_neutral = np.logical_and(visible_cities, self.properties.channels.ownership_neutral)
         self.draw_channel(visible_cities_neutral, NEUTRAL_CASTLE)
 
         # Draw invisible cities as mountains
-        invisible_cities = np.logical_and(self.game.channels.cities, invisible_map)
+        invisible_cities = np.logical_and(self.properties.channels.cities, invisible_map)
         self.draw_images(invisible_cities, self._mountain_img)
 
         # Draw visible cities
         self.draw_images(visible_cities, self._city_img)
 
         # Draw nonzero army counts on visible squares
-        visible_army = self.game.channels.armies * visible_map
+        visible_army = self.properties.channels.armies * visible_map
         visible_army_indices = self.channel_to_indices(visible_army)
         for i, j in visible_army_indices:
             self.render_cell_text(
@@ -236,7 +227,7 @@ class Renderer:
 
         # Blit tiles to the self.game_area
         square_size = Dimension.SQUARE_SIZE.value
-        for i, j in np.ndindex(self.grid_height, self.grid_width):
+        for i, j in np.ndindex(self.properties.grid_height, self.properties.grid_width):
             self.game_area.blit(self.tiles[i][j], (j * square_size, i * square_size))
         self.screen.blit(self.game_area, (0, 0))
 

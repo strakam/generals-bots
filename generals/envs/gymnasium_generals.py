@@ -10,18 +10,11 @@ from generals.core.action import Action, compute_valid_move_mask
 from generals.core.game import Game
 from generals.core.grid import Grid, GridFactory
 from generals.core.observation import Observation
-from generals.core.replay import Replay
-from generals.gui import GUI
-from generals.gui.properties import GuiMode
 from generals.rewards.reward_fn import RewardFn
-from generals.rewards.win_lose_reward_fn import WinLoseRewardFn
 
 
 class GymnasiumGenerals(gym.Env):
-    metadata = {
-        "render_modes": ["human"],
-        "render_fps": 6,
-    }
+    """ """
 
     def __init__(
         self,
@@ -65,19 +58,15 @@ class GymnasiumGenerals(gym.Env):
         return spaces.Box(low=0, high=2**31 - 1, shape=(2, 15, dims[0], dims[1]), dtype=np.float32)
 
     def set_action_space(self) -> spaces.Space:
-        if self.grid_factory.padding:
-            dims = self.grid_factory.max_grid_dims
-        else:
-            dims = self.game.grid_dims
-        return spaces.MultiDiscrete([2, dims[0], dims[1], 4, 2])
+        return spaces.MultiDiscrete([2, self.pad_to, self.pad_to, 4, 2])
 
     def render(self):
-        if self.render_mode == "human":
-            _ = self.gui.tick(fps=self.metadata["render_fps"])
+        self.environment.render()
 
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[Observation, dict[str, Any]]:
+        # Reset the parent Gymnasium.env first.
         super().reset(seed=seed)
         if options is None:
             options = {}

@@ -6,14 +6,8 @@ import numpy as np
 @dataclasses.dataclass
 class Observation(dict):
     """
-    We override some dictionary methods and subclass dict to allow the
-    Observation object to be accessible in dictionary-style format,
-    e.g. observation["armies"]. And to allow for providing a
-    listing of the keys/attributes.
-
-    These steps are necessary because PettingZoo & Gymnasium expect
-    dictionary-like Observation objects, but we want the benefits of
-    knowing the dictionaries' members which a dataclass/class provides.
+    Hybrid implementation that maintains dict-like behavior for compatibility
+    while offering memory-efficient tensor operations.
     """
 
     armies: np.ndarray
@@ -31,6 +25,11 @@ class Observation(dict):
     opponent_army_count: int
     timestep: int
     priority: int = 0
+    pad_to: int | None = None
+
+    def __post_init__(self):
+        if self.pad_to is not None:
+            self.apply_padding()
 
     def __getitem__(self, attribute_name: str):
         return getattr(self, attribute_name)
@@ -44,26 +43,23 @@ class Observation(dict):
     def items(self):
         return dataclasses.asdict(self).items()
 
-    def as_tensor(self, pad_to: int | None = None) -> np.ndarray:
+    def apply_padding(self):
+        h_pad = (0, self.pad_to - self.armies.shape[0])
+        w_pad = (0, self.pad_to - self.armies.shape[1])
+
+        for field in dataclasses.fields(self):
+            if isinstance(getattr(self, field.name), np.ndarray):
+                value = 1 if field.name == "mountains" else 0
+                setattr(
+                    self,
+                    field.name,
+                    np.pad(getattr(self, field.name), (h_pad, w_pad), "constant", constant_values=value),
+                )
+
+    def as_tensor(self) -> np.ndarray:
         """
         Returns a 3D tensor of shape (15, rows, cols). Suitable for neural nets.
         """
-        shape = self.armies.shape
-        if pad_to is not None:
-            shape = (pad_to, pad_to)
-            assert pad_to >= max(self.armies.shape), "Can't pad to a smaller size than the original observation."
-            # pad every channel with zeros, except for mountains, those are padded with ones
-            h_pad = (0, pad_to - self.armies.shape[0])
-            w_pad = (0, pad_to - self.armies.shape[1])
-            self.armies = np.pad(self.armies, (h_pad, w_pad), "constant")
-            self.generals = np.pad(self.generals, (h_pad, w_pad), "constant")
-            self.cities = np.pad(self.cities, (h_pad, w_pad), "constant")
-            self.mountains = np.pad(self.mountains, (h_pad, w_pad), "constant", constant_values=1)
-            self.neutral_cells = np.pad(self.neutral_cells, (h_pad, w_pad), "constant")
-            self.owned_cells = np.pad(self.owned_cells, (h_pad, w_pad), "constant")
-            self.opponent_cells = np.pad(self.opponent_cells, (h_pad, w_pad), "constant")
-            self.fog_cells = np.pad(self.fog_cells, (h_pad, w_pad), "constant")
-            self.structures_in_fog = np.pad(self.structures_in_fog, (h_pad, w_pad), "constant")
         return np.stack(
             [
                 self.armies,
@@ -75,12 +71,12 @@ class Observation(dict):
                 self.opponent_cells,
                 self.fog_cells,
                 self.structures_in_fog,
-                np.ones(shape) * self.owned_land_count,
-                np.ones(shape) * self.owned_army_count,
-                np.ones(shape) * self.opponent_land_count,
-                np.ones(shape) * self.opponent_army_count,
-                np.ones(shape) * self.timestep,
-                np.ones(shape) * self.priority,
+                np.full_like(self.armies, self.owned_land_count),
+                np.full_like(self.armies, self.owned_army_count),
+                np.full_like(self.armies, self.opponent_land_count),
+                np.full_like(self.armies, self.opponent_army_count),
+                np.full_like(self.armies, self.timestep),
+                np.full_like(self.armies, self.priority),
             ],
             axis=0,
         )
