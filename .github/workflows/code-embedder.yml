@@ -2,15 +2,20 @@ name: Code Embedder
 
 on: pull_request
 
+permissions:
+  contents: write
+
 jobs:
   code_embedder:
     name: "Code embedder"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Run code embedder
-        uses: kvankova/code-embedder@v0.4.0
+        uses: kvankova/code-embedder@v1.1.1
         env:
           GITHUB_TOKEN: ${{ secrets.CODE_EMBEDDER }}

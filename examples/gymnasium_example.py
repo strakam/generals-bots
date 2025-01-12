@@ -1,17 +1,28 @@
+#  type: ignore
 import gymnasium as gym
+import numpy as np
 
-from generals.agents import RandomAgent, ExpanderAgent
+from generals.envs import GymnasiumGenerals
 
-# Initialize agents
-agent = RandomAgent()
-npc = ExpanderAgent()
+agent_names = ["007", "Generalissimo"]
 
-# Create environment
-env = gym.make("gym-generals-v0", agent=agent, npc=npc, render_mode="human")
+n_envs = 12
+envs = gym.vector.AsyncVectorEnv(
+    [lambda: GymnasiumGenerals(agents=agent_names, truncation=500) for _ in range(n_envs)],
+)
 
-observation, info = env.reset()
-terminated = truncated = False
-while not (terminated or truncated):
-    action = agent.act(observation)
-    observation, reward, terminated, truncated, info = env.step(action)
-    env.render()
+
+observations, infos = envs.reset()
+terminated = [False] * len(observations)
+truncated = [False] * len(observations)
+
+while True:
+    agent_actions = [envs.single_action_space.sample() for _ in range(n_envs)]
+    npc_actions = [envs.single_action_space.sample() for _ in range(n_envs)]
+
+    # Stack actions together
+    actions = np.stack([agent_actions, npc_actions], axis=1)
+    observations, rewards, terminated, truncated, infos = envs.step(actions)
+    masks = [np.stack([info[-1] for info in infos[agent_name]]) for agent_name in agent_names]
+    if any(terminated) or any(truncated):
+        break
