@@ -17,13 +17,12 @@ agents = {
 env = PettingZooGenerals(agents=agent_names, render_mode="human")
 observations, info = env.reset()
 
-done = False
-while not done:
+terminated = truncated = False
+while not (terminated or truncated):
     actions = {}
     for agent in env.agents:
         # Ask agent for action
         actions[agent] = agents[agent].act(observations[agent])
     # All agents perform their actions
     observations, rewards, terminated, truncated, info = env.step(actions)
-    done = any(terminated.values()) or any(truncated.values())
     env.render()

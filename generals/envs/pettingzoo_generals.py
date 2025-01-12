@@ -164,9 +164,8 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
         observations, infos = self.game.step(actions)
         observations = {agent: observation for agent, observation in observations.items()}
         # You probably want to set your truncation based on self.game.time
-        truncation = False if self.truncation is None else self.game.time >= self.truncation
-        truncated = {agent: truncation for agent in self.agents}
-        terminated = {agent: True if self.game.is_done() else False for agent in self.agents}
+        truncated = False if self.truncation is None else self.game.time >= self.truncation
+        terminated = self.game.is_done()
 
         if self.prior_observations is None:
             # Cannot compute rewards without prior-observations. This should only happen
@@ -188,8 +187,7 @@ class PettingZooGenerals(pettingzoo.ParallelEnv):
             self.replay.add_state(deepcopy(self.game.channels))
 
         # if any agent dies, all agents are terminated
-        terminate = any(terminated.values())
-        if terminate:
+        if terminated or truncated:
             self.agents = []
             if hasattr(self, "replay"):
                 self.replay.store()
