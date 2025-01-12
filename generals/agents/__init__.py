@@ -9,5 +9,4 @@ __all__ = [
     "Agent",
     "RandomAgent",
     "ExpanderAgent",
-    "AgentFactory",
 ]

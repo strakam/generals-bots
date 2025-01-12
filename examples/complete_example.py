@@ -1,10 +1,14 @@
-import gymnasium as gym
-
 from generals import GridFactory
+from generals.envs import PettingZooGenerals
 from generals.agents import RandomAgent, ExpanderAgent
 
-agent = ExpanderAgent()
-npc = RandomAgent()
+agent1 = ExpanderAgent()
+agent2 = RandomAgent()
+
+agents = {
+    agent1.id: agent1,
+    agent2.id: agent2,
+}
 
 # Initialize grid factory
 grid_factory = GridFactory(
@@ -16,12 +20,10 @@ grid_factory = GridFactory(
     seed=38,  # Seed to generate the same map every time
 )
 
-env = gym.make(
-    "gym-generals-v0",  # Environment name
+env = PettingZooGenerals(
+    agent_ids=[agent1.id, agent2.id],  # Agent names
     grid_factory=grid_factory,  # Grid factory
-    agent=agent,
-    npc=npc,  # NPC that will play against the agent
-    render_mode="human",  # "human" mode is for rendering, None is for no rendering
+    to_render=True,  # Render the game
 )
 
 # We can draw custom maps - see symbol explanations in README
@@ -43,10 +45,14 @@ options = {
     "grid": grid,  # Use the custom map
 }
 
-observation, info = env.reset(options=options)
+observations, infos = env.reset(options=options)
 
 terminated = truncated = False
 while not (terminated or truncated):
-    action = agent.act(observation)
-    observation, reward, terminated, truncated, info = env.step(action)
+    actions = {}
+    for agent in env.agent_ids:
+        actions[agent] = agents[agent].act(observations[agent])
+    # All agents perform their actions
+    observations, rewards, terminated, truncated, info = env.step(actions)
+    done = terminated or truncated
     env.render()

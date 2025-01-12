@@ -46,29 +46,41 @@ pip install -e .
 ## 🌱 Getting Started
 Creating an agent is very simple. Start by subclassing an `Agent` class just like
 [`RandomAgent`](./generals/agents/random_agent.py) or [`ExpanderAgent`](./generals/agents/expander_agent.py).
-You can specify your agent `id` (name) and `color` and the only thing remaining is to implement the `act` function,
+You can specify your agent `id` (name) and the only thing remaining is to implement the `act` function,
 that has the signature explained in sections down below.
 
 
-### Usage Example (🤸 Gymnasium)
+### Usage Example (🦁 PettingZoo)
 The example loop for running the game looks like this
-```python:examples/gymnasium_example.py
-import gymnasium as gym
-
+```python:examples/pettingzoo_example.py
 from generals.agents import RandomAgent, ExpanderAgent
+from generals.envs import PettingZooGenerals
 
 # Initialize agents
-agent = RandomAgent()
-npc = ExpanderAgent()
+random = RandomAgent()
+expander = ExpanderAgent()
+
+# Names are used for the environment
+agent_names = [random.id, expander.id]
+
+# Store agents in a dictionary
+agents = {
+    random.id: random,
+    expander.id: expander
+}
 
 # Create environment
-env = gym.make("gym-generals-v0", agent=agent, npc=npc, render_mode="human")
+env = PettingZooGenerals(agent_ids=agent_names, to_render=True)
+observations, info = env.reset()
 
-observation, info = env.reset()
-terminated = truncated = False
-while not (terminated or truncated):
-    action = agent.act(observation)
-    observation, reward, terminated, truncated, info = env.step(action)
+done = False
+while not done:
+    actions = {}
+    for agent in env.agent_ids:
+        actions[agent] = agents[agent].act(observations[agent])
+    # All agents perform their actions
+    observations, rewards, terminated, truncated, info = env.step(actions)
+    done = terminated or truncated
     env.render()
 
 ```
@@ -80,7 +92,7 @@ while not (terminated or truncated):
 Grids on which the game is played on are generated via `GridFactory`. You can instantiate the class with desired grid properties, and it will generate
 grid with these properties for each run.
 ```python
-import gymnasium as gym
+from generals.envs import PettingZooGenerals
 from generals import GridFactory
 
 grid_factory = GridFactory(
@@ -89,21 +101,20 @@ grid_factory = GridFactory(
     mountain_density=0.2,                  # Probability of a mountain in a cell
     city_density=0.05,                     # Probability of a city in a cell
     general_positions=[(0,3),(5,7)],       # Positions of generals (i, j)
-    padding=True                           # Whether to pad grids to max_grid_dims with mountains (default=True)
 )
 
 # Create environment
-env = gym.make(
-    "gym-generals-v0",
+env = PettingZooGenerals(
     grid_factory=grid_factory,
     ...
 )
 ```
 You can also specify grids manually, as a string via `options` dict:
 ```python
-import gymnasium as gym
+from generals.envs import PettingZooGenerals
 
-env = gym.make("gym-generals-v0", ...)
+env = PettingZooGenerals(agent_ids=[agent1.id, agent2.id])
+
 grid = """
 .3.#
 #..A
@@ -123,13 +134,14 @@ Grids are created using a string format where:
 - numbers `0-9` and `x`, where `x=10`, represent cities, where the number specifies amount of neutral army in the city,
   which is calculated as `40 + number`. The reason for `x=10` is that the official game has cities in range `[40, 50]`
 
+> [!TIP]
+> Check out [complete example](./examples/complete_example.py) for concrete example in the wild!
+
 ## 🔬 Interactive Replays
 We can store replays and then analyze them in an interactive fashion. `Replay` class handles replay related functionality.
 ### Storing a replay
 ```python
-import gymnasium as gym
-
-env = gym.make("gym-generals-v0", ...)
+env = ...
 
 options = {"replay_file": "my_replay"}
 env.reset(options=options) # The next game will be encoded in my_replay.pkl
@@ -220,15 +232,19 @@ or create your own connection workflow. Our implementations expect that your age
 implemented the required methods.
 ```python:examples/client_example.py
 from generals.remote import autopilot
+from generals.agents import ExpanderAgent
+
 import argparse
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--user_id", type=str, default=...) # Register yourself at generals.io and use this id
-parser.add_argument("--lobby_id", type=str, default=...) # The last part of the lobby url
-parser.add_argument("--agent_id", type=str, default="Expander") # agent_id should be "registered" in AgentFactory
+parser.add_argument("--lobby_id", type=str, default="psyo") # After you create a private lobby, copy last part of the url
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    autopilot(args.agent_id, args.user_id, args.lobby_id)
+    agent = ExpanderAgent()
+    autopilot(agent, args.user_id, args.lobby_id)
+
 ```
 This script will run `ExpanderAgent` in the specified lobby.
 ## 🙌 Contributing

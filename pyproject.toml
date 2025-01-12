@@ -33,7 +33,3 @@ line-length = 120
 lint.select = ["E", "F", "I", "BLE", "UP", "FA"]
 target-version = "py311"
 exclude = ["tests", "examples"]
-
-[tool.mypy]
-exclude = ["tests/", "examples/", "generals/agents/"]
-follow_imports="silent"

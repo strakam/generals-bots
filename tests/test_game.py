@@ -1,7 +1,6 @@
 import itertools
 
 import numpy as np
-import pytest
 
 import generals.core.game as game
 from generals.core.grid import Grid, GridFactory

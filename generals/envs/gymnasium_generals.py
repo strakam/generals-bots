@@ -1,12 +1,13 @@
+# type: ignore
 from copy import deepcopy
-from typing import Any, SupportsFloat
+from typing import Any
 
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
-from generals.agents import Agent, RandomAgent
-from generals.core.game import Action, Game
+from generals.core.action import Action, compute_valid_move_mask
+from generals.core.game import Game
 from generals.core.grid import Grid, GridFactory
 from generals.core.observation import Observation
 from generals.core.replay import Replay
@@ -24,9 +25,8 @@ class GymnasiumGenerals(gym.Env):
 
     def __init__(
         self,
+        agents: list[str],
         grid_factory: GridFactory | None = None,
-        npc: Agent | None = None,
-        agent: Agent | None = None,  # Optional, just to obtain id and color
         truncation: int | None = None,
         reward_fn: RewardFn | None = None,
         render_mode: str | None = None,
@@ -35,24 +35,15 @@ class GymnasiumGenerals(gym.Env):
         self.grid_factory = grid_factory if grid_factory is not None else GridFactory()
         self.reward_fn = reward_fn if reward_fn is not None else WinLoseRewardFn()
         # Observation for the agent at the prior time-step.
-        self.prior_observation: None | Observation = None
+        self.prior_observations: None | dict[str, Observation] = None
 
-        # Agents
-        if npc is None:
-            print('No NPC agent provided. Creating "Random" NPC as a fallback.')
-            npc = RandomAgent()
-        else:
-            assert isinstance(npc, Agent), "NPC must be an instance of Agent class."
-        self.npc = npc
-        self.agent_id = "Agent" if agent is None else agent.id
-        self.agent_ids = [self.agent_id, self.npc.id]
+        self.agents = agents
         self.colors = [(255, 107, 108), (0, 130, 255)]
-        self.agent_data = {id: {"color": color} for id, color in zip(self.agent_ids, self.colors)}
-        assert self.agent_id != npc.id, "Agent ids must be unique - you can pass custom ids to agent constructors."
+        self.agent_data = {id: {"color": color} for id, color in zip(agents, self.colors)}
 
         # Game
         grid = self.grid_factory.generate()
-        self.game = Game(grid, [self.agent_id, self.npc.id])
+        self.game = Game(grid, agents)
         self.truncation = truncation
         self.observation_space = self.set_observation_space()
         self.action_space = self.set_action_space()
@@ -70,30 +61,8 @@ class GymnasiumGenerals(gym.Env):
             dims = self.grid_factory.max_grid_dims
         else:
             dims = self.game.grid_dims
-        max_army_value = 100_000
-        max_timestep = 100_000
-        max_land_value = np.prod(dims)
-        grid_multi_binary = spaces.MultiBinary(dims)
-        grid_discrete = np.ones(dims, dtype=int) * 100_000
-        return spaces.Dict(
-            {
-                "armies": spaces.MultiDiscrete(grid_discrete),
-                "generals": grid_multi_binary,
-                "cities": grid_multi_binary,
-                "mountains": grid_multi_binary,
-                "neutral_cells": grid_multi_binary,
-                "owned_cells": grid_multi_binary,
-                "opponent_cells": grid_multi_binary,
-                "fog_cells": grid_multi_binary,
-                "structures_in_fog": grid_multi_binary,
-                "owned_land_count": spaces.Discrete(max_land_value),
-                "owned_army_count": spaces.Discrete(max_army_value),
-                "opponent_land_count": spaces.Discrete(max_land_value),
-                "opponent_army_count": spaces.Discrete(max_army_value),
-                "timestep": spaces.Discrete(max_timestep),
-                "priority": spaces.Discrete(2),
-            }
-        )
+
+        return spaces.Box(low=0, high=2**31 - 1, shape=(2, 15, dims[0], dims[1]), dtype=np.float32)
 
     def set_action_space(self) -> spaces.Space:
         if self.grid_factory.padding:
@@ -122,7 +91,7 @@ class GymnasiumGenerals(gym.Env):
             grid = self.grid_factory.generate()
 
         # Create game for current run
-        self.game = Game(grid, self.agent_ids)
+        self.game = Game(grid, self.agents)
 
         # Create GUI for current render run
         if self.render_mode == "human":
@@ -138,33 +107,63 @@ class GymnasiumGenerals(gym.Env):
         elif hasattr(self, "replay"):
             del self.replay
 
-        observation = self.game.agent_observation(self.agent_id)
-        info: dict[str, Any] = {}
-        return observation, info
+        _obs = {agent: self.game.agent_observation(agent) for agent in self.agents}
+        observations = np.stack([_obs[agent].as_tensor() for agent in self.agents], dtype=np.float32)
 
-    def step(self, action: Action) -> tuple[Observation, SupportsFloat, bool, bool, dict[str, Any]]:
-        # Get action of NPC
-        npc_observation = self.game.agent_observation(self.npc.id)
-        npc_action = self.npc.act(npc_observation)
-        actions = {self.agent_id: action, self.npc.id: npc_action}
+        infos: dict[str, Any] = self.game.get_infos()
+        # flatten infos
+        infos = {
+            agent: [
+                infos[agent]["army"],
+                infos[agent]["land"],
+                infos[agent]["is_done"],
+                infos[agent]["is_winner"],
+                compute_valid_move_mask(_obs[agent]),
+            ]
+            for i, agent in enumerate(self.agents)
+        }
+        return observations, infos
 
-        observations, infos = self.game.step(actions)
+    def step(self, actions: list[Action]) -> tuple[Any, Any, bool, bool, dict[str, Any]]:
+        _actions = {
+            self.agents[0]: actions[0],
+            self.agents[1]: actions[1],
+        }
+
+        observations, infos = self.game.step(_actions)
+        obs1 = self.game.agent_observation(self.agents[0]).as_tensor()
+        obs2 = self.game.agent_observation(self.agents[1]).as_tensor()
+        obs = np.stack([obs1, obs2])
+
+        # flatten infos
+        infos = {
+            agent: [
+                infos[agent]["army"],
+                infos[agent]["land"],
+                infos[agent]["is_done"],
+                infos[agent]["is_winner"],
+                compute_valid_move_mask(observations[agent]),
+            ]
+            for agent in self.agents
+        }
 
         # From observations of all agents, pick only those relevant for the main agent
-        obs = observations[self.agent_id]
-        info = infos[self.agent_id]
-        if self.prior_observation is None:
+        if self.prior_observations is None:
             # Cannot compute a reward without a prior-observation. This should only happen
             # on the first time-step.
-            reward = 0.0
+            rewards = [0.0, 0.0]
         else:
-            reward = self.reward_fn(
-                prior_obs=self.prior_observation,
-                # Technically, action is the prior-action, since it's what gives rise to the
-                # current observation.
-                prior_action=action,
-                obs=obs,
-            )
+            rewards = [
+                self.reward_fn(
+                    prior_obs=self.prior_observations[agent],
+                    # Technically, action is the prior-action, since it's what gives rise to the
+                    # current observation.
+                    prior_action=_actions[agent],
+                    obs=observations[agent],
+                )
+                for agent in self.agents
+            ]
+        rewards = 0  # WIP
 
         terminated = self.game.is_done()
         truncated = False
@@ -181,8 +180,8 @@ class GymnasiumGenerals(gym.Env):
         self.observation_space = self.set_observation_space()
         self.action_space = self.set_action_space()
 
-        self.prior_observation = observations[self.agent_id]
-        return obs, reward, terminated, truncated, info
+        self.prior_observations = {agent: observations[agent] for agent in self.agents}
+        return obs, rewards, terminated, truncated, infos
 
     def close(self) -> None:
         if self.render_mode == "human":
