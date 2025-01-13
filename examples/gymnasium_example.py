@@ -3,12 +3,18 @@ import gymnasium as gym
 import numpy as np
 
 from generals.envs import GymnasiumGenerals
+from generals import GridFactory
 
 agent_names = ["007", "Generalissimo"]
 
-n_envs = 12
+grid_factory = GridFactory(
+    min_grid_dims=(24, 24),
+    max_grid_dims=(24, 24),
+)
+
+n_envs = 4
 envs = gym.vector.AsyncVectorEnv(
-    [lambda: GymnasiumGenerals(agents=agent_names, truncation=500) for _ in range(n_envs)],
+    [lambda: GymnasiumGenerals(agents=agent_names, grid_factory=grid_factory, truncation=500) for _ in range(n_envs)],
 )
 
 
