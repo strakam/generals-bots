@@ -90,7 +90,6 @@ class GridFactory:
         mountain_density: float = 0.2,
         city_density: float = 0.05,
         general_positions: list[tuple[int, int]] | None = None,
-        padding: bool = True,
         seed: int | None = None,
     ):
         """
@@ -105,7 +104,6 @@ class GridFactory:
         self.rng = np.random.default_rng(seed)
         self.min_grid_dims = min_grid_dims
         self.max_grid_dims = max_grid_dims
-        self.padding = padding
         self.mountain_density = mountain_density
         self.city_density = city_density
         self.general_positions = general_positions
@@ -128,14 +126,6 @@ class GridFactory:
             size=grid_dims,
             p=probs,
         )
-
-        # apply padding
-        if self.padding:
-            # pad map to max_grid_dims from right and bottom with mountains
-            padded_map = np.full(self.max_grid_dims, MOUNTAIN)
-            padded_map[: grid_dims[0], : grid_dims[1]] = map
-            map = padded_map
-            grid_dims = self.max_grid_dims
 
         general_positions = self.general_positions
         if general_positions is None:
