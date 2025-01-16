@@ -1,6 +1,4 @@
-import gymnasium as gym
-
-from generals import GridFactory
+from generals import GridFactory, PettingZooGenerals
 from generals.agents import RandomAgent, ExpanderAgent
 
 # Initialize agents
@@ -17,11 +15,15 @@ grid_factory = GridFactory(
     # seed=38,  # Seed to generate the same map every time
 )
 
-env = gym.make(
-    "gym-generals-v0",  # Environment name
-    grid_factory=grid_factory,  # Grid factory
-    agent=agent,
-    npc=npc,  # NPC that will play against the agent
+agents ={
+    npc.id: npc,
+    agent.id: agent
+}
+
+env = PettingZooGenerals(
+    agents=[npc.id, agent.id],
+    grid_factory=grid_factory,
+    render_mode=None
 )
 
 # Options are used only for the next game
@@ -29,10 +31,12 @@ options = {
     "replay_file": "my_replay",  # Save replay as my_replay.pkl
 }
 
-observation, info = env.reset(options=options)
-
+observations, info = env.reset(options=options)
 terminated = truncated = False
 while not (terminated or truncated):
-    action = agent.act(observation)
-    observation, reward, terminated, truncated, info = env.step(action)
-    env.render()
+    actions = {}
+    for agent in env.agents:
+        # Ask agent for action
+        actions[agent] = agents[agent].act(observations[agent])
+    # All agents perform their actions
+    observations, rewards, terminated, truncated, info = env.step(actions)

@@ -67,7 +67,8 @@ class GymnasiumGenerals(gym.Env):
 
         # Initialize game state
         self.prior_observations: dict[str, Observation] | None = None
-        self.game = self._create_new_game()
+        grid = self.grid_factory.generate()
+        self.game = Game(grid, self.agents)
 
         # Set up spaces
         self.observation_space = self._create_observation_space()
@@ -77,11 +78,6 @@ class GymnasiumGenerals(gym.Env):
         """Set up initial data for each agent."""
         colors = [(255, 107, 108), (0, 130, 255)]
         return {id: {"color": color} for id, color in zip(self.agents, colors)}
-
-    def _create_new_game(self) -> Game:
-        """Create a new game instance."""
-        grid = self.grid_factory.generate()
-        return Game(grid, self.agents)
 
     def _create_observation_space(self) -> spaces.Space:
         """Create the observation space based on grid dimensions."""
