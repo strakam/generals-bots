@@ -1,6 +1,4 @@
-import gymnasium as gym
-
-from generals import GridFactory
+from generals import GridFactory, PettingZooGenerals
 from generals.agents import RandomAgent, ExpanderAgent
 
 agent = ExpanderAgent()
@@ -8,21 +6,20 @@ npc = RandomAgent()
 
 # Initialize grid factory
 grid_factory = GridFactory(
-    min_grid_dims=(10, 10),  # Grid height and width are randomly selected
-    max_grid_dims=(15, 15),
+    mode="generalsio",
+    min_grid_dims=(15, 15),  # Grid height and width are randomly selected
+    max_grid_dims=(23, 23),
     mountain_density=0.2,  # Expected percentage of mountains
     city_density=0.05,  # Expected percentage of cities
-    general_positions=[(1, 2), (7, 8)],  # Positions of the generals
     seed=38,  # Seed to generate the same map every time
 )
 
-env = gym.make(
-    "gym-generals-v0",  # Environment name
-    grid_factory=grid_factory,  # Grid factory
-    agent=agent,
-    npc=npc,  # NPC that will play against the agent
-    render_mode="human",  # "human" mode is for rendering, None is for no rendering
-)
+agents = {
+    agent.id: agent,
+    npc.id: npc,
+}
+
+env = PettingZooGenerals(agents=[agent.id, npc.id], grid_factory=grid_factory)
 
 # We can draw custom maps - see symbol explanations in README
 grid = """
@@ -40,13 +37,16 @@ grid = """
 # Options are used only for the next game
 options = {
     "replay_file": "my_replay",  # Save replay as my_replay.pkl
-    "grid": grid,  # Use the custom map
+    # "grid": grid,  # Use the custom map
 }
 
-observation, info = env.reset(options=options)
-
+observations, info = env.reset(options=options)
 terminated = truncated = False
 while not (terminated or truncated):
-    action = agent.act(observation)
-    observation, reward, terminated, truncated, info = env.step(action)
+    actions = {}
+    for agent in env.agents:
+        # Ask agent for action
+        actions[agent] = agents[agent].act(observations[agent])
+    # All agents perform their actions
+    observations, rewards, terminated, truncated, info = env.step(actions)
     env.render()
