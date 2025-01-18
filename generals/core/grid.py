@@ -177,11 +177,19 @@ class GridFactory:
         g1 = (self.rng.integers(grid_height), self.rng.integers(grid_width))
         distances_from_g1 = bfs_distance(g1, map)
 
-        # pick a tile with distance from g1 >= 15
-        while True:
-            g2 = (self.rng.integers(grid_height), self.rng.integers(grid_width))
-            if distances_from_g1[g2] >= min_generals_distance and distances_from_g1[g2] != float("inf"):
+        max_attempts = 20
+        g2 = None
+        for _ in range(max_attempts):
+            candidate_g2 = (self.rng.integers(grid_height), self.rng.integers(grid_width))
+            if distances_from_g1[candidate_g2] >= min_generals_distance and distances_from_g1[candidate_g2] != float(
+                "inf"
+            ):
+                g2 = candidate_g2
                 break
+
+        if g2 is None:
+            # If we couldn't place g2 after max attempts, start over with a new grid
+            return self.generate_generalsio_grid()
 
         general_positions = [g1, g2]
 
@@ -197,7 +205,6 @@ class GridFactory:
                 # Randomly select one position from the valid positions
                 idx = self.rng.integers(0, len(valid_positions[0]))
                 city_pos = (valid_positions[0][idx], valid_positions[1][idx])
-
                 # Generate city value (0 - 9 or 'x')
                 city_cost = self.rng.choice([str(i) for i in range(10)] + ["x"])
                 map[city_pos] = city_cost
