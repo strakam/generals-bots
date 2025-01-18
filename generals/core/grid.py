@@ -1,8 +1,17 @@
 from collections import deque
+from typing import Literal
 
 import numpy as np
 
 from .config import MOUNTAIN, PASSABLE
+
+DEFAULT_MIN_GRID_DIM = (15, 15)
+DEFAULT_MAX_GRID_DIM = (23, 23)
+DEFAULT_MOUNTAIN_DENSITY = 0.2
+DEFAULT_CITY_DENSITY = 0.05
+MAX_GENERALSIO_ATTEMPTS = 100
+MIN_GENERALS_DISTANCE = 15
+RADIUS_FROM_GENERAL = [6, 12]
 
 
 class InvalidGridError(Exception):
@@ -10,7 +19,24 @@ class InvalidGridError(Exception):
 
 
 class Grid:
+    """
+    Represents the game grid containing passable areas, mountains, cities, and generals.
+
+    Attributes:
+        grid (np.ndarray): 2D array representing the grid.
+    """
+
     def __init__(self, grid: str | np.ndarray):
+        """
+        Initializes the Grid either from a string or a NumPy array.
+
+        Args:
+            grid (str | np.ndarray): The grid representation.
+
+        Raises:
+            ValueError: If grid is not a string or NumPy array.
+            InvalidGridError: If the grid layout is invalid.
+        """
         if not isinstance(grid, str | np.ndarray):
             raise ValueError(f"grid must be a str or np.ndarray. Received grid with type: {type(grid)}.")
 
@@ -87,11 +113,11 @@ class Grid:
 class GridFactory:
     def __init__(
         self,
-        mode="uniform",
-        min_grid_dims: tuple[int, int] = (15, 15),  # Same as generals.io 1v1 queue
-        max_grid_dims: tuple[int, int] = (23, 23),
-        mountain_density: float = 0.2,
-        city_density: float = 0.05,
+        mode: Literal["uniform", "generalsio"] = "uniform",
+        min_grid_dims: tuple[int, int] = DEFAULT_MIN_GRID_DIM,
+        max_grid_dims: tuple[int, int] = DEFAULT_MAX_GRID_DIM,
+        mountain_density: float = DEFAULT_MOUNTAIN_DENSITY,
+        city_density: float = DEFAULT_CITY_DENSITY,
         general_positions: list[tuple[int, int]] | None = None,
         seed: int | None = None,
     ):
@@ -127,16 +153,14 @@ class GridFactory:
             raise ValueError(f"Invalid mode: {self.mode}")
 
     def generate_generalsio_grid(self) -> Grid:
-        grid_height = self.rng.integers(15, 24)
-        grid_width = self.rng.integers(15, 24)
+        grid_height = self.rng.integers(DEFAULT_MIN_GRID_DIM[0], DEFAULT_MAX_GRID_DIM[0] + 1)
+        grid_width = self.rng.integers(DEFAULT_MIN_GRID_DIM[1], DEFAULT_MAX_GRID_DIM[1] + 1)
         grid_dims = (grid_height, grid_width)
         num_tiles = grid_height * grid_width
 
         # Counts based on real generals.io 1v1 queue
         cities_to_place = 5 + 2 * self.rng.choice([2, 3])
-        num_mountains = int(0.2 * num_tiles + 0.08 * num_tiles * self.rng.random())
-        min_generals_distance = 15  # as generals.io 1v1 queue
-        radius_from_general = [6, 12]
+        num_mountains = int(DEFAULT_MOUNTAIN_DENSITY * num_tiles + 0.08 * num_tiles * self.rng.random())
 
         def bfs_distance(start, grid):
             distances = np.full(grid_dims, float("inf"))
@@ -169,19 +193,16 @@ class GridFactory:
         map = np.full(grid_dims, PASSABLE, dtype=str)
 
         # Place mountains randomly
-        flat_indices = np.arange(num_tiles)
-        mountain_indices = self.rng.choice(flat_indices, size=num_mountains, replace=False)
-        mountain_positions = np.unravel_index(mountain_indices, grid_dims)
-        map[mountain_positions] = MOUNTAIN
+        self._place_mountains(map, num_mountains)
 
         g1 = (self.rng.integers(grid_height), self.rng.integers(grid_width))
         distances_from_g1 = bfs_distance(g1, map)
 
-        max_attempts = 20
+        max_attempts = MAX_GENERALSIO_ATTEMPTS // 5
         g2 = None
         for _ in range(max_attempts):
             candidate_g2 = (self.rng.integers(grid_height), self.rng.integers(grid_width))
-            if distances_from_g1[candidate_g2] >= min_generals_distance and distances_from_g1[candidate_g2] != float(
+            if distances_from_g1[candidate_g2] >= MIN_GENERALS_DISTANCE and distances_from_g1[candidate_g2] != float(
                 "inf"
             ):
                 g2 = candidate_g2
@@ -196,7 +217,7 @@ class GridFactory:
         distances_from_g2 = bfs_distance(g2, map)
 
         # Place one city close to each general
-        for distance in radius_from_general:
+        for distance in RADIUS_FROM_GENERAL:
             mask_close_g1 = create_distance_mask(distances_from_g1, distance)
             mask_close_g2 = create_distance_mask(distances_from_g2, distance)
             for mask in [mask_close_g1, mask_close_g2]:
@@ -211,17 +232,8 @@ class GridFactory:
 
                 cities_to_place -= 1
 
-        # do it by converting mountains to cities, so get mountain mask and pick indices for cities
-        mountain_mask = map == MOUNTAIN
-
-        # get indices of mountains
-        mountain_indices = np.argwhere(mountain_mask)
-        city_indices = self.rng.choice(len(mountain_indices), cities_to_place, replace=False)
-
-        for idx in city_indices:
-            city_pos = tuple(mountain_indices[idx])
-            city_cost = self.rng.choice([str(i) for i in range(10)] + ["x"])
-            map[city_pos] = city_cost
+        # Place remaining cities
+        self._place_cities(map, cities_to_place)
 
         for i, idx in enumerate(general_positions):
             map[idx[0], idx[1]] = chr(ord("A") + i)
@@ -242,11 +254,15 @@ class GridFactory:
 
         # Probabilities of each cell type
         p_neutral = 1 - self.mountain_density - self.city_density
-        probs = [p_neutral, self.mountain_density] + [self.city_density / 10] * 10
+        if p_neutral < 0:
+            raise ValueError("Sum of mountain_density and city_density cannot exceed 1.")
+        # Distribute city_density across city types
+        p_cities = self.city_density / 11  # 10 digits + 'x'
+        probs = [p_neutral, self.mountain_density] + [p_cities] * 10 + [p_cities]  # For "x"
 
         # Place cells on the map
         map = self.rng.choice(
-            [PASSABLE, MOUNTAIN, "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+            [PASSABLE, MOUNTAIN, "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "x"],
             size=grid_dims,
             p=probs,
         )
@@ -273,3 +289,16 @@ class GridFactory:
         except InvalidGridError:
             # Keep randomly generating grids until one works!
             return self.generate_uniform_grid()
+
+    def _place_mountains(self, map: np.ndarray, num_mountains: int):
+        available_positions = np.argwhere(map == PASSABLE)
+        selected_indices = self.rng.choice(len(available_positions), size=num_mountains, replace=False)
+        selected_positions = available_positions[selected_indices]
+        map[selected_positions[:, 0], selected_positions[:, 1]] = MOUNTAIN
+
+    def _place_cities(self, map: np.ndarray, cities_to_place: int):
+        mountain_positions = np.argwhere(map == MOUNTAIN)
+        selected_indices = self.rng.choice(len(mountain_positions), size=cities_to_place, replace=False)
+        selected_positions = mountain_positions[selected_indices]
+        city_costs = self.rng.choice([str(i) for i in range(10)] + ["x"], size=cities_to_place)
+        map[selected_positions[:, 0], selected_positions[:, 1]] = city_costs
