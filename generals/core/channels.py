@@ -19,7 +19,7 @@ class Channels:
     """
 
     def __init__(self, grid: np.ndarray, _agents: list[str]):
-        self._armies: np.ndarray = np.where(np.isin(grid, valid_generals), 1, 0).astype(int)
+        self._armies: np.ndarray = np.where(np.isin(grid, valid_generals), 1, 0).astype(np.int16)
         self._generals: np.ndarray = np.where(np.isin(grid, valid_generals), 1, 0).astype(bool)
         self._mountains: np.ndarray = np.where(grid == MOUNTAIN, 1, 0).astype(bool)
         self._passable: np.ndarray = (grid != MOUNTAIN).astype(bool)
@@ -33,7 +33,7 @@ class Channels:
             self._ownership[agent] = np.where(grid == chr(ord("A") + i), 1, 0).astype(bool)
 
         # City costs are 40 + digit in the cell
-        city_costs = np.where(np.char.isdigit(grid), grid, "0").astype(int)
+        city_costs = np.where(np.char.isdigit(grid), grid, "0").astype(np.int16)
         city_costs += np.where(grid == "x", 10, 0)
         self.armies += 40 * self.cities + city_costs
 
