@@ -97,7 +97,9 @@ class GymnasiumGenerals(gym.Env):
             processed_obs.append(observations[agent].as_tensor())
         return np.stack(processed_obs)
 
-    def _process_infos(self, observations: dict[str, Observation], game_infos: dict[str, Any]) -> dict[str, list]:
+    def _process_infos(
+        self, observations: dict[str, Observation], game_infos: dict[str, Any], rewards: dict[str, float]
+    ) -> dict[str, list]:
         """Process game information into a structured format."""
         return {
             agent: [
@@ -106,6 +108,7 @@ class GymnasiumGenerals(gym.Env):
                 game_infos[agent]["is_done"],
                 game_infos[agent]["is_winner"],
                 compute_valid_move_mask(observations[agent]),
+                rewards[agent],
             ]
             for agent in self.agents
         }
@@ -113,16 +116,16 @@ class GymnasiumGenerals(gym.Env):
     def _compute_rewards(self, actions: dict[str, Action], observations: dict[str, Observation]) -> list[float]:
         """Compute rewards for all agents based on their actions and observations."""
         if self.prior_observations is None:
-            return [0.0, 0.0]
+            return {agent: 0 for agent in self.agents}
 
-        return [
-            self.reward_fn(
+        return {
+            agent: self.reward_fn(
                 prior_obs=self.prior_observations[agent],
                 prior_action=actions[agent],
                 obs=observations[agent],
             )
             for agent in self.agents
-        ]
+        }
 
     def reset(
         self, seed: int | None = None, options: dict[str, Any] | None = None
@@ -159,7 +162,9 @@ class GymnasiumGenerals(gym.Env):
         # Get and process observations
         raw_obs = {agent: self.game.agent_observation(agent) for agent in self.agents}
         observations = self._process_observations(raw_obs)
-        infos = self._process_infos(raw_obs, self.game.get_infos())
+        _infos = self.game.get_infos()
+        _dummy_rewards = {agent: 0 for agent in self.agents}
+        infos = self._process_infos(raw_obs, _infos, _dummy_rewards)
 
         return observations, infos
 
@@ -172,11 +177,11 @@ class GymnasiumGenerals(gym.Env):
         observations, infos = self.game.step(action_dict)
 
         # Process observations and info
+        # Note: rewards are returned in dict, because Gymnasium doesnt support multi-agent rewards
+        # Rewards are index 5 in the info dict
+        _rewards = self._compute_rewards(action_dict, observations)
         processed_obs = self._process_observations(observations)
-        processed_infos = self._process_infos(observations, infos)
-
-        # Compute rewards (currently WIP)
-        rewards = 0  # placeholder for WIP reward system
+        processed_infos = self._process_infos(observations, infos, _rewards)
 
         # Check termination conditions
         terminated = self.game.is_done()
@@ -190,7 +195,7 @@ class GymnasiumGenerals(gym.Env):
 
         self.prior_observations = {agent: observations[agent] for agent in self.agents}
 
-        return processed_obs, rewards, terminated, truncated, processed_infos
+        return processed_obs, 0, terminated, truncated, processed_infos
 
     def render(self) -> None:
         """Render the game state."""
