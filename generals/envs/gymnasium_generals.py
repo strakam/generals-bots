@@ -160,6 +160,7 @@ class GymnasiumGenerals(gym.Env):
             del self.replay
 
         # Get and process observations
+        self.prior_observations = None
         raw_obs = {agent: self.game.agent_observation(agent) for agent in self.agents}
         observations = self._process_observations(raw_obs)
         _infos = self.game.get_infos()
