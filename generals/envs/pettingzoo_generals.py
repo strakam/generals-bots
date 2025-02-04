@@ -9,10 +9,9 @@ from gymnasium import spaces
 from generals.core.game import Action, Game, Info, Observation
 from generals.core.grid import Grid, GridFactory
 from generals.core.replay import Replay
+from generals.core.rewards import RewardFn, WinLoseRewardFn
 from generals.gui import GUI
 from generals.gui.properties import GuiMode
-from generals.rewards.reward_fn import RewardFn
-from generals.rewards.win_lose_reward_fn import WinLoseRewardFn
 
 AgentID: TypeAlias = str
 

@@ -215,7 +215,7 @@ It is possible to implement your own custom reward function. The default reward 
 There's another provided reward function available: FrequentAssetRewardFn. It provides frequent rewards (i.e. most turns will see a non-zero reward) based on the change in assets, i.e. land, army, cities.
 
 ```python
-from generals.rewards.reward_fn import RewardFn
+from generals.core.rewards import RewardFn
 
 class ConstantRewardFn(RewardFn):
     def __call__(self, prior_obs: Observation, prior_action: Action, obs: Observation) -> float:

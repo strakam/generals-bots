@@ -11,10 +11,9 @@ from generals.core.game import Game
 from generals.core.grid import Grid, GridFactory
 from generals.core.observation import Observation
 from generals.core.replay import Replay
+from generals.core.rewards import RewardFn, WinLoseRewardFn
 from generals.gui import GUI
 from generals.gui.properties import GuiMode
-from generals.rewards.reward_fn import RewardFn
-from generals.rewards.win_lose_reward_fn import WinLoseRewardFn
 
 
 @dataclass
