@@ -90,11 +90,9 @@ class FrequentAssetRewardFn(RewardFn):
         return reward
 
 
-
 class LandRewardFn(RewardFn):
     """A reward function focused on gaining territory. Provides positive reward for gaining land tiles."""
 
     def __call__(self, prior_obs: Observation, prior_action: Action, obs: Observation) -> float:
         change_in_land_owned = obs.owned_land_count - prior_obs.owned_land_count
         return float(change_in_land_owned) * 0.1
-
