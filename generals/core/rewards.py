@@ -95,4 +95,4 @@ class LandRewardFn(RewardFn):
 
     def __call__(self, prior_obs: Observation, prior_action: Action, obs: Observation) -> float:
         change_in_land_owned = obs.owned_land_count - prior_obs.owned_land_count
-        return float(change_in_land_owned) * 0.1
+        return float(change_in_land_owned)

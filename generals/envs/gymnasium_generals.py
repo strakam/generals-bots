@@ -114,9 +114,7 @@ class GymnasiumGenerals(gym.Env):
 
     def _compute_rewards(self, actions: dict[str, Action], observations: dict[str, Observation]) -> list[float]:
         """Compute rewards for all agents based on their actions and observations."""
-        if self.prior_observations is None:
-            return {agent: 0 for agent in self.agents}
-
+        assert self.prior_observations is not None, "Prior observations should always be legit."
         return {
             agent: self.reward_fn(
                 prior_obs=self.prior_observations[agent],
@@ -159,9 +157,9 @@ class GymnasiumGenerals(gym.Env):
             del self.replay
 
         # Get and process observations
-        self.prior_observations = None
         raw_obs = {agent: self.game.agent_observation(agent) for agent in self.agents}
         observations = self._process_observations(raw_obs)
+        self.prior_observations = raw_obs
         _infos = self.game.get_infos()
         _dummy_rewards = {agent: 0 for agent in self.agents}
         infos = self._process_infos(raw_obs, _infos, _dummy_rewards)
