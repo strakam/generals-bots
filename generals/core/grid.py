@@ -92,7 +92,7 @@ class Grid:
             i, j = square
             if i < 0 or i >= height or j < 0 or j >= width or visited[i, j]:
                 return
-            if grid[i, j] == MOUNTAIN or str(grid[i, j]).isdigit():  # mountain or city
+            if grid[i, j] == MOUNTAIN or str(grid[i, j]).isdigit() or grid[i, j] == "x":  # mountain or city
                 return
             visited[i, j] = True
             for di, dj in [[-1, 0], [1, 0], [0, -1], [0, 1]]:
