@@ -160,7 +160,7 @@ class GridFactory:
 
         # Counts based on real generals.io 1v1 queue
         cities_to_place = 5 + 2 * self.rng.choice([2, 3])
-        num_mountains = int(DEFAULT_MOUNTAIN_DENSITY * num_tiles + 0.08 * num_tiles * self.rng.random())
+        num_mountains = int(DEFAULT_MOUNTAIN_DENSITY * num_tiles + 0.02 * num_tiles * self.rng.random())
 
         def bfs_distance(start, grid):
             distances = np.full(grid_dims, float("inf"))
