@@ -29,6 +29,6 @@ while True:
     # Stack actions together
     actions = np.stack([agent_actions, npc_actions], axis=1)
     observations, rewards, terminated, truncated, infos = envs.step(actions)
-    masks = [np.stack([info[4] for info in infos[agent_name]]) for agent_name in agent_names]
+    masks = [np.stack([infos[agent_name]["masks"] for agent_name in agent_names])]
     if any(terminated) or any(truncated):
         break

@@ -98,17 +98,26 @@ class GymnasiumGenerals(gym.Env):
 
     def _process_infos(
         self, observations: dict[str, Observation], game_infos: dict[str, Any], rewards: dict[str, float]
-    ) -> dict[str, list]:
-        """Process game information into a structured format."""
+    ) -> dict[str, dict[str, np.ndarray]]:
+        """Process game information into a structured format with numpy arrays.
+
+        Returns a dictionary for each agent containing:
+            - army: int32 numpy array
+            - land: int32 numpy array
+            - done: boolean numpy array
+            - winner: boolean numpy array
+            - valid_moves: boolean numpy array of shape (24, 24, 4)
+            - reward: float32 numpy array
+        """
         return {
-            agent: [
-                game_infos[agent]["army"],
-                game_infos[agent]["land"],
-                game_infos[agent]["is_done"],
-                game_infos[agent]["is_winner"],
-                compute_valid_move_mask(observations[agent]),
-                rewards[agent],
-            ]
+            agent: {
+                "army": np.array(game_infos[agent]["army"], dtype=np.int32),
+                "land": np.array(game_infos[agent]["land"], dtype=np.int32),
+                "done": np.array(game_infos[agent]["is_done"], dtype=bool),
+                "winner": np.array(game_infos[agent]["is_winner"], dtype=bool),
+                "masks": compute_valid_move_mask(observations[agent]),
+                "reward": np.array(rewards[agent], dtype=np.float32),
+            }
             for agent in self.agents
         }
 
