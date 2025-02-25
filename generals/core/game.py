@@ -36,6 +36,9 @@ class Game:
         self.max_land_value = np.prod(self.grid_dims)
         self.max_timestep = 100_000
 
+        self.winner = None
+        self.loser = None
+
     def step(self, actions: dict[str, Action]) -> tuple[dict[str, Observation], dict[str, Any]]:
         """
         Perform one step of the game
@@ -89,8 +92,15 @@ class Game:
                 self.channels.armies[di, dj] = remaining_army
                 self.channels.armies[si, sj] = army_to_stay
                 self.channels.ownership[square_winner][di, dj] = True
-                if square_winner != target_square_owner:
+                if square_winner != target_square_owner:  # Agent captured new cell
                     self.channels.ownership[target_square_owner][di, dj] = False
+
+                    # Here we want to check if the captured cell is the opponent's general
+                    if target_square_owner in self.agents:
+                        gi, gj = tuple(self.general_positions[target_square_owner])
+                        if (di, dj) == (gi, gj):
+                            self.loser = target_square_owner
+                            self.winner = agent
 
         # Swap agent order (because priority is alternating)
         self.agent_order = self.agent_order[::-1]
@@ -100,7 +110,7 @@ class Game:
 
         if self.is_done():
             # give all cells of loser to winner
-            winner = self.agents[0] if self.agent_won(self.agents[0]) else self.agents[1]
+            winner = self.agents[0] if self.winner == self.agents[0] else self.agents[1]
             loser = self.agents[1] if winner == self.agents[0] else self.agents[0]
             self.channels.ownership[winner] += self.channels.ownership[loser]
             self.channels.ownership[loser] = np.full(self.grid_dims, False)
@@ -130,10 +140,7 @@ class Game:
                 self.channels.armies += update_mask * self.channels.ownership[owner]
 
     def is_done(self) -> bool:
-        """
-        Returns True if the game is over, False otherwise.
-        """
-        return any(self.agent_won(agent) for agent in self.agents)
+        return self.winner is not None
 
     def get_infos(self) -> dict[str, Info]:
         """
@@ -152,7 +159,7 @@ class Game:
                 "army": army_size,
                 "land": land_size,
                 "is_done": self.is_done(),
-                "is_winner": self.agent_won(agent),
+                "is_winner": self.winner == agent,
             }
         return players_stats
 
@@ -206,12 +213,4 @@ class Game:
             opponent_army_count=opponent_army_count,
             timestep=timestep,
             priority=priority,
-        )
-
-    def agent_won(self, agent: str) -> bool:
-        """
-        Returns True if the agent won the game, False otherwise.
-        """
-        return all(
-            self.channels.ownership[agent][general[0], general[1]] == 1 for general in self.general_positions.values()
         )
