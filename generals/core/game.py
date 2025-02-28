@@ -62,7 +62,9 @@ class Game:
             army_to_stay = self.channels.armies[si, sj] - army_to_move
 
             # Check if the current agent still owns the source cell and has more than 1 army
-            if self.channels.ownership[agent][si, sj] == 0 or army_to_move < 1:
+            still_owns_cell = self.channels.ownership[agent][si, sj] == 1
+            has_more_than_one_army = army_to_move > 0
+            if not still_owns_cell or not has_more_than_one_army:
                 continue
 
             di, dj = (
@@ -71,9 +73,10 @@ class Game:
             )  # destination indices
 
             # Skip if the destination cell is not passable or out of bounds
-            if di < 0 or di >= self.grid_dims[0] or dj < 0 or dj >= self.grid_dims[1]:
-                continue
-            if self.channels.passable[di, dj] == 0:
+            out_of_i = di < 0 or di >= self.grid_dims[0]
+            out_of_j = dj < 0 or dj >= self.grid_dims[1]
+            not_passable = self.channels.passable[di, dj] == 0
+            if out_of_i or out_of_j or not_passable:
                 continue
 
             # Figure out the target square owner and army size
@@ -101,6 +104,7 @@ class Game:
                         if (di, dj) == (gi, gj):
                             self.loser = target_square_owner
                             self.winner = agent
+                            break
 
         # Swap agent order (because priority is alternating)
         self.agent_order = self.agent_order[::-1]
