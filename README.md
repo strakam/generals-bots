@@ -81,6 +81,7 @@ while not (terminated or truncated):
     # All agents perform their actions
     observations, rewards, terminated, truncated, info = env.step(actions)
     env.render()
+
 ```
 
 > [!TIP]

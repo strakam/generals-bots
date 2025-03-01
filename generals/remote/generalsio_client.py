@@ -42,6 +42,8 @@ class GeneralsIOClient(SimpleClient):
         self._queue_id = ""
         self._replay_id = ""
         self._status = "off"  # can be "off","game","lobby","queue"
+        self._score_wins = 0
+        self._score_losses = 0
         self.bot_key = "sd09fjd203i0ejwi_changeme"
 
         self.connect(PUBLIC_ENDPOINT if public_server else BOT_ENDPOINT)
@@ -115,6 +117,7 @@ class GeneralsIOClient(SimpleClient):
         Join 1v1 queue.
         """
         self._status = "queue"
+        print("Joined queue...", end=" ", flush=True)
         payload = (self.user_id, self.bot_key)
         self._emit_receive("join_1v1", payload)
         while True:
@@ -183,6 +186,10 @@ class GeneralsIOClient(SimpleClient):
         """
         self._status = "off"
         status = "Won!" if is_winner else "Lost."
+        self._score_wins += is_winner
+        self._score_losses += not is_winner
         prefix = "bot." if not self.public_server else ""
-        print(f"You {status}, replay link: https://{prefix}generals.io/replays/{self.replay_id}")
+        print(
+            f"You {status} Score {self._score_wins}:{self._score_losses}. Replay link: https://{prefix}generals.io/replays/{self.replay_id}"
+        )
         self.emit("leave_game")
