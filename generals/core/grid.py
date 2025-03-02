@@ -5,13 +5,13 @@ import numpy as np
 
 from .config import MOUNTAIN, PASSABLE
 
-DEFAULT_MIN_GRID_DIM = (15, 15)
+DEFAULT_MIN_GRID_DIM = (18, 18)
 DEFAULT_MAX_GRID_DIM = (23, 23)
-DEFAULT_MOUNTAIN_DENSITY = 0.2
+DEFAULT_MOUNTAIN_DENSITY = 0.20
 DEFAULT_CITY_DENSITY = 0.05
-MAX_GENERALSIO_ATTEMPTS = 100
+MAX_GENERALSIO_ATTEMPTS = 20
 MIN_GENERALS_DISTANCE = 15
-RADIUS_FROM_GENERAL = [6, 12]
+RADIUS_FROM_GENERAL = [6]
 
 
 class InvalidGridError(Exception):
@@ -159,7 +159,7 @@ class GridFactory:
         num_tiles = grid_height * grid_width
 
         # Counts based on real generals.io 1v1 queue
-        cities_to_place = 5 + 2 * self.rng.choice([2, 3])
+        cities_to_place = 5 + self.rng.choice([4, 5, 6])
         num_mountains = int(DEFAULT_MOUNTAIN_DENSITY * num_tiles + 0.02 * num_tiles * self.rng.random())
 
         def bfs_distance(start, grid):
