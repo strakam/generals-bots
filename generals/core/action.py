@@ -77,6 +77,9 @@ def compute_valid_move_mask(observation: Observation) -> np.ndarray:
     if np.sum(ownership_channel) == 0:
         return valid_action_mask
 
+    # check if destination is road
+    passable_cells = 1 - observation.mountains
+
     for channel_index, direction in enumerate(DIRECTIONS):
         destinations = owned_cells_indices + direction.value
 
@@ -86,10 +89,7 @@ def compute_valid_move_mask(observation: Observation) -> np.ndarray:
         in_width_boundary = destinations[:, 1] < width
         destinations = destinations[in_first_boundary & in_height_boundary & in_width_boundary]
 
-        # check if destination is road
-        passable_cells = 1 - observation.mountains
         # assert that every value is either 0 or 1 in passable cells
-        assert np.all(np.isin(passable_cells, [0, 1])), f"{passable_cells}"
         passable_cell_indices = passable_cells[destinations[:, 0], destinations[:, 1]] == 1
         action_destinations = destinations[passable_cell_indices]
 

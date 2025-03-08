@@ -1,5 +1,6 @@
 from typing import Any, TypeAlias
 
+import numba as nb
 import numpy as np
 
 from .action import Action
@@ -11,6 +12,16 @@ from .observation import Observation
 # Type aliases
 
 Info: TypeAlias = dict[str, Any]
+
+
+@nb.njit(cache=True)
+def calculate_army_size(armies, ownership):
+    return np.int32(np.sum(armies * ownership))
+
+
+@nb.njit(cache=True)
+def calculate_land_size(ownership):
+    return np.int32(np.sum(ownership))
 
 
 class Game:
@@ -156,8 +167,8 @@ class Game:
         """
         players_stats = {}
         for agent in self.agents:
-            army_size = np.sum(self.channels.armies * self.channels.ownership[agent]).astype(int)
-            land_size = np.sum(self.channels.ownership[agent]).astype(int)
+            army_size = calculate_army_size(self.channels.armies, self.channels.ownership[agent])
+            land_size = calculate_land_size(self.channels.ownership[agent])
             players_stats[agent] = {
                 "army": army_size,
                 "land": land_size,
@@ -172,8 +183,8 @@ class Game:
         """
         scores = {}
         for _agent in self.agents:
-            army_size = np.sum(self.channels.armies * self.channels.ownership[_agent]).astype(int)
-            land_size = np.sum(self.channels.ownership[_agent]).astype(int)
+            army_size = calculate_army_size(self.channels.armies, self.channels.ownership[_agent])
+            land_size = calculate_land_size(self.channels.ownership[_agent])
             scores[_agent] = {
                 "army": army_size,
                 "land": land_size,
@@ -184,7 +195,7 @@ class Game:
 
         opponent = self.agents[0] if agent == self.agents[1] else self.agents[1]
 
-        armies = self.channels.armies.astype(int) * visible
+        armies = self.channels.armies * visible
         mountains = self.channels.mountains * visible
         generals = self.channels.generals * visible
         cities = self.channels.cities * visible
