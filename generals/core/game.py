@@ -75,8 +75,7 @@ class Game:
             # Skip if the destination cell is not passable or out of bounds
             out_of_i = di < 0 or di >= self.grid_dims[0]
             out_of_j = dj < 0 or dj >= self.grid_dims[1]
-            not_passable = self.channels.passable[di, dj] == 0
-            if out_of_i or out_of_j or not_passable:
+            if out_of_i or out_of_j or self.channels.passable[di, dj] == 0:
                 continue
 
             # Figure out the target square owner and army size
