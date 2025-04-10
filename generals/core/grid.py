@@ -10,7 +10,7 @@ DEFAULT_MAX_GRID_DIM = (23, 23)
 DEFAULT_MOUNTAIN_DENSITY = 0.20
 DEFAULT_CITY_DENSITY = 0.05
 MAX_GENERALSIO_ATTEMPTS = 20
-MIN_GENERALS_DISTANCE = 15
+MIN_GENERALS_DISTANCE = 20
 RADIUS_FROM_GENERAL = [6]
 
 
@@ -118,6 +118,7 @@ class GridFactory:
         max_grid_dims: tuple[int, int] = DEFAULT_MAX_GRID_DIM,
         mountain_density: float = DEFAULT_MOUNTAIN_DENSITY,
         city_density: float = DEFAULT_CITY_DENSITY,
+        min_generals_distance: int = MIN_GENERALS_DISTANCE,
         general_positions: list[tuple[int, int]] | None = None,
         seed: int | None = None,
     ):
@@ -139,6 +140,7 @@ class GridFactory:
         self.mountain_density = mountain_density
         self.city_density = city_density
         self.general_positions = general_positions
+        self.min_generals_distance = min_generals_distance
         assert self.mode in ["uniform", "generalsio"], f"Invalid mode: {self.mode}"
 
     def set_rng(self, rng: np.random.Generator):
@@ -202,9 +204,9 @@ class GridFactory:
         g2 = None
         for _ in range(max_attempts):
             candidate_g2 = (self.rng.integers(grid_height), self.rng.integers(grid_width))
-            if distances_from_g1[candidate_g2] >= MIN_GENERALS_DISTANCE and distances_from_g1[candidate_g2] != float(
-                "inf"
-            ):
+            if distances_from_g1[candidate_g2] >= self.min_generals_distance and distances_from_g1[
+                candidate_g2
+            ] != float("inf"):
                 g2 = candidate_g2
                 break
 
@@ -234,6 +236,21 @@ class GridFactory:
 
         # Place remaining cities
         self._place_cities(map, cities_to_place)
+
+        # Calculate number of passable cells in radius 5 of both generals
+        radius = 5
+
+        # Use the distance maps we already calculated
+        mask_radius_g1 = create_distance_mask(distances_from_g1, radius)
+        mask_radius_g2 = create_distance_mask(distances_from_g2, radius)
+
+        # Count passable cells (not mountains or cities) within radius
+        passable_mask = map == PASSABLE
+        passable_cells_g1 = np.sum(mask_radius_g1 & passable_mask)
+        passable_cells_g2 = np.sum(mask_radius_g2 & passable_mask)
+
+        if abs(passable_cells_g1 - passable_cells_g2) > 10:
+            return self.generate_generalsio_grid()
 
         for i, idx in enumerate(general_positions):
             map[idx[0], idx[1]] = chr(ord("A") + i)
