@@ -28,7 +28,6 @@ class Game:
     def __init__(self, grid: Grid, agents: list[str]):
         # Agents
         self.agents = agents
-        self.agent_order = self.agents[:]
 
         # Grid
         _grid = grid.grid
@@ -50,12 +49,65 @@ class Game:
         self.winner = None
         self.loser = None
 
+    def compute_agent_order(self, actions: dict[str, Action]) -> list[str]:
+        """
+        Compute the order of agents based on their actions with the following priority rules:
+        1. Agent moving to a tile that another agent is leaving from has highest priority
+        2. Agent moving to their own tile has second priority
+        3. Larger army size being moved has third priority
+        """
+        # Extract action components for each agent
+        moves = {}
+        for agent, action in actions.items():
+            pass_turn, si, sj, direction, _ = action
+            if pass_turn == 1:
+                return self.agents[:]
+
+            # Calculate destination coordinates
+            di = si + DIRECTIONS[direction].value[0]
+            dj = sj + DIRECTIONS[direction].value[1]
+
+            # Store source and destination for each agent
+            moves[agent] = {
+                "source": (si, sj),
+                "dest": (di, dj),
+                "army_size": self.channels.armies[si, sj] - 1,  # -1 because we always leave 1 behind
+            }
+
+        # Check first priority: moving to tile that other is leaving
+        for agent in self.agents:
+            dest = moves[agent]["dest"]
+            for other_agent in self.agents:
+                if agent != other_agent:
+                    if dest == moves[other_agent]["source"]:
+                        return [agent] + [a for a in self.agents if a != agent]
+
+        # Check second priority: moving to own tile
+        own_tile_movers = []
+        other_tile_movers = []
+
+        for agent in self.agents:
+            di, dj = moves[agent]["dest"]
+            # If agent is moving to their own tile, add to own_tile_movers
+            if self.channels.ownership[agent][di, dj] == 1:
+                own_tile_movers.append(agent)
+            else:
+                other_tile_movers.append(agent)
+
+        # If any agent is moving to their own tile, prioritize them
+        if own_tile_movers:
+            return own_tile_movers + other_tile_movers
+
+        # Third priority: army size being moved
+        return sorted(self.agents, key=lambda x: moves[x]["army_size"], reverse=True)
+
     def step(self, actions: dict[str, Action]) -> tuple[dict[str, Observation], dict[str, Any]]:
         """
         Perform one step of the game
         """
         done_before_actions = self.is_done()
-        for agent in self.agent_order:
+        agent_order = self.compute_agent_order(actions)
+        for agent in agent_order:
             pass_turn, si, sj, direction, split_army = actions[agent]
 
             # Skip if agent wants to pass the turn
@@ -115,9 +167,6 @@ class Game:
                             self.loser = target_square_owner
                             self.winner = agent
                             break
-
-        # Swap agent order (because priority is alternating)
-        self.agent_order = self.agent_order[::-1]
 
         if not done_before_actions:
             self.time += 1
@@ -209,7 +258,7 @@ class Game:
         opponent_land_count = scores[opponent]["land"]
         opponent_army_count = scores[opponent]["army"]
         timestep = self.time
-        priority = 1 if agent == self.agent_order[0] else 0
+        priority = 0  # Backwards compatibility, but not used anymore
 
         return Observation(
             armies=armies,
