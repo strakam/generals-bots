@@ -6,7 +6,7 @@ npc = RandomAgent()
 
 # Initialize grid factory
 grid_factory = GridFactory(
-    mode="generalsio",
+    mode="uniform",  # alternatively "generalsio", which will override other parameters
     min_grid_dims=(15, 15),  # Grid height and width are randomly selected
     max_grid_dims=(23, 23),
     mountain_density=0.2,  # Expected percentage of mountains
@@ -36,7 +36,7 @@ grid = """
 
 # Options are used only for the next game
 options = {
-    "replay_file": "my_replay",  # Save replay as my_replay.pkl
+    "replay_file": "my_replay",  # If specified, save replay as my_replay.pkl
     # "grid": grid,  # Use the custom map
 }
 
