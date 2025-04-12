@@ -60,12 +60,16 @@ class Game:
         moves = {}
         for agent, action in actions.items():
             pass_turn, si, sj, direction, _ = action
-            if pass_turn == 1:
-                return self.agents[:]
 
             # Calculate destination coordinates
             di = si + DIRECTIONS[direction].value[0]
             dj = sj + DIRECTIONS[direction].value[1]
+
+            source_out_of_bounds = si < 0 or si >= self.grid_dims[0] or sj < 0 or sj >= self.grid_dims[1]
+            dest_out_of_bounds = di < 0 or di >= self.grid_dims[0] or dj < 0 or dj >= self.grid_dims[1]
+
+            if pass_turn == 1 or source_out_of_bounds or dest_out_of_bounds:
+                return self.agents[:]
 
             # Store source and destination for each agent
             moves[agent] = {
@@ -113,6 +117,11 @@ class Game:
             # Skip if agent wants to pass the turn
             if pass_turn == 1:
                 continue
+
+            # Check if source coordinates are within bounds
+            if si < 0 or si >= self.grid_dims[0] or sj < 0 or sj >= self.grid_dims[1]:
+                continue
+
             if split_army == 1:  # Agent wants to split the army
                 army_to_move = self.channels.armies[si, sj] // 2
             else:  # Leave just one army in the source cell
