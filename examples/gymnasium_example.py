@@ -13,7 +13,7 @@ grid_factory = GridFactory(
 )
 
 # Create n_envs parallel environments
-n_envs = 1
+n_envs = 3
 envs = gym.vector.AsyncVectorEnv(
     [lambda: GymnasiumGenerals(agents=agent_names, grid_factory=grid_factory, truncation=500) for _ in range(n_envs)],
 )
@@ -21,25 +21,26 @@ envs = gym.vector.AsyncVectorEnv(
 
 # Observations have shape: (n_envs, n_agents, grid_height, grid_width, n_channels)
 # To access observation of the first agent, you can do: observations[:, 0, :, :, :]
-
 observations, infos = envs.reset()
-terminated = [False] * len(observations)
-truncated = [False] * len(observations)
+
+terminated = [False] * n_envs
+truncated = [False] * n_envs
 
 while True:
     # Sample random actions for each agent
     agent_actions = [envs.single_action_space.sample() for _ in range(n_envs)]
     npc_actions = [envs.single_action_space.sample() for _ in range(n_envs)]
 
-    # Stack actions together
+    # Stack actions together -> shape: (n_envs, n_agents, action_dim)
     actions = np.stack([agent_actions, npc_actions], axis=1)
-    observations, dummy_rewards, terminated, truncated, infos = envs.step(actions)
 
-    # Extract masks for each agent
+    observations, _, terminated, truncated, infos = envs.step(actions)
+
+    # Extract action masks for each agent
     masks = [np.stack([infos[agent_name]["masks"] for agent_name in agent_names])]
 
-    # Since gymnasium support single agent (scalar) rewards, we pack them in 'infos',
-    # where these rewards can be accessed like this:
+    # Since gymnasium supports only single agent (scalar) rewards, we pack rewards in 'infos',
+    # where these rewards can be accessed via agent name.
     real_rewards = [
         np.stack([infos[agent_name]["reward"] for agent_name in agent_names])
     ]
