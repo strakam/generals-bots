@@ -85,7 +85,7 @@ while not (terminated or truncated):
 ```
 
 > [!TIP]
-> Check out [Wiki](https://github.com/strakam/generals-bots/wiki) for more commented examples to get a better idea on how to start 🤗.
+> Check out [here](./examples/) for more commented examples to get a better idea on how to start 🤗.
 
 ## 🎨 Custom Grids
 Grids on which the game is played on are generated via `GridFactory`. You can instantiate the class with desired grid properties, and it will generate
