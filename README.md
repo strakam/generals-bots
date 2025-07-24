@@ -249,11 +249,16 @@ if __name__ == "__main__":
 
 ```
 This script will run `ExpanderAgent` in the specified lobby.
-## 🙌 Contributing
-You can contribute to this project in multiple ways:
-- 🤖 If you implement ANY non-trivial agent, send it to us! We will publish it, so others can play against it.
-- 💡 If you have an idea on how to improve the game, submit an [issue](https://github.com/strakam/generals-bots/issues/new/choose) or create a PR, we are happy to improve!
-  We also have some ideas (see [issues](https://github.com/strakam/generals-bots/issues)), so you can see what we plan to work on.
+## 🤗 Citation
+If you use our simulator in your research, please cite the following paper:
 
-> [!Tip]
-> Check out [wiki](https://github.com/strakam/generals-bots/wiki) to learn in more detail on how to contribute.
+```bibtex
+@misc{generals_rl,
+      author    = {Matej Straka, Martin Schmid},
+      title     = {Artificial Generals Intelligence: Mastering Generals.io with Reinforcement Learning},
+      year      = {2025},
+      eprint    = {2507.06825},
+      archivePrefix = {arXiv},
+      primaryClass = {cs.LG},
+}
+```
