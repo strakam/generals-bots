@@ -1,5 +1,52 @@
 # Changelog
 
+## [2.6.0](https://github.com/strakam/generals-bots/compare/v2.5.0...v2.6.0) (2025-08-21)
+
+
+### 🚀 Features
+
+* Add better spawn fairness based of available tiles near generals ([ba54af5](https://github.com/strakam/generals-bots/commit/ba54af5db8b8ddfcba69455f1a90217e441c84fa))
+* Add grid generation closely resembling official generals.io ([6e35fd1](https://github.com/strakam/generals-bots/commit/6e35fd135bbe0bf45bae67313e7cf64da79e48b3))
+* Add new environment that can be vectorized and used for self-play ([b9e9477](https://github.com/strakam/generals-bots/commit/b9e94777c299c8bd56e1916c0edf1dece7eecec6))
+* Add new move priority system based on official generalsio ([e5676c3](https://github.com/strakam/generals-bots/commit/e5676c3099c1a7d8a566b48aebb85cbe678f44e6))
+* Allow tensor padding (got for nets) ([19ac5c7](https://github.com/strakam/generals-bots/commit/19ac5c7e37ef5c7f22626500ce8436519961acb9))
+* Grid factory can now pad grids with mountains to a fixed size -&gt; better for neural nets ([e622e7a](https://github.com/strakam/generals-bots/commit/e622e7a9ff25cd121238c492850b176ece056a45))
+* Improve online play ([37e706f](https://github.com/strakam/generals-bots/commit/37e706f5cab8aaae1f949826904a62386c306b9c))
+* Make grids more generalsio like ([3d5c38f](https://github.com/strakam/generals-bots/commit/3d5c38f774b4d3cb55d215e1e97229445684692c))
+* Make sequential processing 40% faster with JIT Numba ([3dfd9d6](https://github.com/strakam/generals-bots/commit/3dfd9d6fc92f673763453cb11105929d11bcf90a))
+* Stack environment information in a different fashion to make it vectorizable (gymnasium) ([a9cfea5](https://github.com/strakam/generals-bots/commit/a9cfea5f7f833bff95f0a94d9ef1737d01392b17))
+* Tidier online client output, show score ([#131](https://github.com/strakam/generals-bots/issues/131)) ([7ab2dd0](https://github.com/strakam/generals-bots/commit/7ab2dd05e453ea391906a524a09ec8ffd54b1753))
+
+
+### 🐛 Bug Fixes
+
+* Align online client action interface with simulator ([56f907e](https://github.com/strakam/generals-bots/commit/56f907e151b3098b45700c8453bc1140939fcc91))
+* Avoid infinitly long map generation for generals.io style ([5a54c9e](https://github.com/strakam/generals-bots/commit/5a54c9e7e6af53280923529cfa3dc43f3ecb003e))
+* Fix padding of neutral cells ([1aea6da](https://github.com/strakam/generals-bots/commit/1aea6dad67c90be6d5bb6593fca6fbfcd7be9ebd))
+* Improve mountain density to be more realistic ([73da28f](https://github.com/strakam/generals-bots/commit/73da28f7899c842173f20c2ace5d1dc1e20716da))
+* Improve server communication ([2a8ecb7](https://github.com/strakam/generals-bots/commit/2a8ecb78b09f76a778e6808c7e92246bf5408dee))
+* Make prior observations active right from the reset() ([5806aa1](https://github.com/strakam/generals-bots/commit/5806aa1412b0b8c7c51a3aa3c970c3747cb698d0))
+* Make simulator 25% faster by avoiding python generators ([42ca058](https://github.com/strakam/generals-bots/commit/42ca058dec61240b7bf683a0980e35d4ccf0d68f))
+* Now simulator ignores invalid moves instead of crashing ([b1636da](https://github.com/strakam/generals-bots/commit/b1636dac1018195fa3261a3c0f2bed7d6072231a))
+* Reset prior observations in env.reset() as well ([df3bdc2](https://github.com/strakam/generals-bots/commit/df3bdc2c277f1228af4c47ec157fe937e4bd2595))
+* Simultaneous general capture fix ([0cfb535](https://github.com/strakam/generals-bots/commit/0cfb535600a466a40606c00c9e558d4a5b3f7082))
+* Sometimes out of bounds actions crash if not using masking ([c35b2f5](https://github.com/strakam/generals-bots/commit/c35b2f5ef9094bfab0b07f43dba1232edfb10439))
+
+
+### 🛠️ Refactor
+
+* Consolide rewards into one file ([90afca6](https://github.com/strakam/generals-bots/commit/90afca641d0d13e423963da6aab62bdc449418cd))
+* Flatten info dictionary for vectorized environments ([5caac61](https://github.com/strakam/generals-bots/commit/5caac6173de6ddf542c430c4936af5b52a1e658b))
+* Improve grid class in efficiency and readability ([8230672](https://github.com/strakam/generals-bots/commit/8230672441565dc9a49e620516a61bccd81f717f))
+* Make observations slightly more memory efficient ([c591d29](https://github.com/strakam/generals-bots/commit/c591d291317abe357c5a497ef1209db33a0845d6))
+* Move padding responsibility from grid to Observation ([1a42e87](https://github.com/strakam/generals-bots/commit/1a42e8701a48f70eb6670af0181e4a5e72106572))
+* Move rewards to info dict for gymnasium ([f3151b3](https://github.com/strakam/generals-bots/commit/f3151b396bca50b2eed4f42b56bdde411ca7039f))
+* Option to pad observation separately ([a3d7861](https://github.com/strakam/generals-bots/commit/a3d7861800050921c0a7772fa4952a7783d7142b))
+* Pass only agent names to environment, this is better with libs ([ac39647](https://github.com/strakam/generals-bots/commit/ac396470e9bf6e67af14a0edf36afa432d6273e4))
+* Remove AgentFactory as it is a useless construct ([a50bea0](https://github.com/strakam/generals-bots/commit/a50bea08789473cd257beadb027c4af9220e7e9a))
+* Remove optional colors, as it is a useless construct ([7c87c34](https://github.com/strakam/generals-bots/commit/7c87c34e53cf89517872d5ad77301e1568de3ae3))
+* Return info dict right after reset ([1156440](https://github.com/strakam/generals-bots/commit/115644069b4148db5a0aadafa9e941a9b0daa7f3))
+
 ## [2.5.0](https://github.com/strakam/generals-bots/compare/v2.4.0...v2.5.0) (2024-12-31)
 
 
