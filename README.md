@@ -249,6 +249,11 @@ if __name__ == "__main__":
 
 ```
 This script will run `ExpanderAgent` in the specified lobby.
+
+## 🗂️ Dataset
+We implemented a new **state-of-the-art** agent for the game using this simulator!
+In the first stage of the development we used a large database of replays which we cleaned and preprocessed. You can find it at our [huggingface page](https://huggingface.co/datasets/strakammm/generals_io_replays) and use it for your own bot!
+
 ## 🤗 Citation
 If you use our simulator in your research, please cite the following paper:
 
