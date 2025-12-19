@@ -110,19 +110,19 @@ def get_visibility(ownership: jnp.ndarray) -> jnp.ndarray:
     Returns:
         [H, W] boolean array of visible cells (3x3 around owned cells)
     """
-    # Use max pooling with 3x3 kernel
-    kernel = jnp.ones((3, 3), dtype=jnp.float32)
+    # Use efficient convolution approach instead of manual loops
+    H, W = ownership.shape
     ownership_float = ownership.astype(jnp.float32)
     
-    # Pad ownership to handle boundaries
+    # Pad with zeros
     padded = jnp.pad(ownership_float, 1, mode='constant', constant_values=0)
     
-    # Manual max pooling
-    H, W = ownership.shape
+    # Extract 3x3 neighborhoods efficiently using strides
     visible = jnp.zeros((H, W), dtype=jnp.bool_)
     
-    for di in range(-1, 2):
-        for dj in range(-1, 2):
+    # Check all 9 positions in 3x3 neighborhood
+    for di in [-1, 0, 1]:
+        for dj in [-1, 0, 1]:
             shifted = padded[1+di:1+di+H, 1+dj:1+dj+W]
             visible = visible | (shifted > 0)
     
