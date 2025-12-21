@@ -23,28 +23,28 @@ def test_create_initial_state():
     
     state = game_jax.create_initial_state(grid_jax)
     
-    # Check state structure
-    assert 'armies' in state
-    assert 'ownership' in state
-    assert 'generals' in state
-    assert 'time' in state
-    assert 'winner' in state
+    # Check state structure (NamedTuple has these attributes)
+    assert hasattr(state, 'armies')
+    assert hasattr(state, 'ownership')
+    assert hasattr(state, 'generals')
+    assert hasattr(state, 'time')
+    assert hasattr(state, 'winner')
     
     # Check initial armies
-    assert state['armies'][0, 0] == 1  # General A
-    assert state['armies'][3, 3] == 1  # General B
+    assert state.armies[0, 0] == 1  # General A
+    assert state.armies[3, 3] == 1  # General B
     
     # Check ownership
-    assert state['ownership'][0, 0, 0] == True  # Player 0 owns (0,0)
-    assert state['ownership'][1, 3, 3] == True  # Player 1 owns (3,3)
+    assert state.ownership[0, 0, 0] == True  # Player 0 owns (0,0)
+    assert state.ownership[1, 3, 3] == True  # Player 1 owns (3,3)
     
     # Check mountains
-    assert state['mountains'][0, 3] == True
-    assert state['mountains'][3, 0] == True
+    assert state.mountains[0, 3] == True
+    assert state.mountains[3, 0] == True
     
     # Check initial game state
-    assert state['time'] == 0
-    assert state['winner'] == -1
+    assert state.time == 0
+    assert state.winner == -1
 
 
 def test_step_pass_action():
@@ -67,9 +67,9 @@ def test_step_pass_action():
     new_state, info = game_jax.step(state, actions)
     
     # Armies should not change (except time increment)
-    assert jnp.array_equal(new_state['armies'], state['armies'])
-    assert new_state['time'] == 1
-    assert new_state['winner'] == -1
+    assert jnp.array_equal(new_state.armies, state.armies)
+    assert new_state.time == 1
+    assert new_state.winner == -1
 
 
 def test_step_move_to_neutral():
@@ -85,7 +85,7 @@ def test_step_move_to_neutral():
     state = game_jax.create_initial_state(grid_jax)
     
     # Give player 0 more armies
-    state['armies'] = state['armies'].at[0, 0].set(5)
+    state = state._replace(armies=state.armies.at[0, 0].set(5))
     
     # Player 0 moves right (direction 3)
     actions = jnp.array([
@@ -96,11 +96,11 @@ def test_step_move_to_neutral():
     new_state, info = game_jax.step(state, actions)
     
     # Check armies moved
-    assert new_state['armies'][0, 0] == 1  # Left 1 behind
-    assert new_state['armies'][0, 1] == 4  # Moved 4
+    assert new_state.armies[0, 0] == 1  # Left 1 behind
+    assert new_state.armies[0, 1] == 4  # Moved 4
     
     # Check ownership changed
-    assert new_state['ownership'][0, 0, 1] == True
+    assert new_state.ownership[0, 0, 1] == True
 
 
 def test_step_move_to_own_cell():
@@ -116,10 +116,11 @@ def test_step_move_to_own_cell():
     state = game_jax.create_initial_state(grid_jax)
     
     # Setup: Give player 0 two cells with armies
-    state['armies'] = state['armies'].at[0, 0].set(5)
-    state['armies'] = state['armies'].at[0, 1].set(3)
-    state['ownership'] = state['ownership'].at[0, 0, 1].set(True)
-    state['ownership_neutral'] = state['ownership_neutral'].at[0, 1].set(False)
+    state = state._replace(
+        armies=state.armies.at[0, 0].set(5).at[0, 1].set(3),
+        ownership=state.ownership.at[0, 0, 1].set(True),
+        ownership_neutral=state.ownership_neutral.at[0, 1].set(False),
+    )
     
     # Player 0 moves from (0,0) to (0,1)
     actions = jnp.array([
@@ -130,8 +131,8 @@ def test_step_move_to_own_cell():
     new_state, info = game_jax.step(state, actions)
     
     # Armies should merge
-    assert new_state['armies'][0, 0] == 1  # Left 1 behind
-    assert new_state['armies'][0, 1] == 7  # 3 + 4 moved
+    assert new_state.armies[0, 0] == 1  # Left 1 behind
+    assert new_state.armies[0, 1] == 7  # 3 + 4 moved
 
 
 def test_get_observation():
@@ -172,14 +173,14 @@ def test_global_update():
     grid_jax = jnp.array(grid)
     
     state = game_jax.create_initial_state(grid_jax)
-    state['armies'] = state['armies'].at[0, 0].set(5)
-    
-    # Advance to time=2 (should increment generals/cities)
-    state = {**state, 'time': jnp.int32(2)}
+    state = state._replace(
+        armies=state.armies.at[0, 0].set(5),
+        time=jnp.int32(2)
+    )
     state = game_jax.global_update(state)
     
     # General should have gained 1 army
-    assert state['armies'][0, 0] == 6
+    assert state.armies[0, 0] == 6
 
 
 def test_batch_step():
@@ -206,8 +207,8 @@ def test_batch_step():
     new_states, infos = game_jax.batch_step(batched_state, actions)
     
     # Check batch dimension preserved
-    assert new_states['time'].shape == (2,)
-    assert new_states['armies'].shape == (2, 2, 2)
+    assert new_states.time.shape == (2,)
+    assert new_states.armies.shape == (2, 2, 2)
 
 
 def test_jit_compilation():
@@ -232,7 +233,7 @@ def test_jit_compilation():
     # Should execute without errors
     new_state, info = jitted_step(state, actions)
     
-    assert new_state['time'] == 1
+    assert new_state.time == 1
 
 
 if __name__ == "__main__":

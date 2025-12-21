@@ -7,6 +7,7 @@ Provides:
 - Vectorizable action utilities
 """
 
+import jax
 import jax.numpy as jnp
 from jax import lax
 
@@ -44,6 +45,7 @@ def create_action(to_pass: bool = False, row: int = 0, col: int = 0,
     ], dtype=jnp.int32)
 
 
+@jax.jit
 def compute_valid_move_mask(
     armies: jnp.ndarray,
     owned_cells: jnp.ndarray,
@@ -104,6 +106,7 @@ def compute_valid_move_mask(
     return valid_mask
 
 
+@jax.jit
 def compute_valid_move_mask_obs(observation) -> jnp.ndarray:
     """
     Convenience wrapper that takes an ObservationJax NamedTuple.

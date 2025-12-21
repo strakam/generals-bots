@@ -6,6 +6,20 @@ from typing import Dict, Tuple, Any, NamedTuple
 from generals.core.observation_jax import ObservationJax
 
 
+class GameState(NamedTuple):
+    """Game state NamedTuple for efficient JAX operations."""
+    armies: jnp.ndarray  # [H, W] army counts
+    ownership: jnp.ndarray  # [2, H, W] player ownership
+    ownership_neutral: jnp.ndarray  # [H, W] neutral cells
+    generals: jnp.ndarray  # [H, W] general positions (static)
+    cities: jnp.ndarray  # [H, W] city positions (static)
+    mountains: jnp.ndarray  # [H, W] mountain positions (static)
+    passable: jnp.ndarray  # [H, W] passable cells (static)
+    general_positions: jnp.ndarray  # [2, 2] (row, col) for each player
+    time: jnp.ndarray  # scalar int
+    winner: jnp.ndarray  # scalar int (-1 for none, 0 or 1 for player)
+
+
 class GameInfo(NamedTuple):
     """Game information NamedTuple for efficient JAX operations."""
     army: jnp.ndarray  # [2] array of army counts for both players
@@ -23,7 +37,7 @@ DIRECTIONS = jnp.array([
 ], dtype=jnp.int32)
 
 
-def create_initial_state(grid: jnp.ndarray) -> Dict[str, jnp.ndarray]:
+def create_initial_state(grid: jnp.ndarray) -> GameState:
     """
     Create initial game state from a grid.
     
@@ -35,7 +49,7 @@ def create_initial_state(grid: jnp.ndarray) -> Dict[str, jnp.ndarray]:
             '.' = passable/neutral
     
     Returns:
-        Dictionary containing all game state arrays
+        GameState NamedTuple containing all game state arrays
     """
     H, W = grid.shape
     
@@ -74,23 +88,24 @@ def create_initial_state(grid: jnp.ndarray) -> Dict[str, jnp.ndarray]:
     general_pos_1 = jnp.argwhere(is_general_1, size=1, fill_value=-1)[0]
     general_positions = jnp.stack([general_pos_0, general_pos_1])
     
-    return {
-        'armies': armies,
-        'ownership': ownership,
-        'ownership_neutral': ownership_neutral,
-        'generals': generals,
-        'cities': cities,
-        'mountains': mountains,
-        'passable': passable,
-        'general_positions': general_positions,
-        'time': jnp.int32(0),
-        'winner': jnp.int32(-1),
-    }
+    return GameState(
+        armies=armies,
+        ownership=ownership,
+        ownership_neutral=ownership_neutral,
+        generals=generals,
+        cities=cities,
+        mountains=mountains,
+        passable=passable,
+        general_positions=general_positions,
+        time=jnp.int32(0),
+        winner=jnp.int32(-1),
+    )
 
 
+@jax.jit
 def get_visibility(ownership: jnp.ndarray) -> jnp.ndarray:
     """
-    Compute visibility mask for a player using max pooling.
+    Compute visibility mask for a player using convolution (optimized).
     
     Args:
         ownership: [H, W] boolean array of owned cells
@@ -98,30 +113,40 @@ def get_visibility(ownership: jnp.ndarray) -> jnp.ndarray:
     Returns:
         [H, W] boolean array of visible cells (3x3 around owned cells)
     """
-    # Use efficient convolution approach instead of manual loops
+    # Use efficient max pooling approach with padding
+    # Any cell within 1 step of an owned cell is visible
     H, W = ownership.shape
     ownership_float = ownership.astype(jnp.float32)
     
-    # Pad with zeros
+    # Pad with zeros for boundary handling
     padded = jnp.pad(ownership_float, 1, mode='constant', constant_values=0)
     
-    # Extract 3x3 neighborhoods efficiently using strides
-    visible = jnp.zeros((H, W), dtype=jnp.bool_)
+    # Stack all shifted versions directly (no Python list)
+    # This is faster than creating a list and then stacking
+    stacked = jnp.stack([
+        padded[0:H, 0:W],     # top-left
+        padded[0:H, 1:W+1],   # top
+        padded[0:H, 2:W+2],   # top-right
+        padded[1:H+1, 0:W],   # left
+        padded[1:H+1, 1:W+1], # center
+        padded[1:H+1, 2:W+2], # right
+        padded[2:H+2, 0:W],   # bottom-left
+        padded[2:H+2, 1:W+1], # bottom
+        padded[2:H+2, 2:W+2], # bottom-right
+    ], axis=0)
     
-    # Check all 9 positions in 3x3 neighborhood
-    for di in [-1, 0, 1]:
-        for dj in [-1, 0, 1]:
-            shifted = padded[1+di:1+di+H, 1+dj:1+dj+W]
-            visible = visible | (shifted > 0)
+    # Any neighbor owned -> visible
+    visible = jnp.max(stacked, axis=0) > 0
     
     return visible
 
 
+@jax.jit
 def execute_action(
-    state: Dict[str, jnp.ndarray],
+    state: GameState,
     player_idx: int,
     action: jnp.ndarray,
-) -> Dict[str, jnp.ndarray]:
+) -> GameState:
     """
     Execute a single player's action.
     
@@ -146,16 +171,17 @@ def execute_action(
     return state
 
 
+@jax.jit
 def _execute_move(
-    state: Dict[str, jnp.ndarray],
+    state: GameState,
     player_idx: int,
     si: int,
     sj: int,
     direction: int,
     split_army: int,
-) -> Dict[str, jnp.ndarray]:
+) -> GameState:
     """Helper to execute actual move logic."""
-    H, W = state['armies'].shape
+    H, W = state.armies.shape
     
     # Check bounds
     in_bounds = (si >= 0) & (si < H) & (sj >= 0) & (sj < W)
@@ -166,8 +192,8 @@ def _execute_move(
     dest_in_bounds = (di >= 0) & (di < H) & (dj >= 0) & (dj < W)
     
     # Check ownership and army requirements
-    owns_source = state['ownership'][player_idx, si, sj]
-    source_army = state['armies'][si, sj]
+    owns_source = state.ownership[player_idx, si, sj]
+    source_army = state.armies[si, sj]
     
     # Calculate army to move
     army_to_move = lax.cond(
@@ -185,7 +211,7 @@ def _execute_move(
         dest_in_bounds &
         owns_source &
         (army_to_move > 0) &
-        state['passable'][di, dj]
+        state.passable[di, dj]
     )
     
     # Execute move if valid
@@ -199,19 +225,20 @@ def _execute_move(
     return state
 
 
+@jax.jit
 def _apply_move(
-    state: Dict[str, jnp.ndarray],
+    state: GameState,
     player_idx: int,
     si: int,
     sj: int,
     di: int,
     dj: int,
     army_to_move: int,
-) -> Dict[str, jnp.ndarray]:
+) -> GameState:
     """Apply the move to the game state."""
-    armies = state['armies']
-    ownership = state['ownership']
-    ownership_neutral = state['ownership_neutral']
+    armies = state.armies
+    ownership = state.ownership
+    ownership_neutral = state.ownership_neutral
     
     # Determine target owner (0, 1, or 2 for neutral)
     target_owner_0 = ownership[0, di, dj]
@@ -267,7 +294,7 @@ def _apply_move(
     )
     
     # Check if general captured
-    is_general = state['generals'][di, dj]
+    is_general = state.generals[di, dj]
     general_captured = attacker_wins & is_general
     
     # Choose between own cell move or attack
@@ -279,55 +306,57 @@ def _apply_move(
     winner = lax.cond(
         general_captured,
         lambda: jnp.int32(player_idx),
-        lambda: state['winner']
+        lambda: state.winner
     )
     
-    return {
-        **state,
-        'armies': armies,
-        'ownership': ownership,
-        'ownership_neutral': ownership_neutral,
-        'winner': winner,
-    }
+    # Return updated state using _replace (NamedTuple method)
+    return state._replace(
+        armies=armies,
+        ownership=ownership,
+        ownership_neutral=ownership_neutral,
+        winner=winner,
+    )
 
 
-def global_update(state: Dict[str, jnp.ndarray]) -> Dict[str, jnp.ndarray]:
+@jax.jit
+def global_update(state: GameState) -> GameState:
     """
     Perform global game updates (army increments).
     
     Every 50 turns: increment all owned cells by 1
     Every 2 turns: increment generals and cities by 1 (if owned)
     """
-    time = state['time']
-    armies = state['armies']
+    time = state.time
+    armies = state.armies
     
     # Every 50 turns, increment all owned cells
     increment_all = (time % 50 == 0) & (time > 0)
     armies = lax.cond(
         increment_all,
-        lambda a: a + state['ownership'][0].astype(jnp.int32) + state['ownership'][1].astype(jnp.int32),
+        lambda a: a + state.ownership[0].astype(jnp.int32) + state.ownership[1].astype(jnp.int32),
         lambda a: a,
         armies
     )
     
     # Every 2 turns, increment generals and cities
     increment_structures = (time % 2 == 0) & (time > 0)
-    structure_mask = (state['generals'] | state['cities']).astype(jnp.int32)
+    structure_mask = (state.generals | state.cities).astype(jnp.int32)
     armies = lax.cond(
         increment_structures,
-        lambda a: a + structure_mask * state['ownership'][0].astype(jnp.int32) + \
-                      structure_mask * state['ownership'][1].astype(jnp.int32),
+        lambda a: a + structure_mask * state.ownership[0].astype(jnp.int32) + \
+                      structure_mask * state.ownership[1].astype(jnp.int32),
         lambda a: a,
         armies
     )
     
-    return {**state, 'armies': armies}
+    return state._replace(armies=armies)
 
 
+@jax.jit
 def step(
-    state: Dict[str, jnp.ndarray],
+    state: GameState,
     actions: jnp.ndarray,
-) -> Tuple[Dict[str, jnp.ndarray], GameInfo]:
+) -> Tuple[GameState, GameInfo]:
     """
     Execute one game step with actions from both players.
     
@@ -339,7 +368,7 @@ def step(
     Returns:
         (new_state, info) tuple where info is GameInfo NamedTuple
     """
-    done_before = state['winner'] >= 0
+    done_before = state.winner >= 0
     
     # Execute actions in order (player 0, then player 1)
     # TODO: Implement proper priority ordering
@@ -347,11 +376,11 @@ def step(
     state = execute_action(state, 1, actions[1])
     
     # Increment time
-    state = {**state, 'time': state['time'] + 1}
+    state = state._replace(time=state.time + 1)
     
     # Global updates (if game not done)
     state = lax.cond(
-        state['winner'] >= 0,
+        state.winner >= 0,
         lambda s: s,  # Skip updates if done
         lambda s: global_update(s),
         state
@@ -363,28 +392,30 @@ def step(
     return state, info
 
 
-def get_info(state: Dict[str, jnp.ndarray]) -> GameInfo:
+@jax.jit
+def get_info(state: GameState) -> GameInfo:
     """Compute game info (army/land counts, done status)."""
-    armies = state['armies']
-    ownership = state['ownership']
+    armies = state.armies
+    ownership = state.ownership
     
     army_0 = jnp.sum(armies * ownership[0])
     army_1 = jnp.sum(armies * ownership[1])
     land_0 = jnp.sum(ownership[0])
     land_1 = jnp.sum(ownership[1])
     
-    is_done = state['winner'] >= 0
+    is_done = state.winner >= 0
     
     return GameInfo(
         army=jnp.stack([army_0, army_1]),
         land=jnp.stack([land_0, land_1]),
         is_done=is_done,
-        winner=state['winner'],
-        time=state['time'],
+        winner=state.winner,
+        time=state.time,
     )
 
 
-def get_observation(state: Dict[str, jnp.ndarray], player_idx: int) -> ObservationJax:
+@jax.jit
+def get_observation(state: GameState, player_idx: int) -> ObservationJax:
     """
     Get observation for a specific player (with fog of war).
     
@@ -395,22 +426,22 @@ def get_observation(state: Dict[str, jnp.ndarray], player_idx: int) -> Observati
     Returns:
         ObservationJax named tuple with observation arrays
     """
-    visible = get_visibility(state['ownership'][player_idx])
+    visible = get_visibility(state.ownership[player_idx])
     invisible = ~visible
     
     opponent_idx = 1 - player_idx
     
     # Apply visibility mask
-    armies = state['armies'] * visible
-    mountains = state['mountains'] * visible
-    generals = state['generals'] * visible
-    cities = state['cities'] * visible
-    neutral_cells = state['ownership_neutral'] * visible
-    owned_cells = state['ownership'][player_idx] * visible
-    opponent_cells = state['ownership'][opponent_idx] * visible
+    armies = state.armies * visible
+    mountains = state.mountains * visible
+    generals = state.generals * visible
+    cities = state.cities * visible
+    neutral_cells = state.ownership_neutral * visible
+    owned_cells = state.ownership[player_idx] * visible
+    opponent_cells = state.ownership[opponent_idx] * visible
     
     # Fog and structures in fog
-    structures_in_fog = invisible & (state['mountains'] | state['cities'])
+    structures_in_fog = invisible & (state.mountains | state.cities)
     fog_cells = invisible & ~structures_in_fog
     
     # Compute stats
@@ -430,15 +461,16 @@ def get_observation(state: Dict[str, jnp.ndarray], player_idx: int) -> Observati
         owned_army_count=info.army[player_idx],
         opponent_land_count=info.land[opponent_idx],
         opponent_army_count=info.army[opponent_idx],
-        timestep=state['time'],
+        timestep=state.time,
     )
 
 
 # Vectorized versions for batched execution
+@jax.jit
 def batch_step(
-    states: Dict[str, jnp.ndarray],
+    states: GameState,
     actions: jnp.ndarray,
-) -> Tuple[Dict[str, jnp.ndarray], GameInfo]:
+) -> Tuple[GameState, GameInfo]:
     """
     Vectorized step for multiple environments.
     
