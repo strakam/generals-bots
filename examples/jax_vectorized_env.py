@@ -3,6 +3,7 @@ Example demonstrating the vectorized JAX environment.
 
 Shows how to use VectorizedJaxEnv for high-performance RL training:
 - Pure JAX grid generation (10-50x faster than NumPy)
+- Two modes: 'generalsio' (random size) and 'fixed' (exact size)
 - Different grids per environment (better diversity)
 - Automatic auto-reset on episode termination
 - Vectorized operations for maximum throughput
@@ -57,17 +58,17 @@ def main():
     print(f"  Episodes to run: {num_episodes}")
     print(f"  Max steps per episode: {max_steps_per_episode}")
     
-    # Create environment with default generals.io settings
-    # Uses GridFactoryJax with:
-    # - Grid: 18-23x18-23 (random size, padded to 24x24)
-    # - Mountains: 20% density
-    # - Cities: 9-14 random count
+    # Create environment with generals.io mode (default)
+    # This matches the online game:
+    # - Grid size: 18-23x18-23 (random, padded to 24x24)
+    # - Mountains: 20% density + 2% variation
+    # - Castles: 9-11 random count
     # - Different grid per environment!
-    print("\nCreating environment with generals.io defaults...")
-    env = VectorizedJaxEnv(num_envs=num_envs)
+    print("\nCreating environment in 'generalsio' mode...")
+    env = VectorizedJaxEnv(num_envs=num_envs, mode='generalsio')
     
-    print(f"  Grid size: {env.grid_size}")
-    print(f"  Grid factory: {type(env.grid_factory).__name__}")
+    print(f"  Mode: {env.mode}")
+    print(f"  Grid size (padded): {env.grid_size}")
     
     # Initialize JAX random key
     rng_key = jrandom.PRNGKey(42)
@@ -145,8 +146,8 @@ def main():
     print("Example completed successfully!")
     print("=" * 70)
     print("\nNext steps:")
+    print("  - Try 'fixed' mode: VectorizedJaxEnv(num_envs=128, mode='fixed', grid_dims=(15, 15))")
     print("  - Integrate with your RL algorithm (PPO, DQN, etc.)")
-    print("  - Use custom GridFactoryJax for different map settings")
     print("  - Enable GPU acceleration (install jax[cuda])")
     print("  - Scale to 1000s of parallel environments!")
     print("=" * 70 + "\n")

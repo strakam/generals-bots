@@ -2,10 +2,11 @@
 JAX-based vectorized Generals.io environment.
 
 Pure JAX implementation optimized for GPU training.
-Uses GridFactoryJax for fast, vectorized grid generation.
+Uses functional grid generation for fast, vectorized operations.
 """
 
-from typing import Tuple, Optional, Any
+from typing import Tuple, Optional, Any, Literal
+from functools import partial
 
 import jax
 import jax.numpy as jnp
@@ -13,7 +14,7 @@ import jax.random as jrandom
 import numpy as np
 
 from generals.core import game_jax
-from generals.core.grid_jax import GridFactoryJax
+from generals.core.grid_jax import generate_grid
 from generals.core.observation_jax import ObservationJax
 from generals.core.game_jax import GameInfo, GameState
 from generals.envs.jax_rendering_adapter import JaxGameAdapter
@@ -30,10 +31,13 @@ class VectorizedJaxEnv:
     - Different grids per environment
     
     Example:
-        >>> env = VectorizedJaxEnv(num_envs=128)
+        >>> # Generals.io mode (matches online game)
+        >>> env = VectorizedJaxEnv(num_envs=128, mode='generalsio')
         >>> obs, info = env.reset(seed=42)
-        >>> actions = jnp.zeros((128, 2, 5), dtype=jnp.int32)
-        >>> obs, rewards, done, truncated, info = env.step(actions)
+        
+        >>> # Fixed grid mode (custom training)
+        >>> env = VectorizedJaxEnv(num_envs=128, mode='fixed', grid_dims=(15, 15))
+        >>> obs, info = env.reset(seed=42)
     """
     
     metadata = {
@@ -44,7 +48,11 @@ class VectorizedJaxEnv:
     def __init__(
         self,
         num_envs: int,
-        grid_factory: Optional[GridFactoryJax] = None,
+        mode: Literal['fixed', 'generalsio'] = 'generalsio',
+        grid_dims: Tuple[int, int] = (20, 20),
+        pad_to: int = 24,
+        mountain_density: float = 0.2,
+        num_castles: Tuple[int, int] = (9, 15),
         render_mode: Optional[str] = None,
         agent_names: Optional[list[str]] = None,
         agent_colors: Optional[list[tuple[int, int, int]]] = None,
@@ -54,7 +62,11 @@ class VectorizedJaxEnv:
         """
         Args:
             num_envs: Number of parallel environments
-            grid_factory: GridFactoryJax instance. If None, uses generals.io defaults.
+            mode: 'generalsio' for random size like online game, 'fixed' for constant size
+            grid_dims: Grid dimensions (only used in 'fixed' mode)
+            pad_to: Pad grids to this size for batching
+            mountain_density: Fraction of tiles that are mountains
+            num_castles: (min, max) number of castles
             render_mode: 'human', 'rgb_array', or None
             agent_names: Names for 2 agents
             agent_colors: RGB colors for agents
@@ -62,6 +74,10 @@ class VectorizedJaxEnv:
             speed_multiplier: Rendering speed
         """
         self.num_envs = num_envs
+        self.mode = mode
+        self.grid_dims = grid_dims
+        self.pad_to = pad_to
+        self.grid_size = (pad_to, pad_to)
         self.render_mode = render_mode
         self.render_env_index = min(render_env_index, num_envs - 1)
         self.speed_multiplier = speed_multiplier
@@ -74,26 +90,24 @@ class VectorizedJaxEnv:
             for name, color in zip(self.agent_names, self.agent_colors)
         }
         
-        # Grid factory - generals.io defaults if not provided
-        self.grid_factory = grid_factory or GridFactoryJax(
-            grid_dims=(20, 20),
-            mountain_density=0.2,
-            num_castles_range=(9, 15),
-            min_generals_distance=17,
-            castle_val_range=(40, 51),
-            pad_to=24,
+        # Create partially applied grid generator
+        self._generate_grid_fn = partial(
+            generate_grid,
+            mode=mode,
+            grid_dims=grid_dims,
+            pad_to=pad_to,
+            mountain_density=mountain_density,
+            num_castles_range=num_castles,
         )
-        
-        self.grid_size = (self.grid_factory.pad_to, self.grid_factory.pad_to)
         
         # JIT-compiled functions
         @jax.jit
-        def generate_grid(key):
-            numeric_grid, valid = self.grid_factory._generate(key)
+        def generate_and_init(key):
+            numeric_grid, valid = self._generate_grid_fn(key)
             return game_jax.create_initial_state(numeric_grid)
         
-        self._generate_grid = generate_grid
-        self._generate_grids_batched = jax.jit(jax.vmap(generate_grid))
+        self._generate_grid = generate_and_init
+        self._generate_grids_batched = jax.jit(jax.vmap(generate_and_init))
         self._jitted_step = jax.jit(game_jax.batch_step)
         
         # State
