@@ -2,29 +2,29 @@
 Example demonstrating rendering with the vectorized JAX environment.
 
 Shows how to visualize one environment while running multiple in parallel.
-Uses valid action sampling to ensure players actually move.
+Uses Expander agents for both players to create interesting strategic games.
 
-Player 0 (Red): Random valid actions
-Player 1 (Blue): Expander agent (prioritizes captures)
+Both players use the Expander agent which:
+- Prioritizes capturing opponent territory
+- Expands to neutral cells
+- Makes strategic moves based on visible information
 """
 import time
-from typing import Tuple
 
 import jax
 import jax.numpy as jnp
 import jax.random as jrandom
 
 from generals.envs import VectorizedJaxEnv
-from generals.core.action_jax import sample_valid_action_jax
 from generals.agents.expander_agent_jax import expander_agent_jax
 
 
-def sample_mixed_actions_batch(
+def sample_expander_actions_batch(
     key: jnp.ndarray,
     observations,
 ) -> jnp.ndarray:
     """
-    Sample actions where P0 is random and P1 is expander agent.
+    Sample actions for both players using Expander agent.
     
     Args:
         key: JAX random key
@@ -44,10 +44,6 @@ def sample_mixed_actions_batch(
     # Vectorize over environments
     def sample_for_env(env_key, env_obs):
         # env_obs is [2, H, W, ...] for both players
-        # Extract individual player observations
-        # env_obs.armies has shape [2, H, W]
-        # We need to create ObservationJax for each player
-        
         # Split key for 2 players
         k1, k2 = jrandom.split(env_key, 2)
         
@@ -89,10 +85,8 @@ def sample_mixed_actions_batch(
             priority=env_obs.priority[1],
         )
         
-        # Player 0: Random valid action
-        action_p0 = sample_valid_action_jax(k1, obs_p0)
-        
-        # Player 1: Expander agent
+        # Both players use Expander agent
+        action_p0 = expander_agent_jax(k1, obs_p0)
         action_p1 = expander_agent_jax(k2, obs_p1)
         
         return jnp.stack([action_p0, action_p1])
@@ -106,44 +100,52 @@ def sample_mixed_actions_batch(
 def main():
     """Run environments with rendering."""
     # Configuration
-    num_envs = 16  # Use 1 for debugging, increase for parallel training
-    grid_size = (10, 10)  # Larger grid = longer games
+    num_envs = 8  # Parallel environments running in background
     max_steps = 2000
     
-    print(f"\nJAX Environment Rendering Example")
-    print(f"=" * 60)
-    print(f"\nConfiguration:")
-    print(f"  Number of parallel environments: {num_envs}")
-    print(f"  Grid size: {grid_size}")
-    print(f"  Rendering environment #0")
+    print("\n" + "=" * 70)
+    print("JAX Environment Rendering Example")
+    print("=" * 70)
+    print("\nConfiguration:")
+    print(f"  Parallel environments: {num_envs}")
+    print(f"  Grid mode: generalsio (random 18-23x18-23, like online game)")
+    print(f"  Rendering environment: #0")
     print(f"  Max steps: {max_steps}")
-    print(f"\nNote: Games may end quickly (~20-50 steps) because:")
-    print(f"  - Player 0 (Red): Random valid moves")
-    print(f"  - Player 1 (Blue): Expander agent (smart, aggressive)")
-    print(f"  - Expander prioritizes captures and expansion")
-    print(f"\nPress ESC or close window to quit")
-    print(f"=" * 60)
+    print("\nBoth players use Expander agent:")
+    print("  - Player 0 (Red): Expander agent")
+    print("  - Player 1 (Blue): Expander agent")
+    print("  → Strategic battles with capture priority!")
+    print("\nPress ESC or close window to quit")
+    print("=" * 70)
     
     # Create environment with rendering enabled
+    # Use generalsio mode for realistic game experience
     env = VectorizedJaxEnv(
         num_envs=num_envs,
-        grid_size=grid_size,
+        mode='generalsio',  # Random grid size like online game
         render_mode='human',  # Enable pygame rendering
-        agent_names=['Random (Red)', 'Expander (Blue)'],
+        agent_names=['Expander (Red)', 'Expander (Blue)'],
         render_env_index=0,  # Render the first environment
-        speed_multiplier=0.5,  # Slower for better visibility
+        speed_multiplier=0.3,  # Slower for better visibility
     )
     
     # Initialize JAX random key
     rng_key = jrandom.PRNGKey(42)
     
     # Reset
+    print("\nResetting environment...")
     obs, info = env.reset(seed=42)
     
+    print(f"  Grid size (padded): {env.grid_size}")
+    print(f"  Mode: {env.mode}")
+    
     print("\nRunning simulation with rendering...")
-    print("(The other 15 environments are running in the background)")
-    print("Player 0 (Red): Random valid moves")
-    print("Player 1 (Blue): Expander agent - watch it expand and capture!\n")
+    print(f"(The other {num_envs-1} environments are running in the background)")
+    print("\nWatch both Expander agents battle for territory!")
+    print("They prioritize:")
+    print("  1. Capturing opponent tiles")
+    print("  2. Expanding to neutral territory")
+    print("  3. Strategic positioning\n")
     
     total_steps = 0
     total_resets = 0
@@ -151,9 +153,9 @@ def main():
     
     try:
         for step in range(max_steps):
-            # Generate actions: P0=random, P1=expander
+            # Generate actions: Both players use Expander
             rng_key, subkey = jrandom.split(rng_key)
-            actions = sample_mixed_actions_batch(subkey, obs)
+            actions = sample_expander_actions_batch(subkey, obs)
             
             # Step environment
             obs, rewards, terminated, truncated, info = env.step(actions)
@@ -171,8 +173,18 @@ def main():
             # Break if the rendered environment (index 0) terminates
             # (Other environments will auto-reset and keep running)
             if terminated[0]:
-                print(f"\nGame ended after {step+1} steps!")
-                print(f"Winner: Player {info.winner[0]}")
+                winner = info.winner[0]
+                if winner == 0:
+                    winner_name = "Player 0 (Red) - Expander"
+                elif winner == 1:
+                    winner_name = "Player 1 (Blue) - Expander"
+                else:
+                    winner_name = "Draw"
+                    
+                print(f"\n{'='*70}")
+                print(f"Game ended after {step+1} steps!")
+                print(f"Winner: {winner_name}")
+                print(f"{'='*70}")
                 break
                 
     except KeyboardInterrupt:
@@ -183,13 +195,13 @@ def main():
     # Close environment
     env.close()
     
-    print(f"\n" + "=" * 60)
+    print(f"\n" + "=" * 70)
     print(f"Statistics:")
     print(f"  Total steps: {total_steps:,}")
     print(f"  Total auto-resets: {total_resets}")
     print(f"  Time: {elapsed:.2f}s")
     print(f"  Throughput: {total_steps / elapsed:,.0f} steps/sec")
-    print(f"=" * 60)
+    print(f"=" * 70)
 
 
 if __name__ == "__main__":

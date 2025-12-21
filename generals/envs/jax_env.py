@@ -54,8 +54,6 @@ class VectorizedJaxEnv:
         mountain_density: float = 0.2,
         num_castles: Tuple[int, int] = (9, 15),
         render_mode: Optional[str] = None,
-        agent_names: Optional[list[str]] = None,
-        agent_colors: Optional[list[tuple[int, int, int]]] = None,
         render_env_index: int = 0,
         speed_multiplier: float = 1.0,
     ):
@@ -83,8 +81,8 @@ class VectorizedJaxEnv:
         self.speed_multiplier = speed_multiplier
         
         # Agents
-        self.agent_names = agent_names or ['Player 0', 'Player 1']
-        self.agent_colors = agent_colors or [(255, 107, 108), (0, 130, 255)]
+        self.agent_names = ['Red', 'Blue']
+        self.agent_colors = [(255, 107, 108), (0, 130, 255)]
         self.agent_data = {
             name: {"color": color}
             for name, color in zip(self.agent_names, self.agent_colors)
