@@ -293,9 +293,9 @@ def _apply_move(
         ownership_neutral_attack
     )
     
-    # Check if general captured
+    # Check if general captured (can't capture your own general!)
     is_general = state.generals[di, dj]
-    general_captured = attacker_wins & is_general
+    general_captured = attacker_wins & is_general & ~moving_to_own
     
     # Choose between own cell move or attack
     armies = lax.cond(moving_to_own, lambda: armies_own, lambda: armies_attack)

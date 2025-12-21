@@ -10,6 +10,7 @@ Features:
 - Auto-reset on episode termination
 - Standard Gym API (v0.26+)
 - Multi-agent (2 players per environment)
+- Human rendering support (via pygame GUI)
 """
 
 from typing import Dict, Tuple, Optional, Any
@@ -23,6 +24,7 @@ from generals.core import game_jax
 from generals.core.grid import GridFactory
 from generals.core.observation_jax import ObservationJax
 from generals.core.game_jax import GameInfo, GameState
+from generals.envs.jax_rendering_adapter import JaxGameAdapter
 
 
 class VectorizedJaxEnv:
@@ -54,6 +56,11 @@ class VectorizedJaxEnv:
         render_mode: Optional[str] = None,
         mountain_density: float = 0.1,
         city_density: float = 0.1,
+        agent_names: Optional[list[str]] = None,
+        agent_colors: Optional[list[tuple[int, int, int]]] = None,
+        render_env_index: int = 0,
+        speed_multiplier: float = 1.0,
+        grid_factory: Optional[GridFactory] = None,
     ):
         """
         Initialize vectorized JAX environment.
@@ -64,19 +71,41 @@ class VectorizedJaxEnv:
             render_mode: Mode for rendering ('human', 'rgb_array', or None)
             mountain_density: Probability of mountain on each cell
             city_density: Probability of city on each cell
+            agent_names: Names for the 2 agents (default: ['Player 0', 'Player 1'])
+            agent_colors: RGB colors for agents (default: [(255, 107, 108), (0, 130, 255)])
+            render_env_index: Which environment to render (0 to num_envs-1)
+            speed_multiplier: Speed multiplier for rendering
+            grid_factory: Optional GridFactory instance to use (overrides other grid settings)
         """
         self.num_envs = num_envs
         self.grid_size = grid_size
         self.render_mode = render_mode
+        self.render_env_index = min(render_env_index, num_envs - 1)
+        self.speed_multiplier = speed_multiplier
         
-        # Create grid factory
-        self.grid_factory = GridFactory(
-            min_grid_dims=grid_size,
-            max_grid_dims=grid_size,
-            mountain_density=mountain_density,
-            city_density=city_density,
-            general_positions=[[1, 1], [grid_size[0]-2, grid_size[1]-2]],
-        )
+        # Agent configuration
+        self.agent_names = agent_names if agent_names else ['Player 0', 'Player 1']
+        default_colors = [(255, 107, 108), (0, 130, 255)]
+        self.agent_colors = agent_colors if agent_colors else default_colors
+        self.agent_data = {
+            name: {"color": color} 
+            for name, color in zip(self.agent_names, self.agent_colors)
+        }
+        
+        # GUI for rendering
+        self.gui = None
+        
+        # Create or use provided grid factory
+        if grid_factory is not None:
+            self.grid_factory = grid_factory
+        else:
+            self.grid_factory = GridFactory(
+                min_grid_dims=grid_size,
+                max_grid_dims=grid_size,
+                mountain_density=mountain_density,
+                city_density=city_density,
+                general_positions=[[1, 1], [grid_size[0]-2, grid_size[1]-2]],
+            )
         
         # JIT compile the step function for performance
         self._jitted_step = jax.jit(game_jax.batch_step)
@@ -216,24 +245,80 @@ class VectorizedJaxEnv:
         """
         Render the environment.
         
+        For 'human' mode, displays the environment at index `render_env_index`
+        using the pygame GUI.
+        
         Returns:
             RGB array if render_mode='rgb_array', None otherwise
+            
+        Raises:
+            SystemExit: If the pygame window is closed or ESC/Q is pressed
         """
-        if self.render_mode == 'rgb_array':
-            # TODO: Implement rendering to RGB array
+        if self.render_mode == 'human':
+            if self.gui is None:
+                # Initialize GUI on first render
+                from generals.gui import GUI
+                from generals.gui.properties import GuiMode
+                
+                # Create adapter for the selected environment
+                state_to_render = jax.tree.map(lambda x: x[self.render_env_index], self.states)
+                info_to_render = jax.tree.map(lambda x: x[self.render_env_index], 
+                                              jax.vmap(game_jax.get_info)(self.states))
+                
+                adapted_game = JaxGameAdapter(
+                    state_to_render, 
+                    self.agent_names,
+                    info_to_render
+                )
+                
+                self.gui = GUI(
+                    adapted_game,
+                    self.agent_data,
+                    GuiMode.TRAIN,
+                    self.speed_multiplier
+                )
+            else:
+                # Update the adapter with current state
+                state_to_render = jax.tree.map(lambda x: x[self.render_env_index], self.states)
+                info_to_render = jax.tree.map(lambda x: x[self.render_env_index], 
+                                              jax.vmap(game_jax.get_info)(self.states))
+                
+                self.gui.properties.game.update_from_state(state_to_render, info_to_render)
+            
+            # Render the GUI - but don't let it quit()
+            # We'll catch the quit command and handle it gracefully
+            try:
+                # Temporarily override the GUI's tick to not call quit()
+                command = self.gui._GUI__event_handler.handle_events()
+                if command.quit:
+                    # Close the GUI and raise an exception to stop rendering
+                    self.close()
+                    raise SystemExit("Pygame window closed by user")
+                
+                # Do the actual rendering
+                self.gui._GUI__renderer.render(fps=self.speed_multiplier * self.metadata['render_fps'])
+            except AttributeError:
+                # Fallback if private attributes changed
+                self.gui.tick(fps=self.speed_multiplier * self.metadata['render_fps'])
+            
+            return None
+            
+        elif self.render_mode == 'rgb_array':
+            # TODO: Implement RGB array rendering
             # For now, return placeholder
             return np.zeros((self.num_envs, *self.grid_size, 3), dtype=np.uint8)
-        elif self.render_mode == 'human':
-            # TODO: Implement human-visible rendering
-            # For now, just print state
-            print(f"Env states: {self.num_envs} environments running")
-            return None
+        
         return None
     
     def close(self):
         """
         Close the environment and clean up resources.
         """
+        # Close pygame GUI if active
+        if self.gui is not None:
+            self.gui.close()
+            self.gui = None
+        
         # JAX doesn't need explicit cleanup, but we can reset state
         self.states = None
     

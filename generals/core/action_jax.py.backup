@@ -166,9 +166,6 @@ def sample_valid_action_jax(
     
     return action
 
-
-@jax.jit
-def compute_valid_move_mask_obs(observation) -> jnp.ndarray:
     """
     Convenience wrapper that takes an ObservationJax NamedTuple.
     
@@ -183,4 +180,3 @@ def compute_valid_move_mask_obs(observation) -> jnp.ndarray:
         observation.owned_cells,
         observation.mountains,
     )
-
