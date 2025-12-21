@@ -196,31 +196,27 @@ class VectorizedJaxEnv:
         # Step environments
         new_states, infos = self._jitted_step(self.states, actions)
         
-        # Auto-reset: Replace terminated environments with initial state
-        # Use JIT-compiled helper for maximum performance
-        if self._batched_initial_state is not None:
-            # Lazy init of JIT-compiled reset function
-            if self._jitted_auto_reset is None:
-                @jax.jit
-                def auto_reset_states(new_states, init_states, is_done_mask):
-                    """JIT-compiled auto-reset: replace done envs with initial state."""
-                    def select_state(new_val, init_val):
-                        # Broadcast mask to match dimensions
-                        mask = is_done_mask
-                        while mask.ndim < new_val.ndim:
-                            mask = mask[..., None]
-                        # where(condition, if_true, if_false)
-                        return jnp.where(mask, init_val, new_val)
-                    
-                    return jax.tree.map(select_state, new_states, init_states)
-                
-                self._jitted_auto_reset = auto_reset_states
+        # Auto-reset: Replace terminated environments with NEW grids
+        # Need to generate new grids for terminated environments
+        if jnp.any(infos.is_done):
+            # Generate new grids for each terminated environment
+            reset_states_list = []
+            for i in range(self.num_envs):
+                if infos.is_done[i]:
+                    # Generate a new grid
+                    grid = self.grid_factory.generate()
+                    grid_array = np.vectorize(ord)(grid.grid).astype(np.uint8)
+                    grid_jax = jnp.array(grid_array)
+                    new_state = game_jax.create_initial_state(grid_jax)
+                    reset_states_list.append(new_state)
+                else:
+                    # Use the stepped state
+                    reset_states_list.append(jax.tree.map(lambda x: x[i], new_states))
             
-            # Apply auto-reset (JIT-compiled, no Python overhead)
-            self.states = self._jitted_auto_reset(
-                new_states, 
-                self._batched_initial_state, 
-                infos.is_done
+            # Stack back into batched state
+            self.states = jax.tree.map(
+                lambda *args: jnp.stack(args),
+                *reset_states_list
             )
         else:
             self.states = new_states

@@ -79,12 +79,23 @@ class Game:
             }
 
         # Check first priority: moving to tile that other is leaving
+        # But if both agents are chasing each other (mutual chase), continue to next priority
+        chasing_agents = []
         for agent in self.agents:
             dest = moves[agent]["dest"]
             for other_agent in self.agents:
                 if agent != other_agent:
                     if dest == moves[other_agent]["source"]:
-                        return [agent] + [a for a in self.agents if a != agent]
+                        chasing_agents.append(agent)
+                        break
+        
+        # If only one agent is chasing, they go first
+        if len(chasing_agents) == 1:
+            chasing_agent = chasing_agents[0]
+            return [chasing_agent] + [a for a in self.agents if a != chasing_agent]
+        
+        # If both are chasing (mutual chase), fall through to next priority
+        # If neither is chasing, also fall through to next priority
 
         # Check second priority: moving to own tile
         own_tile_movers = []

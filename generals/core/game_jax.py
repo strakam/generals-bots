@@ -191,19 +191,19 @@ def _execute_move(
     dj = sj + DIRECTIONS[direction, 1]
     dest_in_bounds = (di >= 0) & (di < H) & (dj >= 0) & (dj < W)
     
-    # Check ownership and army requirements
+    # Check ownership and army requirements (using current state after any previous moves)
     owns_source = state.ownership[player_idx, si, sj]
     source_army = state.armies[si, sj]
     
-    # Calculate army to move
+    # Calculate army to move based on current army (CRITICAL: use current state!)
     army_to_move = lax.cond(
         split_army == 1,
         lambda a: a // 2,
         lambda a: a - 1,
         source_army
     )
-    army_to_move = jnp.maximum(army_to_move, 0)
-    army_to_move = jnp.minimum(army_to_move, source_army - 1)
+    # Cap to available army - matches line 133 in game.py
+    army_to_move = jnp.maximum(0, jnp.minimum(army_to_move, source_army - 1))
     
     # Check if move is valid
     valid_move = (
@@ -330,7 +330,7 @@ def global_update(state: GameState) -> GameState:
     armies = state.armies
     
     # Every 50 turns, increment all owned cells
-    increment_all = (time % 50 == 0) & (time > 0)
+    increment_all = (time % 50 == 0)
     armies = lax.cond(
         increment_all,
         lambda a: a + state.ownership[0].astype(jnp.int32) + state.ownership[1].astype(jnp.int32),
@@ -352,6 +352,70 @@ def global_update(state: GameState) -> GameState:
     return state._replace(armies=armies)
 
 
+def _determine_move_order(state: GameState, actions: jnp.ndarray) -> int:
+    """
+    Determine which player's move should be executed first.
+    Based on game.py lines 1235-1280.
+    
+    Priority (higher priority goes first):
+    1. Chasing move (moving to cell where opponent is moving FROM)
+    2. Reinforcing move (moving to own cell)
+    3. Bigger army being moved
+    
+    Returns:
+        Player index (0 or 1) who should move first
+    """
+    # Parse actions
+    pass_0, row_0, col_0, dir_0, split_0 = actions[0]
+    pass_1, row_1, col_1, dir_1, split_1 = actions[1]
+    
+    # If either player passes, other goes first
+    both_pass = pass_0 & pass_1
+    only_p0_passes = pass_0 & ~pass_1
+    only_p1_passes = ~pass_0 & pass_1
+    
+    # Compute source and destination cells for both players
+    si_0, sj_0 = row_0, col_0
+    di_0, dj_0 = si_0 + DIRECTIONS[dir_0][0], sj_0 + DIRECTIONS[dir_0][1]
+    
+    si_1, sj_1 = row_1, col_1
+    di_1, dj_1 = si_1 + DIRECTIONS[dir_1][0], sj_1 + DIRECTIONS[dir_1][1]
+    
+    # Check if moves are chasing (p0 moves to where p1 is moving from, or vice versa)
+    p0_chasing = (di_0 == si_1) & (dj_0 == sj_1)  # p0 moves to p1's source
+    p1_chasing = (di_1 == si_0) & (dj_1 == sj_0)  # p1 moves to p0's source
+    
+    # Check if moves are reinforcing (moving to own cell)
+    p0_reinforcing = state.ownership[0, di_0, dj_0]
+    p1_reinforcing = state.ownership[1, di_1, dj_1]
+    
+    # Calculate army sizes being moved
+    army_0 = state.armies[si_0, sj_0]
+    army_1 = state.armies[si_1, sj_1]
+    
+    # Priority calculation (matching game.py logic)
+    # If one is chasing and other isn't, chasing goes first
+    p1_wins_by_chase = p1_chasing & ~p0_chasing
+    
+    # If both/neither chasing, check reinforcing
+    tie_on_chase = (p0_chasing == p1_chasing)
+    p1_wins_by_reinforce = tie_on_chase & p1_reinforcing & ~p0_reinforcing
+    
+    # If both/neither reinforcing, bigger army goes first
+    tie_on_reinforce = (p0_reinforcing == p1_reinforcing)
+    p1_wins_by_army = tie_on_chase & tie_on_reinforce & (army_1 > army_0)
+    
+    # Determine winner (default to player 0 when fully tied, matching numpy sorted() behavior)
+    p1_goes_first = p1_wins_by_chase | p1_wins_by_reinforce | p1_wins_by_army | only_p0_passes
+    
+    # When fully tied (neither has priority), default to player 0 to match NumPy
+    return lax.cond(
+        p1_goes_first,
+        lambda: 1,
+        lambda: 0  # Default to player 0
+    )
+
+
 @jax.jit
 def step(
     state: GameState,
@@ -370,19 +434,28 @@ def step(
     """
     done_before = state.winner >= 0
     
-    # Execute actions in order (player 0, then player 1)
-    # TODO: Implement proper priority ordering
-    state = execute_action(state, 0, actions[0])
-    state = execute_action(state, 1, actions[1])
+    # Determine move order based on priority (matching game.py lines 1235-1280)
+    # Priority: 1) chasing moves, 2) reinforcing moves, 3) bigger army
+    first_player = _determine_move_order(state, actions)
+    second_player = 1 - first_player
     
-    # Increment time
-    state = state._replace(time=state.time + 1)
+    # Execute actions sequentially based on computed priority
+    state = execute_action(state, first_player, actions[first_player])
+    state = execute_action(state, second_player, actions[second_player])
+    
+    # Increment time only if game wasn't done before actions
+    state = lax.cond(
+        done_before,
+        lambda s: s,  # Don't increment time if already done
+        lambda s: s._replace(time=s.time + 1),
+        state
+    )
     
     # Global updates (if game not done)
     state = lax.cond(
         state.winner >= 0,
-        lambda s: s,  # Skip updates if done
-        lambda s: global_update(s),
+        lambda s: _transfer_loser_cells_to_winner(s),  # Transfer cells if game done
+        lambda s: global_update(s),  # Otherwise do global update
         state
     )
     
@@ -390,6 +463,28 @@ def step(
     info = get_info(state)
     
     return state, info
+
+
+def _transfer_loser_cells_to_winner(state: GameState) -> GameState:
+    """Transfer all of loser's cells to winner when game ends."""
+    winner_idx = state.winner
+    loser_idx = 1 - winner_idx
+    
+    # Transfer ownership
+    new_ownership = state.ownership.at[winner_idx].set(
+        state.ownership[winner_idx] | state.ownership[loser_idx]
+    )
+    new_ownership = new_ownership.at[loser_idx].set(
+        jnp.zeros_like(state.ownership[loser_idx], dtype=bool)
+    )
+    
+    # Also update neutral ownership (loser's cells are no longer neutral)
+    new_ownership_neutral = state.ownership_neutral & ~state.ownership[loser_idx]
+    
+    return state._replace(
+        ownership=new_ownership,
+        ownership_neutral=new_ownership_neutral
+    )
 
 
 @jax.jit
@@ -462,6 +557,7 @@ def get_observation(state: GameState, player_idx: int) -> ObservationJax:
         opponent_land_count=info.land[opponent_idx],
         opponent_army_count=info.army[opponent_idx],
         timestep=state.time,
+        priority=jnp.int32(0),  # Backwards compatibility
     )
 
 
