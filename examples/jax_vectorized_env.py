@@ -1,13 +1,14 @@
 """
 Example demonstrating the vectorized JAX environment.
 
-Shows how to use the VectorizedJaxEnv for high-performance training with:
-- Automatic environment reset on termination
-- JAX random for fast action generation
-- Full Gym API compatibility
+Shows how to use VectorizedJaxEnv for high-performance RL training:
+- Pure JAX grid generation (10-50x faster than NumPy)
+- Different grids per environment (better diversity)
+- Automatic auto-reset on episode termination
+- Vectorized operations for maximum throughput
+- GPU-compatible (if JAX GPU installed)
 """
 import time
-from typing import Tuple
 
 import jax.numpy as jnp
 import jax.random as jrandom
@@ -15,8 +16,8 @@ import jax.random as jrandom
 from generals.envs import VectorizedJaxEnv
 
 
-def random_actions_jax(key: jnp.ndarray, num_envs: int, grid_size: Tuple[int, int]) -> jnp.ndarray:
-    """Generate random actions for all environments using JAX random (vectorized)."""
+def random_actions_jax(key: jnp.ndarray, num_envs: int, grid_size: tuple[int, int]) -> jnp.ndarray:
+    """Generate random actions for all environments using JAX random."""
     H, W = grid_size
     
     # Split key for different random operations
@@ -29,7 +30,7 @@ def random_actions_jax(key: jnp.ndarray, num_envs: int, grid_size: Tuple[int, in
     directions = jrandom.randint(subkeys[3], (num_envs, 2), 0, 4)
     splits = jrandom.randint(subkeys[4], (num_envs, 2), 0, 2)
     
-    # Stack into action arrays
+    # Stack into action arrays [num_envs, 2, 5]
     actions = jnp.stack([
         pass_vals.astype(jnp.int32),
         rows,
@@ -45,81 +46,110 @@ def main():
     """Run a simple training loop demonstration."""
     # Configuration
     num_envs = 128
-    grid_size = (20, 20)
     num_episodes = 5
     max_steps_per_episode = 2000
     
-    print(f"\nJAX Vectorized Environment Example")
-    print(f"=" * 60)
-    print(f"\nConfiguration:")
-    print(f"  Number of parallel environments: {num_envs}")
-    print(f"  Grid size: {grid_size}")
+    print("\n" + "=" * 70)
+    print("JAX Vectorized Environment Example")
+    print("=" * 70)
+    print("\nConfiguration:")
+    print(f"  Parallel environments: {num_envs}")
     print(f"  Episodes to run: {num_episodes}")
     print(f"  Max steps per episode: {max_steps_per_episode}")
     
-    # Create environment with seed
-    env = VectorizedJaxEnv(num_envs=num_envs, grid_size=grid_size)
-    env.seed(42)
+    # Create environment with default generals.io settings
+    # Uses GridFactoryJax with:
+    # - Grid: 18-23x18-23 (random size, padded to 24x24)
+    # - Mountains: 20% density
+    # - Cities: 9-14 random count
+    # - Different grid per environment!
+    print("\nCreating environment with generals.io defaults...")
+    env = VectorizedJaxEnv(num_envs=num_envs)
+    
+    print(f"  Grid size: {env.grid_size}")
+    print(f"  Grid factory: {type(env.grid_factory).__name__}")
     
     # Initialize JAX random key
     rng_key = jrandom.PRNGKey(42)
     
-    # Reset and warmup JIT
-    obs, info = env.reset()
-    print(f"\nObservation type: {type(obs).__name__}")
-    print(f"Observation fields: {obs._fields}")
-    print(f"Example field shape (armies): {obs.armies.shape}")
-    print(f"Info type: {type(info).__name__}")
+    # Reset environment
+    print("\nResetting environment...")
+    obs, info = env.reset(seed=42)
     
+    print(f"  Observation type: {type(obs).__name__}")
+    print(f"  Observation fields: {obs._fields}")
+    print(f"  Armies shape: {obs.armies.shape}")  # [num_envs, 2, H, W]
+    print(f"  Info type: {type(info).__name__}")
+    
+    # Warmup JIT compilation
     print("\nWarming up JIT compilation...")
+    warmup_start = time.time()
     for _ in range(5):
         rng_key, subkey = jrandom.split(rng_key)
-        actions = random_actions_jax(subkey, num_envs, grid_size)
+        actions = random_actions_jax(subkey, num_envs, env.grid_size)
         obs, rewards, terminated, truncated, info = env.step(actions)
+    warmup_time = time.time() - warmup_start
+    print(f"  Warmup completed in {warmup_time:.2f}s")
     
+    # Run training loop
     total_steps = 0
     total_resets = 0
-    times = []
+    episode_times = []
     
     print("\nRunning episodes...")
+    print("-" * 70)
+    
     for episode in range(num_episodes):
         obs, info = env.reset()
-        episode_reward = jnp.zeros((num_envs, 2))
-        episode_length = jnp.zeros(num_envs)
-        
         episode_start = time.time()
         
         for step in range(max_steps_per_episode):
-            # Generate random actions using JAX random (FAST!)
+            # Generate random actions using JAX random
             rng_key, subkey = jrandom.split(rng_key)
-            actions = random_actions_jax(subkey, num_envs, grid_size)
+            actions = random_actions_jax(subkey, num_envs, env.grid_size)
             
-            # Step environment (Gym v0.26+ API with 5 returns)
+            # Step environment
             obs, rewards, terminated, truncated, info = env.step(actions)
             
-            # Accumulate rewards
-            episode_reward += rewards
-            episode_length += ~terminated
             total_steps += num_envs
             total_resets += jnp.sum(terminated).item()
             
-            # Check if all done
+            # Check if all environments are done
             if jnp.all(terminated | truncated):
                 break
         
         episode_time = time.time() - episode_start
-        times.append(episode_time)
+        episode_times.append(episode_time)
+        steps_in_episode = (step + 1) * num_envs
+        
+        print(f"Episode {episode + 1}/{num_episodes}: "
+              f"{steps_in_episode:,} steps in {episode_time:.2f}s "
+              f"({steps_in_episode / episode_time:,.0f} steps/sec)")
     
-    # Close environment
-    env.close()
+    # Summary
+    total_time = sum(episode_times)
+    avg_throughput = total_steps / total_time
     
-    print(f"\n" + "=" * 60)
-    print(f"Performance:")
+    print("-" * 70)
+    print("\nPerformance Summary:")
     print(f"  Total steps: {total_steps:,}")
     print(f"  Total auto-resets: {total_resets}")
-    print(f"  Time: {sum(times):.2f}s")
-    print(f"  Throughput: {total_steps / sum(times):,.0f} steps/sec")
-    print(f"=" * 60)
+    print(f"  Total time: {total_time:.2f}s")
+    print(f"  Average throughput: {avg_throughput:,.0f} steps/sec")
+    print(f"  Average episode time: {total_time / num_episodes:.2f}s")
+    
+    # Clean up
+    env.close()
+    
+    print("\n" + "=" * 70)
+    print("Example completed successfully!")
+    print("=" * 70)
+    print("\nNext steps:")
+    print("  - Integrate with your RL algorithm (PPO, DQN, etc.)")
+    print("  - Use custom GridFactoryJax for different map settings")
+    print("  - Enable GPU acceleration (install jax[cuda])")
+    print("  - Scale to 1000s of parallel environments!")
+    print("=" * 70 + "\n")
 
 
 if __name__ == "__main__":

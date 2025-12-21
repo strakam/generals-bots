@@ -39,14 +39,15 @@ DIRECTIONS = jnp.array([
 
 def create_initial_state(grid: jnp.ndarray) -> GameState:
     """
-    Create initial game state from a grid.
+    Create initial game state from a numeric JAX grid.
     
     Args:
-        grid: String array where:
-            'A', 'B' = generals for player 0, 1
-            '0'-'9', 'x' = cities
-            '#' = mountains
-            '.' = passable/neutral
+        grid: Numeric array where:
+            -2 = mountain
+            0 = passable/neutral
+            1 = general player 0
+            2 = general player 1
+            40-50 = cities (army count)
     
     Returns:
         GameState NamedTuple containing all game state arrays
@@ -54,34 +55,31 @@ def create_initial_state(grid: jnp.ndarray) -> GameState:
     H, W = grid.shape
     
     # Decode grid
-    is_general_0 = (grid == ord('A'))
-    is_general_1 = (grid == ord('B'))
-    generals = (is_general_0 | is_general_1).astype(jnp.bool_)
+    is_general_0 = (grid == 1)
+    is_general_1 = (grid == 2)
+    generals = (is_general_0 | is_general_1)
     
-    mountains = (grid == ord('#')).astype(jnp.bool_)
-    passable = ~mountains
+    mountains = (grid == -2)
+    passable = (grid != -2)  # Everything except mountains is passable
     
-    # Cities: digits 0-9 and 'x' (which represents 50)
-    is_digit = (grid >= ord('0')) & (grid <= ord('9'))
-    is_x = (grid == ord('x'))
-    cities = (is_digit | is_x).astype(jnp.bool_)
+    # Cities: values 40-50
+    cities = (grid >= 40) & (grid <= 50)
     
     # Initial ownership
     ownership = jnp.stack([
-        is_general_0.astype(jnp.bool_),
-        is_general_1.astype(jnp.bool_),
+        is_general_0,
+        is_general_1,
     ])
     
     # Neutral cells (passable but not owned)
-    ownership_neutral = (passable & ~is_general_0 & ~is_general_1).astype(jnp.bool_)
+    ownership_neutral = passable & ~is_general_0 & ~is_general_1
     
     # Initial armies
+    # Generals start with 1 army
     armies = jnp.where(is_general_0 | is_general_1, 1, 0).astype(jnp.int32)
     
-    # Add city armies (40 + digit value, or 50 for 'x')
-    city_costs = jnp.where(is_digit, grid - ord('0'), 0)
-    city_costs = jnp.where(is_x, 10, city_costs)
-    armies = armies + 40 * cities.astype(jnp.int32) + city_costs
+    # Cities have their encoded army value
+    armies = jnp.where(cities, grid, armies)
     
     # Find general positions
     general_pos_0 = jnp.argwhere(is_general_0, size=1, fill_value=-1)[0]
