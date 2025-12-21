@@ -149,17 +149,17 @@ def test_get_observation():
     
     obs = game_jax.get_observation(state, 0)
     
-    # Check observation structure
-    assert 'armies' in obs
-    assert 'owned_cells' in obs
-    assert 'fog_cells' in obs
-    assert 'timestep' in obs
+    # Check observation structure (NamedTuple has these fields)
+    assert hasattr(obs, 'armies')
+    assert hasattr(obs, 'owned_cells')
+    assert hasattr(obs, 'fog_cells')
+    assert hasattr(obs, 'timestep')
     
     # Player 0 should see their general
-    assert obs['armies'][0, 0] == 1
+    assert obs.armies[0, 0] == 1
     
     # Player 0 should not see player 1's general (too far)
-    assert obs['armies'][3, 3] == 0  # Hidden in fog
+    assert obs.armies[3, 3] == 0  # Hidden in fog
 
 
 def test_global_update():

@@ -3,11 +3,14 @@ Example demonstrating JAX-based game implementation for high-performance trainin
 
 This example shows how to use the JAX game implementation for efficient
 parallel environment execution, suitable for RL training.
+Fully optimized with JIT compilation and JAX random for MAXIMUM SPEED.
 """
 import time
+from typing import Tuple
 
 import jax
 import jax.numpy as jnp
+import jax.random as jrandom
 import numpy as np
 
 from generals.core import game_jax
@@ -34,27 +37,24 @@ def create_jax_state_from_factory():
     return game_jax.create_initial_state(grid_jax)
 
 
-def random_actions(batch_size: int = 1):
-    """Generate random actions for both players."""
-    return jnp.array([
-        [
-            [
-                np.random.randint(0, 2),   # pass
-                np.random.randint(0, 10),  # row
-                np.random.randint(0, 10),  # col
-                np.random.randint(0, 4),   # direction
-                0,                          # split
-            ],
-            [
-                np.random.randint(0, 2),
-                np.random.randint(0, 10),
-                np.random.randint(0, 10),
-                np.random.randint(0, 4),
-                0,
-            ],
-        ]
-        for _ in range(batch_size)
-    ], dtype=jnp.int32)
+def random_actions_jax(key: jnp.ndarray, batch_size: int, grid_dims: Tuple[int, int] = (10, 10)):
+    """Generate random actions for both players (uses JAX random)."""
+    H, W = grid_dims
+    
+    # Split key into enough subkeys
+    subkeys = jrandom.split(key, 5)
+    
+    # Generate all random values at once
+    pass_vals = jrandom.randint(subkeys[0], (batch_size, 2), 0, 2)
+    rows = jrandom.randint(subkeys[1], (batch_size, 2), 0, H)
+    cols = jrandom.randint(subkeys[2], (batch_size, 2), 0, W)
+    directions = jrandom.randint(subkeys[3], (batch_size, 2), 0, 4)
+    splits = jnp.zeros((batch_size, 2), dtype=jnp.int32)  # No splits for simplicity
+    
+    # Stack into action format [batch, 2_players, 5]
+    actions = jnp.stack([pass_vals, rows, cols, directions, splits], axis=-1)
+    
+    return actions
 
 
 def example_single_environment():
@@ -66,26 +66,29 @@ def example_single_environment():
     state = create_jax_state_from_factory()
     jitted_step = jax.jit(game_jax.step)
     
+    rng_key = jrandom.PRNGKey(0)
+    
     # Run for 100 steps
     for i in range(100):
-        actions = random_actions(1)[0]  # Remove batch dimension
+        rng_key, subkey = jrandom.split(rng_key)
+        actions = random_actions_jax(subkey, 1)[0]  # Remove batch dimension
         state, info = jitted_step(state, actions)
         
-        if info['is_done']:
+        if info.is_done:
             print(f"\nGame finished at step {i}")
-            print(f"Winner: Player {info['winner']}")
+            print(f"Winner: Player {info.winner}")
             break
         
         if i % 20 == 0:
-            print(f"Step {i}: P0 army={info['army'][0]}, P1 army={info['army'][1]}")
+            print(f"Step {i}: P0 army={info.army[0]}, P1 army={info.army[1]}")
     
     # Get final observations
     obs_p0 = game_jax.get_observation(state, 0)
     obs_p1 = game_jax.get_observation(state, 1)
     
     print(f"\nFinal state:")
-    print(f"  Player 0: {obs_p0['owned_land_count']} land, {obs_p0['owned_army_count']} army")
-    print(f"  Player 1: {obs_p1['owned_land_count']} land, {obs_p1['owned_army_count']} army")
+    print(f"  Player 0: {obs_p0.owned_land_count} land, {obs_p0.owned_army_count} army")
+    print(f"  Player 1: {obs_p1.owned_land_count} land, {obs_p1.owned_army_count} army")
 
 
 def example_batched_environments():
@@ -95,6 +98,7 @@ def example_batched_environments():
     print("=" * 60)
     
     num_envs = 64
+    rng_key = jrandom.PRNGKey(42)
     
     # Create batched state
     state = create_jax_state_from_factory()
@@ -108,8 +112,9 @@ def example_batched_environments():
     
     # Warmup
     print("Warming up JIT compilation...")
-    actions = random_actions(num_envs)
     for _ in range(5):
+        rng_key, subkey = jrandom.split(rng_key)
+        actions = random_actions_jax(subkey, num_envs)
         batched_state, _ = jitted_step(batched_state, actions)
     
     # Reset and benchmark
@@ -122,13 +127,14 @@ def example_batched_environments():
     start_time = time.time()
     
     for i in range(1000):
-        actions = random_actions(num_envs)
+        rng_key, subkey = jrandom.split(rng_key)
+        actions = random_actions_jax(subkey, num_envs)
         batched_state, infos = jitted_step(batched_state, actions)
         
         if i % 200 == 0:
-            num_done = jnp.sum(infos['is_done']).item()
-            avg_army_p0 = jnp.mean(infos['army'][:, 0]).item()
-            avg_army_p1 = jnp.mean(infos['army'][:, 1]).item()
+            num_done = jnp.sum(infos.is_done).item()
+            avg_army_p0 = jnp.mean(infos.army[:, 0]).item()
+            avg_army_p1 = jnp.mean(infos.army[:, 1]).item()
             print(f"Step {i}: {num_done} done, avg armies: P0={avg_army_p0:.1f}, P1={avg_army_p1:.1f}")
     
     elapsed = time.time() - start_time
@@ -148,6 +154,7 @@ def example_training_loop():
     
     num_envs = 32
     rollout_steps = 128
+    rng_key = jrandom.PRNGKey(123)
     
     # Initialize environments
     state = create_jax_state_from_factory()
@@ -172,7 +179,8 @@ def example_training_loop():
         # Collect rollout
         for step in range(rollout_steps):
             # In real training, you'd call your policy here
-            actions = random_actions(num_envs)
+            rng_key, subkey = jrandom.split(rng_key)
+            actions = random_actions_jax(subkey, num_envs)
             
             # Step environments
             new_state, infos = jitted_step(batched_state, actions)

@@ -1,30 +1,18 @@
-"""
-JAX-based game implementation for high-performance parallel environments.
-
-Key differences from game.py:
-- Fixed 2 players (no dynamic agent names)
-- Pure functional approach (no classes)
-- Arrays instead of dicts for ownership
-- Designed for batched/vectorized execution
-- JIT-compilable with JAX
-
-State representation:
-- armies: [H, W] - army count per cell
-- ownership: [2, H, W] - player ownership (player 0, player 1)
-- ownership_neutral: [H, W] - neutral cell mask
-- generals: [H, W] - general positions (static)
-- cities: [H, W] - city positions (static)
-- mountains: [H, W] - mountain positions (static)
-- passable: [H, W] - passable cells (static)
-- general_positions: [2, 2] - (row, col) for each player's general
-- time: scalar - current timestep
-- winner: scalar - winner index (-1 for none, 0 or 1 for players)
-"""
-
 import jax
 import jax.numpy as jnp
 from jax import lax
-from typing import Dict, Tuple, Any
+from typing import Dict, Tuple, Any, NamedTuple
+
+from generals.core.observation_jax import ObservationJax
+
+
+class GameInfo(NamedTuple):
+    """Game information NamedTuple for efficient JAX operations."""
+    army: jnp.ndarray  # [2] array of army counts for both players
+    land: jnp.ndarray  # [2] array of land counts for both players
+    is_done: jnp.ndarray  # scalar boolean
+    winner: jnp.ndarray  # scalar int (-1 for none, 0 or 1 for player)
+    time: jnp.ndarray  # scalar int
 
 # Direction constants matching config.py
 DIRECTIONS = jnp.array([
@@ -339,7 +327,7 @@ def global_update(state: Dict[str, jnp.ndarray]) -> Dict[str, jnp.ndarray]:
 def step(
     state: Dict[str, jnp.ndarray],
     actions: jnp.ndarray,
-) -> Tuple[Dict[str, jnp.ndarray], Dict[str, Any]]:
+) -> Tuple[Dict[str, jnp.ndarray], GameInfo]:
     """
     Execute one game step with actions from both players.
     
@@ -349,7 +337,7 @@ def step(
                  Each action is [pass, row, col, direction, split]
     
     Returns:
-        (new_state, info) tuple
+        (new_state, info) tuple where info is GameInfo NamedTuple
     """
     done_before = state['winner'] >= 0
     
@@ -375,7 +363,7 @@ def step(
     return state, info
 
 
-def get_info(state: Dict[str, jnp.ndarray]) -> Dict[str, Any]:
+def get_info(state: Dict[str, jnp.ndarray]) -> GameInfo:
     """Compute game info (army/land counts, done status)."""
     armies = state['armies']
     ownership = state['ownership']
@@ -387,16 +375,16 @@ def get_info(state: Dict[str, jnp.ndarray]) -> Dict[str, Any]:
     
     is_done = state['winner'] >= 0
     
-    return {
-        'army': jnp.stack([army_0, army_1]),
-        'land': jnp.stack([land_0, land_1]),
-        'is_done': is_done,
-        'winner': state['winner'],
-        'time': state['time'],
-    }
+    return GameInfo(
+        army=jnp.stack([army_0, army_1]),
+        land=jnp.stack([land_0, land_1]),
+        is_done=is_done,
+        winner=state['winner'],
+        time=state['time'],
+    )
 
 
-def get_observation(state: Dict[str, jnp.ndarray], player_idx: int) -> Dict[str, jnp.ndarray]:
+def get_observation(state: Dict[str, jnp.ndarray], player_idx: int) -> ObservationJax:
     """
     Get observation for a specific player (with fog of war).
     
@@ -405,7 +393,7 @@ def get_observation(state: Dict[str, jnp.ndarray], player_idx: int) -> Dict[str,
         player_idx: Player index (0 or 1)
     
     Returns:
-        Dictionary with observation arrays
+        ObservationJax named tuple with observation arrays
     """
     visible = get_visibility(state['ownership'][player_idx])
     invisible = ~visible
@@ -428,29 +416,29 @@ def get_observation(state: Dict[str, jnp.ndarray], player_idx: int) -> Dict[str,
     # Compute stats
     info = get_info(state)
     
-    return {
-        'armies': armies,
-        'generals': generals,
-        'cities': cities,
-        'mountains': mountains,
-        'neutral_cells': neutral_cells,
-        'owned_cells': owned_cells,
-        'opponent_cells': opponent_cells,
-        'fog_cells': fog_cells,
-        'structures_in_fog': structures_in_fog,
-        'owned_land_count': info['land'][player_idx],
-        'owned_army_count': info['army'][player_idx],
-        'opponent_land_count': info['land'][opponent_idx],
-        'opponent_army_count': info['army'][opponent_idx],
-        'timestep': state['time'],
-    }
+    return ObservationJax(
+        armies=armies,
+        generals=generals,
+        cities=cities,
+        mountains=mountains,
+        neutral_cells=neutral_cells,
+        owned_cells=owned_cells,
+        opponent_cells=opponent_cells,
+        fog_cells=fog_cells,
+        structures_in_fog=structures_in_fog,
+        owned_land_count=info.land[player_idx],
+        owned_army_count=info.army[player_idx],
+        opponent_land_count=info.land[opponent_idx],
+        opponent_army_count=info.army[opponent_idx],
+        timestep=state['time'],
+    )
 
 
 # Vectorized versions for batched execution
 def batch_step(
     states: Dict[str, jnp.ndarray],
     actions: jnp.ndarray,
-) -> Tuple[Dict[str, jnp.ndarray], Dict[str, Any]]:
+) -> Tuple[Dict[str, jnp.ndarray], GameInfo]:
     """
     Vectorized step for multiple environments.
     
@@ -459,6 +447,6 @@ def batch_step(
         actions: [B, 2, 5] array of actions
     
     Returns:
-        (batched_states, batched_info)
+        (batched_states, batched_info) where info is batched GameInfo
     """
     return jax.vmap(step)(states, actions)
