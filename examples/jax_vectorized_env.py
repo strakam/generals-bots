@@ -99,7 +99,6 @@ def main():
     
     print("\nRunning episodes...")
     print("-" * 70)
-    
     for episode in range(num_episodes):
         obs, info = env.reset()
         episode_start = time.time()

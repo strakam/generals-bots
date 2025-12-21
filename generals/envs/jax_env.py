@@ -144,26 +144,22 @@ class VectorizedJaxEnv:
         # Execute actions
         new_states, infos = self._jitted_step(self.states, actions)
         
-        # Auto-reset terminated environments
-        if jnp.any(infos.is_done):
-            num_done = jnp.sum(infos.is_done).item()
-            self._rng_key, *reset_keys = jrandom.split(self._rng_key, num_done + 1)
+        # Check if any env needs reset
+        any_done = jnp.any(infos.is_done)
+        
+        # Only do expensive reset if needed (but keep it pure JAX)
+        if any_done:
+            # Generate new grids for all environments
+            self._rng_key, *reset_keys = jrandom.split(self._rng_key, self.num_envs + 1)
+            fresh_grids = self._generate_grids_batched(jnp.stack(reset_keys))
             
-            # Generate new grids
-            new_grids = self._generate_grids_batched(jnp.stack(reset_keys))
-            done_indices = jnp.where(infos.is_done)[0]
+            # Conditionally use fresh grid or continued state based on is_done
+            def select_state(fresh, continued):
+                ndim = fresh.ndim
+                expanded_done = infos.is_done.reshape((-1,) + (1,) * (ndim - 1))
+                return jnp.where(expanded_done, fresh, continued)
             
-            # Replace done environments
-            def replace_done(i, state):
-                done_idx = done_indices[i]
-                new_state = jax.tree.map(lambda x: x[i], new_grids)
-                return jax.tree.map(
-                    lambda s, n: s.at[done_idx].set(n),
-                    state,
-                    new_state
-                )
-            
-            self.states = jax.lax.fori_loop(0, num_done, replace_done, new_states)
+            self.states = jax.tree.map(select_state, fresh_grids, new_states)
         else:
             self.states = new_states
         
