@@ -5,7 +5,7 @@ Pure JAX implementation optimized for GPU training.
 Uses functional grid generation for fast, vectorized operations.
 """
 
-from typing import Tuple, Optional, Any, Literal
+from typing import Tuple, Optional, Any, Literal, Union, Callable
 from functools import partial
 
 import jax
@@ -18,6 +18,7 @@ from generals.core.grid_jax import generate_grid
 from generals.core.observation_jax import ObservationJax
 from generals.core.game_jax import GameInfo, GameState
 from generals.envs.jax_rendering_adapter import JaxGameAdapter
+from generals.rewards import get_reward_fn
 
 
 class VectorizedJaxEnv:
@@ -56,6 +57,8 @@ class VectorizedJaxEnv:
         render_mode: Optional[str] = None,
         render_env_index: int = 0,
         speed_multiplier: float = 1.0,
+        reward_fn: Union[str, Callable] = 'land_difference',
+        truncation: Optional[int] = None,
     ):
         """
         Args:
@@ -66,10 +69,11 @@ class VectorizedJaxEnv:
             mountain_density: Fraction of tiles that are mountains
             num_castles: (min, max) number of castles
             render_mode: 'human', 'rgb_array', or None
-            agent_names: Names for 2 agents
-            agent_colors: RGB colors for agents
             render_env_index: Which env to render (0 to num_envs-1)
             speed_multiplier: Rendering speed
+            reward_fn: Reward function name or callable. Options: 'land_difference', 
+                'army_and_land', 'win_lose', 'land_with_win_bonus', or custom function
+            truncation: Max timesteps before truncation (None = no truncation)
         """
         self.num_envs = num_envs
         self.mode = mode
@@ -79,6 +83,11 @@ class VectorizedJaxEnv:
         self.render_mode = render_mode
         self.render_env_index = min(render_env_index, num_envs - 1)
         self.speed_multiplier = speed_multiplier
+        self.truncation = truncation
+        
+        # Reward function
+        self.reward_fn = get_reward_fn(reward_fn)
+        self._compute_rewards = jax.jit(jax.vmap(self.reward_fn))
         
         # Agents
         self.agent_names = ['Red', 'Blue']
@@ -140,12 +149,21 @@ class VectorizedJaxEnv:
         self,
         actions: jnp.ndarray,
     ) -> Tuple[ObservationJax, jnp.ndarray, jnp.ndarray, jnp.ndarray, GameInfo]:
-        """Step all environments, auto-reset terminated ones."""
+        """Step all environments, auto-reset terminated/truncated ones."""
         # Execute actions
         new_states, infos = self._jitted_step(self.states, actions)
         
-        # Check if any env needs reset
-        any_done = jnp.any(infos.is_done)
+        # Terminated: game ended (someone won)
+        terminated = infos.is_done
+        
+        # Truncated: max timesteps reached (only if not terminated)
+        if self.truncation is not None:
+            truncated = (infos.time >= self.truncation) & ~terminated
+        else:
+            truncated = jnp.zeros(self.num_envs, dtype=jnp.bool_)
+        
+        # Reset if either terminated or truncated
+        any_done = jnp.any(terminated | truncated)
         
         # Only do expensive reset if needed (but keep it pure JAX)
         if any_done:
@@ -153,10 +171,11 @@ class VectorizedJaxEnv:
             self._rng_key, *reset_keys = jrandom.split(self._rng_key, self.num_envs + 1)
             fresh_grids = self._generate_grids_batched(jnp.stack(reset_keys))
             
-            # Conditionally use fresh grid or continued state based on is_done
+            # Conditionally use fresh grid or continued state based on done
+            done_mask = terminated | truncated
             def select_state(fresh, continued):
                 ndim = fresh.ndim
-                expanded_done = infos.is_done.reshape((-1,) + (1,) * (ndim - 1))
+                expanded_done = done_mask.reshape((-1,) + (1,) * (ndim - 1))
                 return jnp.where(expanded_done, fresh, continued)
             
             self.states = jax.tree.map(select_state, fresh_grids, new_states)
@@ -165,10 +184,7 @@ class VectorizedJaxEnv:
         
         # Observations and rewards
         obs = self._get_observations()
-        rewards = infos.land[:, 0] - infos.land[:, 1]
-        rewards = jnp.stack([rewards, -rewards], axis=1)
-        terminated = infos.is_done
-        truncated = jnp.zeros(self.num_envs, dtype=jnp.bool_)
+        rewards = self._compute_rewards(infos, self.states)
         
         return obs, rewards, terminated, truncated, infos
     
