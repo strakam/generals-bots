@@ -1,10 +1,3 @@
-"""
-JAX-based vectorized Generals.io environment.
-
-Pure JAX implementation optimized for GPU training.
-Uses functional grid generation for fast, vectorized operations.
-"""
-
 from typing import Tuple, Optional, Any, Literal, Union, Callable
 from functools import partial
 
