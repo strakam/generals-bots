@@ -74,10 +74,18 @@ def rollout_step(states, network, key):
     truncated = (new_states.time >= 500) & ~terminated
     dones = terminated | truncated
     
-    # Auto-reset if done
-    grid = jnp.zeros((4, 4), dtype=jnp.int32)
-    grid = grid.at[0, 0].set(1).at[3, 3].set(2)
-    grids = jnp.stack([grid] * num_envs)
+    # Auto-reset if done with random but different general locations
+    def make_random_general_grid(key):
+        grid = jnp.zeros((4, 4), dtype=jnp.int32)
+        # Sample two different random positions out of 16
+        idx = jrandom.choice(key, 16, shape=(2,), replace=False)
+        pos_a = (idx[0] // 4, idx[0] % 4)
+        pos_b = (idx[1] // 4, idx[1] % 4)
+        grid = grid.at[pos_a].set(1).at[pos_b].set(2)
+        return grid
+
+    reset_keys = jrandom.split(key, num_envs)
+    grids = jax.vmap(make_random_general_grid)(reset_keys)
     reset_states = jax.vmap(game.create_initial_state)(grids)
     
     final_states = jax.tree.map(
