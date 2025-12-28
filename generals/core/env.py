@@ -22,7 +22,7 @@ class GeneralsEnv:
     """
     Vectorized environment for Generals.io.
     """
-    def __init__(self, truncation: int | None = 500, render: bool = False):
+    def __init__(self, truncation: int = 5000, render: bool = False):
         self.truncation = truncation
         self.render = render
     
@@ -59,12 +59,7 @@ class GeneralsEnv:
         
         # Terminated: game ended (someone won)
         terminated = info.is_done
-        
-        # Truncated: max timesteps reached (only if not terminated)
-        if self.truncation is not None:
-            truncated = (new_state.time >= self.truncation) & ~terminated
-        else:
-            truncated = jnp.bool_(False)
+        truncated = (new_state.time >= self.truncation) & ~terminated
         
         # Auto-reset if done or truncated
         should_reset = terminated | truncated

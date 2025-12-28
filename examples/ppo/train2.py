@@ -143,7 +143,7 @@ def train_step(network, opt_state, batch, optimizer):
 def main():
     num_envs = int(sys.argv[1]) if len(sys.argv) > 1 else 256
     num_steps = 256
-    num_iterations = 300
+    num_iterations = 500
     lr = 3e-4
     
     print(f"JAX PPO (GeneralsEnv API)")
