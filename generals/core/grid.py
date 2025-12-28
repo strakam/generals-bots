@@ -1,11 +1,8 @@
 from functools import partial
-from typing import Literal
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 
-from .config import MOUNTAIN
 
 @partial(jax.jit, static_argnames=['grid_dims', 'pad_to', 'mountain_density', 'num_cities_range',
                                     'min_generals_distance', 'max_generals_distance', 'castle_val_range'])
@@ -18,7 +15,7 @@ def generate_grid(
     min_generals_distance: int = 17,
     max_generals_distance: int | None = None,
     castle_val_range: tuple[int, int] = (40, 51),
-) -> tuple[jnp.ndarray, bool]:
+) -> jnp.ndarray:
     """
     Generate grid using JAX-optimal algorithm with guaranteed validity.
     
@@ -45,7 +42,7 @@ def generate_grid(
         castle_val_range: (min, max) army value for cities
         
     Returns:
-        (grid, is_valid): Grid is always valid (validity=True always)
+        Grid is always valid (validity=True always)
     """
     keys = jax.random.split(key, 11)
     
@@ -193,7 +190,7 @@ def generate_grid(
         )
     
     # Grid is always valid by construction
-    return grid, True
+    return grid
 
 
 def sample_from_mask(mask: jax.Array, key: jax.random.PRNGKey) -> tuple[int, int]:

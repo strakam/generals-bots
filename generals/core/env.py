@@ -2,11 +2,11 @@ from typing import NamedTuple
 
 import jax
 import jax.numpy as jnp
-import jax.random as jrandom
 
 from generals.core import game
 from generals.core.game import GameInfo, GameState, create_initial_state
 from generals.core.game import step as game_step
+from generals.core.grid import generate_grid
 from generals.core.observation import Observation
 
 
@@ -22,19 +22,37 @@ class GeneralsEnv:
     """
     Vectorized environment for Generals.io.
     """
-    def __init__(self, truncation: int = 5000, render: bool = False):
+    def __init__(
+        self,
+        grid_dims: tuple[int, int] = (4, 4),
+        truncation: int = 500,
+        render: bool = False,
+        mountain_density: float = 0.15,
+        num_cities_range: tuple[int, int] = (0, 2),
+        min_generals_distance: int = 3,
+    ):
+        self.grid_dims = grid_dims
         self.truncation = truncation
         self.render = render
+        self.mountain_density = mountain_density
+        self.num_cities_range = num_cities_range
+        self.min_generals_distance = min_generals_distance
     
     def reset(self, key: jnp.ndarray) -> GameState:
-        """Reset to 4x4 grid with random general positions."""
-        grid = jnp.zeros((4, 4), dtype=jnp.int32)
-        # Sample two different random positions out of 16
-        idx = jrandom.choice(key, 16, shape=(2,), replace=False)
-        pos_a = (idx[0] // 4, idx[0] % 4)
-        pos_b = (idx[1] // 4, idx[1] % 4)
-        grid = grid.at[pos_a].set(1).at[pos_b].set(2)
-        return create_initial_state(grid)
+        """Reset using grid generation with mountains and cities."""
+        # Explicitly set pad_to to grid size to avoid automatic padding
+        h, w = self.grid_dims
+        grid = generate_grid(
+            key,
+            grid_dims=self.grid_dims,
+            pad_to=max(h, w),  # No extra padding, keep original size
+            mountain_density=self.mountain_density,
+            num_cities_range=self.num_cities_range,
+            min_generals_distance=self.min_generals_distance,
+            max_generals_distance=None,
+            castle_val_range=(40, 51),
+        )
+        return create_initial_state(grid.astype(jnp.int32))
     
     def step(
         self,

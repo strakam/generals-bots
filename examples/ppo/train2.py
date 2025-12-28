@@ -142,28 +142,29 @@ def train_step(network, opt_state, batch, optimizer):
 
 def main():
     num_envs = int(sys.argv[1]) if len(sys.argv) > 1 else 256
-    num_steps = 256
+    num_steps = 300
     num_iterations = 500
     lr = 3e-4
+    grid_size = 15  # Must match network architecture
     
     print(f"JAX PPO (GeneralsEnv API)")
     print(f"Environments:  {num_envs}")
     print(f"Device:        {jax.devices()[0]}")
-    print(f"Grid:          4x4 with composite rewards")
+    print(f"Grid:          {grid_size}x{grid_size} with composite rewards")
     print()
     
     # Initialize
     key = jrandom.PRNGKey(42)
     key, net_key = jrandom.split(key)
-    network = PolicyValueNetwork(net_key, grid_size=4)
+    network = PolicyValueNetwork(net_key, grid_size=grid_size)
     optimizer = optax.adam(lr)
     opt_state = optimizer.init(eqx.filter(network, eqx.is_array))
     
     params, _ = eqx.partition(network, eqx.is_array)
     print(f"Parameters: {sum(x.size for x in jax.tree.leaves(params)):,}")
     
-    # Create single environment instance
-    env = GeneralsEnv(truncation=500)
+    # Create single environment instance with matching grid size
+    env = GeneralsEnv(grid_dims=(grid_size, grid_size), truncation=500)
     
     # Initialize states (vmap over reset keys)
     key, *reset_keys = jrandom.split(key, num_envs + 1)
