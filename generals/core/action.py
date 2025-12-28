@@ -1,100 +1,186 @@
-import numpy as np
+"""
+JAX-optimized action utilities using arrays and JIT-compatible functions.
 
-from generals.core.config import DIRECTIONS, Direction
+Provides:
+- Pure JAX array-based actions (no custom classes)
+- JIT-compiled valid move mask computation
+- Vectorizable action utilities
+- Valid action sampling using action masks
+"""
 
-from .observation import Observation
+import jax
+import jax.numpy as jnp
+import jax.random as jrandom
+from jax import lax
 
 
-class Action(np.ndarray):
+# Direction constants matching config.py
+DIRECTIONS = jnp.array([
+    [-1, 0],  # UP
+    [1, 0],   # DOWN
+    [0, -1],  # LEFT
+    [0, 1],   # RIGHT
+], dtype=jnp.int32)
+
+
+def create_action(to_pass: bool = False, row: int = 0, col: int = 0, 
+                  direction: int = 0, to_split: bool = False) -> jnp.ndarray:
     """
-    Action objects walk & talk like typical numpy-arrays, but have a more descriptive and narrow interface.
-    """
-
-    def __new__(cls, to_pass: bool, row: int = 0, col: int = 0, direction: int | Direction = 0, to_split: bool = False):
-        """
-        Args:
-            cls: This argument is automatically provided by Python and is the Action class.
-            to_pass: Indicates whether the agent should pass/skip this turn i.e. do nothing. If to_pass is True,
-                the other arguments, like row & col, are effectively ignored.
-            row: The row the agent should move from. In the closed-interval: [0, (grid_height - 1)].
-            col: The column the agent should move from. In the closed-interval: [0, (grid_width - 1)].
-            direction: The direction the agent should move from the tile (row, col). Can either pass an enum-member
-                of Directions or the integer representation of the direction, which is the relevant index into the
-                config.DIRECTIONS array.
-            to_split: Indicates whether the army in (row, col) should be split, then moved in direction.
-        """
-        if isinstance(direction, Direction):
-            direction = DIRECTIONS.index(direction)
-
-        # Note: np.array.view casts the np.array object to type cls, i.e. Action, without modifying
-        # any of the arrays internal representation.
-        action_array = np.array([to_pass, row, col, direction, to_split], dtype=np.int8).view(cls)
-        return action_array
-
-    def is_pass(self) -> bool:
-        return self[0] == 1
-
-    def is_split(self) -> bool:
-        return self[4] == 1
-
-    def __str__(self) -> str:
-        if self.is_pass():
-            return "Action(pass)"
-
-        direction_str = DIRECTIONS[self[3]].name.lower()
-        row, col = self[1], self[2]
-        if self.is_split():
-            return f"Action(split-move {direction_str} from ({row}, {col}))"
-        return f"Action(move {direction_str} from ({row}, {col}))"
-
-    def __repr__(self) -> str:
-        return str(self)
-
-
-def compute_valid_move_mask(observation: Observation) -> np.ndarray:
-    """
-    Return a mask of the valid moves for a given observation.
-
-    A valid move originates from a cell the agent owns, has at least 2 armies on
-    and does not attempt to enter a mountain nor exit the grid.
-
-    A move is distinct from an action. A move only has 3 dimensions: (row, col, direction).
-    Whereas an action also includes to_pass & to_split.
-
+    Create an action array for JAX game.
+    
+    Args:
+        to_pass: Whether to pass this turn
+        row: Source row
+        col: Source column
+        direction: Direction index (0=UP, 1=DOWN, 2=LEFT, 3=RIGHT)
+        to_split: Whether to split the army
+    
     Returns:
-        np.ndarray: an NxNx4 array, where each channel is a boolean mask
-        of valid actions (UP, DOWN, LEFT, RIGHT) for each cell in the grid.
-
-        I.e. valid_action_mask[i, j, k] is 1 if action k is valid in cell (i, j).
+        JAX array [pass, row, col, direction, split] of shape (5,)
     """
-    height, width = observation.owned_cells.shape
+    return jnp.array([
+        int(to_pass), 
+        row, 
+        col, 
+        direction, 
+        int(to_split)
+    ], dtype=jnp.int32)
 
-    ownership_channel = observation.owned_cells
-    more_than_1_army = (observation.armies > 1) * ownership_channel
-    owned_cells_indices = np.argwhere(more_than_1_army)
-    valid_action_mask = np.zeros((height, width, 4), dtype=bool)
 
-    if np.sum(ownership_channel) == 0:
-        return valid_action_mask
+@jax.jit
+def compute_valid_move_mask(
+    armies: jnp.ndarray,
+    owned_cells: jnp.ndarray,
+    mountains: jnp.ndarray,
+) -> jnp.ndarray:
+    """
+    Compute valid move mask for a given observation.
+    
+    A valid move originates from a cell the agent owns, has at least 2 armies,
+    and does not attempt to enter a mountain nor exit the grid.
+    
+    Args:
+        armies: [H, W] army counts
+        owned_cells: [H, W] boolean mask of owned cells
+        mountains: [H, W] boolean mask of mountains
+    
+    Returns:
+        [H, W, 4] boolean mask where mask[i, j, k] indicates if moving
+        from (i, j) in direction k is valid
+    """
+    H, W = armies.shape
+    
+    # Can only move from owned cells with >1 army
+    can_move_from = owned_cells & (armies > 1)
+    
+    # Mountains are not passable
+    passable = ~mountains
+    
+    # Initialize mask
+    valid_mask = jnp.zeros((H, W, 4), dtype=jnp.bool_)
+    
+    # Check each direction
+    for dir_idx in range(4):
+        di, dj = DIRECTIONS[dir_idx]
+        
+        # Compute destination indices for all cells
+        dest_i = jnp.arange(H)[:, None] + di
+        dest_j = jnp.arange(W)[None, :] + dj
+        
+        # Check bounds
+        in_bounds = (
+            (dest_i >= 0) & (dest_i < H) &
+            (dest_j >= 0) & (dest_j < W)
+        )
+        
+        # Safe indexing: clamp to valid range for passable check
+        safe_dest_i = jnp.clip(dest_i, 0, H - 1)
+        safe_dest_j = jnp.clip(dest_j, 0, W - 1)
+        
+        # Check if destination is passable
+        dest_passable = passable[safe_dest_i, safe_dest_j]
+        
+        # Valid if: can move from source, destination in bounds, destination passable
+        valid = can_move_from & in_bounds & dest_passable
+        
+        valid_mask = valid_mask.at[:, :, dir_idx].set(valid)
+    
+    return valid_mask
 
-    # check if destination is road
-    passable_cells = 1 - observation.mountains
 
-    for channel_index, direction in enumerate(DIRECTIONS):
-        destinations = owned_cells_indices + direction.value
+def sample_valid_action_jax(
+    key: jnp.ndarray,
+    observation,
+    allow_pass: bool = True,
+) -> jnp.ndarray:
+    """
+    Sample a valid action for a single player from their observation.
+    
+    Uses the valid move mask to only select legal moves.
+    
+    Args:
+        key: JAX random key
+        observation: Observation for one player [H, W, ...]
+        allow_pass: Whether passing is allowed (always valid)
+    
+    Returns:
+        Action array [5]: [pass, row, col, direction, split]
+    """
+    # Compute valid moves
+    valid_mask = compute_valid_move_mask_obs(observation)  # [H, W, 4]
+    
+    # Flatten the mask to get all valid (row, col, direction) tuples
+    H, W = observation.armies.shape
+    
+    # Get indices where valid_mask is True
+    valid_positions = jnp.argwhere(valid_mask, size=H*W*4, fill_value=-1)
+    
+    # Count valid moves (stop at first -1)
+    num_valid = jnp.sum(jnp.all(valid_positions >= 0, axis=-1))
+    
+    # Decide whether to pass or make a move
+    key1, key2, key3 = jrandom.split(key, 3)
+    
+    # Pass with some probability if allowed and there are valid moves
+    should_pass = allow_pass & (jrandom.uniform(key1) < 0.1)
+    
+    # If no valid moves, must pass
+    should_pass = should_pass | (num_valid == 0)
+    
+    # Sample a random valid move
+    move_idx = jrandom.randint(key2, (), 0, jnp.maximum(num_valid, 1))
+    move_idx = jnp.minimum(move_idx, num_valid - 1)
+    selected_move = valid_positions[move_idx]  # [row, col, direction]
+    
+    # Random split decision
+    split = jrandom.randint(key3, (), 0, 2)
+    
+    # Build action
+    action = jnp.array([
+        should_pass.astype(jnp.int32),
+        selected_move[0],
+        selected_move[1],
+        selected_move[2],
+        split,
+    ], dtype=jnp.int32)
+    
+    return action
 
-        # check if destination is in grid bounds
-        in_first_boundary = np.all(destinations >= 0, axis=1)
-        in_height_boundary = destinations[:, 0] < height
-        in_width_boundary = destinations[:, 1] < width
-        destinations = destinations[in_first_boundary & in_height_boundary & in_width_boundary]
 
-        # assert that every value is either 0 or 1 in passable cells
-        passable_cell_indices = passable_cells[destinations[:, 0], destinations[:, 1]] == 1
-        action_destinations = destinations[passable_cell_indices]
+@jax.jit
+def compute_valid_move_mask_obs(observation) -> jnp.ndarray:
+    """
+    Convenience wrapper that takes an Observation NamedTuple.
+    
+    Args:
+        observation: Observation named tuple
+    
+    Returns:
+        [H, W, 4] boolean mask of valid moves
+    """
+    return compute_valid_move_mask(
+        observation.armies,
+        observation.owned_cells,
+        observation.mountains,
+    )
 
-        # get valid action mask for a given direction
-        valid_source_indices = action_destinations - direction.value
-        valid_action_mask[valid_source_indices[:, 0], valid_source_indices[:, 1], channel_index] = 1.0
-
-    return valid_action_mask

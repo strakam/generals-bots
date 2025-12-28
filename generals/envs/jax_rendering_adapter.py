@@ -10,7 +10,7 @@ import numpy as np
 import jax.numpy as jnp
 from typing import Any, Dict
 
-from generals.core.game_jax import GameState, GameInfo
+from generals.core.game import GameState, GameInfo
 
 
 class JaxChannelsAdapter:
@@ -48,14 +48,14 @@ class JaxChannelsAdapter:
         
         Uses the JAX visibility function but returns numpy array.
         """
-        from generals.core import game_jax
+        from generals.core import game
         import jax.numpy as jnp
         
         # Find agent index
         agent_idx = self._agents.index(agent_id)
         
         # Use JAX visibility function
-        visibility_jax = game_jax.get_visibility(self._state.ownership[agent_idx])
+        visibility_jax = game.get_visibility(self._state.ownership[agent_idx])
         
         # Convert to numpy
         return np.array(visibility_jax)
@@ -108,7 +108,7 @@ class JaxGameAdapter:
         """
         if self._info is None:
             # Compute info if not provided
-            from generals.core import game_jax
+            from generals.core import game
             # Create GameState from self.channels
             state = GameState(
                 armies=jnp.array(self.channels.armies),
@@ -125,7 +125,7 @@ class JaxGameAdapter:
                 time=jnp.int32(self.time),
                 winner=jnp.int32(-1),
             )
-            self._info = game_jax.get_info(state)
+            self._info = game.get_info(state)
         
         # Convert to format expected by renderer
         result = {}

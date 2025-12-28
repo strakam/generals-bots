@@ -1,105 +1,110 @@
-import dataclasses
+"""
+JAX-optimized observation using NamedTuples for better performance.
 
-import numpy as np
+Using NamedTuples avoids Python dictionary overhead and provides:
+- Better JIT compilation
+- Faster attribute access
+- Type safety
+- Pytree compatibility for JAX transformations
+"""
+
+from typing import NamedTuple
+import jax.numpy as jnp
 
 
-@dataclasses.dataclass
-class Observation(dict):
+class Observation(NamedTuple):
     """
-    We override some dictionary methods and subclass dict to allow the
-    Observation object to be accessible in dictionary-style format,
-    e.g. observation["armies"]. And to allow for providing a
-    listing of the keys/attributes.
-    These steps are necessary because PettingZoo & Gymnasium expect
-    dictionary-like Observation objects, but we want the benefits of
-    knowing the dictionaries' members which a dataclass/class provides.
+    JAX-optimized observation using NamedTuple for minimal Python overhead.
+    All fields are JAX arrays for efficient vectorization and JIT compilation.
     """
-
-    armies: np.ndarray
-    generals: np.ndarray
-    cities: np.ndarray
-    mountains: np.ndarray
-    neutral_cells: np.ndarray
-    owned_cells: np.ndarray
-    opponent_cells: np.ndarray
-    fog_cells: np.ndarray
-    structures_in_fog: np.ndarray
-    owned_land_count: int
-    owned_army_count: int
-    opponent_land_count: int
-    opponent_army_count: int
-    timestep: int
-    priority: int = 0
-
-    def __getitem__(self, attribute_name: str):
-        return getattr(self, attribute_name)
-
-    def keys(self):
-        return dataclasses.asdict(self).keys()
-
-    def values(self):
-        return dataclasses.asdict(self).values()
-
-    def items(self):
-        return dataclasses.asdict(self).items()
-
-    def pad_observation(self, pad_to: int) -> None:
+    armies: jnp.ndarray
+    generals: jnp.ndarray
+    cities: jnp.ndarray
+    mountains: jnp.ndarray
+    neutral_cells: jnp.ndarray
+    owned_cells: jnp.ndarray
+    opponent_cells: jnp.ndarray
+    fog_cells: jnp.ndarray
+    structures_in_fog: jnp.ndarray
+    owned_land_count: jnp.ndarray  # scalar int
+    owned_army_count: jnp.ndarray  # scalar int
+    opponent_land_count: jnp.ndarray  # scalar int
+    opponent_army_count: jnp.ndarray  # scalar int
+    timestep: jnp.ndarray  # scalar int
+    priority: jnp.ndarray = jnp.int32(0)  # scalar int
+    
+    def as_tensor(self) -> jnp.ndarray:
         """
-        Pads all the observation arrays to the specified size.
-
-        Args:
-            pad_to (int): The target size to pad to. Must be >= the current observation size.
+        Returns a tensor suitable for neural nets.
+        Shape depends on armies shape:
+        - If armies is (H, W): returns (15, H, W)
+        - If armies is (N, P, H, W): returns (N, P, 15, H, W) for N envs, P players
         """
-        assert pad_to >= max(self.armies.shape), "Can't pad to a smaller size than the original observation."
-
-        h_pad = (0, pad_to - self.armies.shape[0])
-        w_pad = (0, pad_to - self.armies.shape[1])
-
-        # Regular zero padding for most arrays
-        zero_pad_arrays = [
-            "armies",
-            "generals",
-            "cities",
-            "neutral_cells",
-            "owned_cells",
-            "opponent_cells",
-            "fog_cells",
-            "structures_in_fog",
-        ]
-
-        for array_name in zero_pad_arrays:
-            setattr(self, array_name, np.pad(getattr(self, array_name), (h_pad, w_pad), "constant"))
-
-        # Special case for mountains which are padded with ones
-        self.mountains = np.pad(self.mountains, (h_pad, w_pad), "constant", constant_values=1)
-
-    def as_tensor(self, pad_to: int | None = None) -> np.ndarray:
-        """
-        Returns a 3D tensor of shape (15, rows, cols). Suitable for neural nets.
-        """
-        if pad_to is not None:
-            self.pad_observation(pad_to)
-            shape = (pad_to, pad_to)
-        else:
-            shape = self.armies.shape
-
-        return np.stack(
-            [
-                self.armies,
-                self.generals,
-                self.cities,
-                self.mountains,
-                self.neutral_cells,
-                self.owned_cells,
-                self.opponent_cells,
-                self.fog_cells,
-                self.structures_in_fog,
-                np.ones(shape) * self.owned_land_count,
-                np.ones(shape) * self.owned_army_count,
-                np.ones(shape) * self.opponent_land_count,
-                np.ones(shape) * self.opponent_army_count,
-                np.ones(shape) * self.timestep,
-                np.ones(shape) * self.priority,
-            ],
-            axis=0,
-        )
+        shape = self.armies.shape
+        
+        # Broadcast scalar values to match spatial dimensions
+        # For vectorized case: armies is (N, P, H, W), scalars are (N, P)
+        # We need to expand to (N, P, H, W) then reshape for stacking
+        if len(shape) == 4:  # Vectorized: (N, P, H, W)
+            # Expand scalars from (N, P) to (N, P, H, W)
+            owned_land = jnp.broadcast_to(
+                self.owned_land_count[..., None, None], shape
+            )
+            owned_army = jnp.broadcast_to(
+                self.owned_army_count[..., None, None], shape
+            )
+            opponent_land = jnp.broadcast_to(
+                self.opponent_land_count[..., None, None], shape
+            )
+            opponent_army = jnp.broadcast_to(
+                self.opponent_army_count[..., None, None], shape
+            )
+            timestep_broadcast = jnp.broadcast_to(
+                self.timestep[..., None, None], shape
+            )
+            priority_broadcast = jnp.broadcast_to(
+                self.priority[..., None, None], shape
+            )
+            
+            # Stack along new axis at position 2: (N, P, 15, H, W)
+            return jnp.stack(
+                [
+                    self.armies,
+                    self.generals,
+                    self.cities,
+                    self.mountains,
+                    self.neutral_cells,
+                    self.owned_cells,
+                    self.opponent_cells,
+                    self.fog_cells,
+                    self.structures_in_fog,
+                    owned_land,
+                    owned_army,
+                    opponent_land,
+                    opponent_army,
+                    timestep_broadcast,
+                    priority_broadcast,
+                ],
+                axis=2,
+            )
+        else:  # Non-vectorized: (H, W)
+            return jnp.stack(
+                [
+                    self.armies,
+                    self.generals,
+                    self.cities,
+                    self.mountains,
+                    self.neutral_cells,
+                    self.owned_cells,
+                    self.opponent_cells,
+                    self.fog_cells,
+                    self.structures_in_fog,
+                    jnp.ones(shape, dtype=jnp.int32) * self.owned_land_count,
+                    jnp.ones(shape, dtype=jnp.int32) * self.owned_army_count,
+                    jnp.ones(shape, dtype=jnp.int32) * self.opponent_land_count,
+                    jnp.ones(shape, dtype=jnp.int32) * self.opponent_army_count,
+                    jnp.ones(shape, dtype=jnp.int32) * self.timestep,
+                    jnp.ones(shape, dtype=jnp.int32) * self.priority,
+                ],
+                axis=0,
+            )

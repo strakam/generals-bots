@@ -1,98 +1,201 @@
-import abc
+import jax
+import jax.numpy as jnp
 
-from generals.core.action import Action, compute_valid_move_mask
 from generals.core.observation import Observation
 
 
-def compute_num_cities_owned(observation: Observation) -> int:
+def compute_num_cities_owned(observation: Observation) -> jnp.ndarray:
+    """Count number of cities owned by the agent."""
     owned_cities_mask = observation.cities & observation.owned_cells
-    num_cities_owned = owned_cities_mask.sum()
-    return num_cities_owned
+    num_cities_owned = jnp.sum(owned_cities_mask)
+    return num_cities_owned.astype(jnp.float32)
 
 
-def compute_num_generals_owned(observation: Observation) -> int:
+def compute_num_generals_owned(observation: Observation) -> jnp.ndarray:
+    """Count number of generals owned by the agent."""
     owned_generals_mask = observation.generals & observation.owned_cells
-    num_generals_owned = owned_generals_mask.sum()
-    return num_generals_owned
+    num_generals_owned = jnp.sum(owned_generals_mask)
+    return num_generals_owned.astype(jnp.float32)
 
 
-def is_action_valid(action: Action, observation: Observation) -> bool:
-    valid_move_mask = compute_valid_move_mask(observation)
-    row, col, direction = action[1], action[2], action[3]
-
-    # The actions' row & col may be out of bounds depending on
-    # the agents implementation.
-    if row >= valid_move_mask.shape[0] or col >= valid_move_mask.shape[1]:
-        return False
-
-    is_action_valid = valid_move_mask[row][col][direction]
-
-    return is_action_valid
+@jax.jit
+def calculate_army_size(castles: jnp.ndarray, ownership: jnp.ndarray) -> jnp.ndarray:
+    """Calculate total army size in castles (cities/generals) owned by the player."""
+    return jnp.sum(castles * ownership).astype(jnp.float32)
 
 
-class RewardFn(abc.ABC):
-    @abc.abstractmethod
-    def __call__(self, prior_obs: Observation, prior_action: Action, obs: Observation) -> float:
-        """
-        It's common to see notation like r(s, a) in RL theory and it's accordingly common for environments
-        to issue rewards based on the prior-observation & prior-action alone.
-
-        We intentionally diverge from that pattern here by also expecting the current-observation
-        for two reasons.
-
-        The first reason is largely for convenience. Without the current-observation, we'd effectively
-        have to mimic the game-logic by applying the prior-action to the prior-observation. That makes
-        reward-functions more complex and adds computational cost, since the game does this update anyways.
-
-        Second, even with prior-action the current-observation cannot be fully re-created, since we
-        cannot know what the other agent will do. And, we may want to create reward functions that
-        incorporate information about the opponent's prior-action, i.e. their action at time (t-1).
-
-        Args:
-            prior_obs: Observation of the prior state, i.e. at time (t-1).
-            prior_action: Action taken at the prior time-step, i.e. at time (t-1).
-            obs: Observation of the current state, i.e. at time t.
-
-        Returns:
-            reward: The reward provided at time-step t.
-        """
-
-
-class WinLoseRewardFn(RewardFn):
-    """A simple reward function. +1 if the agent wins. -1 if they lose."""
-
-    def __call__(self, prior_obs: Observation, prior_action: Action, obs: Observation) -> float:
-        change_in_num_generals_owned = compute_num_generals_owned(obs) - compute_num_generals_owned(prior_obs)
-        return float(1 * change_in_num_generals_owned)
-
-
-class FrequentAssetRewardFn(RewardFn):
-    """This reward function is fairly frequent -- every action/turn should generate some kind of reward. And
-    it heavily takes into account the agent/players assets i.e. their land, army & cities.
+@jax.jit
+def city_reward_fn(
+    prior_obs: Observation, 
+    prior_action: jnp.ndarray, 
+    obs: Observation,
+    shaping_weight: float = 0.3
+) -> jnp.ndarray:
     """
+    Reward function that shapes the reward based on the number of cities owned.
+    
+    Args:
+        shaping_weight: Weight for city change shaping term
+    """
+    original_reward = (
+        compute_num_generals_owned(obs) - compute_num_generals_owned(prior_obs)
+    )
+    
+    # If game is done, don't shape the reward
+    game_done = (obs.owned_army_count == 0) | (obs.opponent_army_count == 0)
+    
+    city_now = calculate_army_size(obs.cities, obs.owned_cells)
+    city_prev = calculate_army_size(prior_obs.cities, prior_obs.owned_cells)
+    city_change = city_now - city_prev
+    
+    shaped_reward = original_reward + shaping_weight * city_change
+    
+    return jnp.where(game_done, original_reward, shaped_reward)
 
-    def __call__(self, prior_obs: Observation, prior_action: Action, obs: Observation) -> float:
-        change_in_army_size = obs.owned_army_count - prior_obs.owned_army_count
-        change_in_land_owned = obs.owned_land_count - prior_obs.owned_land_count
-        change_in_num_cities_owned = compute_num_cities_owned(obs) - compute_num_cities_owned(prior_obs)
-        change_in_num_generals_owned = compute_num_generals_owned(obs) - compute_num_generals_owned(prior_obs)
-        # Moderately reward valid actions & penalize invalid actions.
-        valid_action_reward = 1 if is_action_valid(prior_action, prior_obs) else -5
 
-        reward = (
-            valid_action_reward
-            + 1 * change_in_army_size
-            + 5 * change_in_land_owned
-            + 10 * change_in_num_cities_owned
-            + 10_000 * change_in_num_generals_owned
-        )
+@jax.jit
+def ratio_reward_fn(
+    prior_obs: Observation, 
+    prior_action: jnp.ndarray, 
+    obs: Observation,
+    clip_value: float = 1.5,
+    shaping_weight: float = 0.5
+) -> jnp.ndarray:
+    """
+    Reward function that shapes based on army ratio between player and opponent.
+    
+    Args:
+        clip_value: Maximum ratio for clipping
+        shaping_weight: Weight for ratio shaping term
+    """
+    original_reward = (
+        compute_num_generals_owned(obs) - compute_num_generals_owned(prior_obs)
+    )
+    
+    # If game is done, don't shape the reward
+    game_done = (obs.owned_army_count == 0) | (obs.opponent_army_count == 0)
+    
+    def calculate_ratio_reward(my_army: jnp.ndarray, opponent_army: jnp.ndarray) -> jnp.ndarray:
+        ratio = my_army / jnp.maximum(opponent_army, 1.0)  # Avoid division by zero
+        ratio = jnp.log(ratio) / jnp.log(clip_value)
+        return jnp.clip(ratio, -1.0, 1.0)
+    
+    prev_ratio_reward = calculate_ratio_reward(
+        prior_obs.owned_army_count.astype(jnp.float32), 
+        prior_obs.opponent_army_count.astype(jnp.float32)
+    )
+    current_ratio_reward = calculate_ratio_reward(
+        obs.owned_army_count.astype(jnp.float32), 
+        obs.opponent_army_count.astype(jnp.float32)
+    )
+    ratio_reward = current_ratio_reward - prev_ratio_reward
+    
+    shaped_reward = original_reward + shaping_weight * ratio_reward
+    
+    return jnp.where(game_done, original_reward, shaped_reward)
 
-        return reward
+
+@jax.jit
+def win_lose_reward_fn(
+    prior_obs: Observation, 
+    prior_action: jnp.ndarray, 
+    obs: Observation
+) -> jnp.ndarray:
+    """
+    Simple reward function based on generals owned with small bonus for splitting.
+    """
+    original_reward = (
+        compute_num_generals_owned(obs) - compute_num_generals_owned(prior_obs)
+    )
+    
+    # Encourage splitting a bit
+    split_bonus = jnp.where(prior_action[4] == 1, 0.0015, 0.0)
+    
+    return original_reward + split_bonus
 
 
-class LandRewardFn(RewardFn):
-    """A reward function focused on gaining territory. Provides positive reward for gaining land tiles."""
-
-    def __call__(self, prior_obs: Observation, prior_action: Action, obs: Observation) -> float:
-        change_in_land_owned = obs.owned_land_count - prior_obs.owned_land_count
-        return float(change_in_land_owned)
+@jax.jit
+def composite_reward_fn(
+    prior_obs: Observation, 
+    prior_action: jnp.ndarray, 
+    obs: Observation,
+    city_weight: float = 0.4,
+    ratio_weight: float = 0.3,
+    maximum_army_ratio: float = 1.6,
+    maximum_land_ratio: float = 1.3
+) -> jnp.ndarray:
+    """
+    Composite reward function combining multiple reward signals.
+    
+    Combines:
+    - Base win/lose reward (generals owned)
+    - Army ratio reward
+    - Land ratio reward  
+    - City capture reward
+    - Split action bonus
+    
+    Args:
+        city_weight: Weight for city reward
+        ratio_weight: Weight for ratio rewards (army and land)
+        maximum_army_ratio: Maximum army ratio for clipping
+        maximum_land_ratio: Maximum land ratio for clipping
+    """
+    original_reward = (
+        compute_num_generals_owned(obs) - compute_num_generals_owned(prior_obs)
+    )
+    
+    # If game is done, don't shape the reward (except split bonus)
+    game_done = (obs.owned_army_count == 0) | (obs.opponent_army_count == 0)
+    
+    def calculate_ratio_reward(
+        mine: jnp.ndarray, 
+        opponents: jnp.ndarray, 
+        max_ratio: float
+    ) -> jnp.ndarray:
+        ratio = mine / jnp.maximum(opponents, 1.0)  # Avoid division by zero
+        ratio = jnp.log(ratio) / jnp.log(max_ratio)
+        return jnp.clip(ratio, -1.0, 1.0)
+    
+    # Army ratio reward
+    previous_army_ratio = calculate_ratio_reward(
+        prior_obs.owned_army_count.astype(jnp.float32),
+        prior_obs.opponent_army_count.astype(jnp.float32),
+        maximum_army_ratio
+    )
+    current_army_ratio = calculate_ratio_reward(
+        obs.owned_army_count.astype(jnp.float32),
+        obs.opponent_army_count.astype(jnp.float32),
+        maximum_army_ratio
+    )
+    army_reward = current_army_ratio - previous_army_ratio
+    
+    # Land ratio reward
+    previous_land_ratio = calculate_ratio_reward(
+        prior_obs.owned_land_count.astype(jnp.float32),
+        prior_obs.opponent_land_count.astype(jnp.float32),
+        maximum_land_ratio
+    )
+    current_land_ratio = calculate_ratio_reward(
+        obs.owned_land_count.astype(jnp.float32),
+        obs.opponent_land_count.astype(jnp.float32),
+        maximum_land_ratio
+    )
+    land_reward = current_land_ratio - previous_land_ratio
+    
+    # City reward
+    city_reward = compute_num_cities_owned(obs) - compute_num_cities_owned(prior_obs)
+    
+    # Split bonus
+    split_bonus = jnp.where(prior_action[4] == 1, 0.003, 0.0)
+    
+    # Combine all rewards
+    shaped_reward = (
+        original_reward
+        + ratio_weight * army_reward
+        + city_weight * city_reward
+        + ratio_weight * land_reward
+        + split_bonus
+    )
+    
+    # If game done, only return original reward + split bonus
+    return jnp.where(game_done, original_reward + split_bonus, shaped_reward)

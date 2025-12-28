@@ -3,14 +3,14 @@ import jax.numpy as jnp
 import jax.random as jrandom
 from typing import Tuple, NamedTuple, Optional
 
-from generals.core.game_jax import GameState, GameInfo, step as game_step, create_initial_state
-from generals.core.observation_jax import ObservationJax
-from generals.core import game_jax
+from generals.core.game import GameState, GameInfo, step as game_step, create_initial_state
+from generals.core.observation import Observation
+from generals.core import game
 
 
 class TimeStep(NamedTuple):
     """Gymnasium-style TimeStep."""
-    observation: ObservationJax  # [2, ...] for both players
+    observation: Observation  # [2, ...] for both players
     reward: jnp.ndarray  # [2] rewards for both players
     terminated: jnp.ndarray  # scalar bool (game ended)
     truncated: jnp.ndarray  # scalar bool (max timesteps)
@@ -19,30 +19,8 @@ class TimeStep(NamedTuple):
 class GeneralsEnv:
     """
     Vectorized environment for Generals.io.
-    
-    Simple design: 4x4 grid, win/lose rewards, auto-reset.
-    
-    Example:
-        >>> env = GeneralsEnv(truncation=500)
-        >>> 
-        >>> # Vectorize it
-        >>> batch_reset = jax.vmap(env.reset)
-        >>> batch_step = jax.vmap(env.step)
-        >>> 
-        >>> # Use it
-        >>> keys = jrandom.split(jrandom.PRNGKey(0), 256)
-        >>> states = batch_reset(keys)
-        >>> actions = ...  # [256, 2, 5]
-        >>> timesteps, states = batch_step(states, actions, keys)
     """
-    
     def __init__(self, truncation: Optional[int] = 500):
-        """
-        Initialize environment.
-        
-        Args:
-            truncation: Max timesteps before truncation (None = no truncation)
-        """
         self.truncation = truncation
     
     def reset(self, key: jnp.ndarray) -> GameState:
@@ -59,14 +37,14 @@ class GeneralsEnv:
     ) -> Tuple[TimeStep, GameState]:
         """Step environment forward with win/lose rewards."""
         # Store prior observations
-        obs_p0_prior = game_jax.get_observation(state, 0)
+        obs_p0_prior = game.get_observation(state, 0)
         
         # Step game
         new_state, info = game_step(state, actions)
         
         # Get new observations
-        obs_p0 = game_jax.get_observation(new_state, 0)
-        obs_p1 = game_jax.get_observation(new_state, 1)
+        obs_p0 = game.get_observation(new_state, 0)
+        obs_p1 = game.get_observation(new_state, 1)
         
         # Compute win/lose reward: +1 for capturing a general, -1 for losing, 0 otherwise
         reward_p0 = (obs_p0.generals.sum() - obs_p0_prior.generals.sum()).astype(jnp.float32)

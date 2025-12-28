@@ -8,7 +8,7 @@ import jax
 import jax.numpy as jnp
 import jax.random as jrandom
 
-from generals.core.action_jax import compute_valid_move_mask_obs, DIRECTIONS
+from generals.core.action import compute_valid_move_mask_obs, DIRECTIONS
 
 
 @jax.jit
@@ -23,7 +23,7 @@ def expander_agent_jax(key: jnp.ndarray, observation) -> jnp.ndarray:
     
     Args:
         key: JAX random key
-        observation: ObservationJax NamedTuple
+        observation: Observation NamedTuple
     
     Returns:
         Action array [5]: [pass, row, col, direction, split]

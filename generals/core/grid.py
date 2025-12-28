@@ -1,17 +1,210 @@
-from collections import deque
-from typing import Literal
+from functools import partial
+from typing import Literal, Tuple
 
+import jax
+import jax.numpy as jnp
 import numpy as np
 
-from .config import MOUNTAIN, PASSABLE
+from .config import MOUNTAIN
 
 DEFAULT_MIN_GRID_DIM = (18, 18)
 DEFAULT_MAX_GRID_DIM = (23, 23)
-DEFAULT_MOUNTAIN_DENSITY = 0.20
+DEFAULT_GRID_DIMS = (15, 18)
+DEFAULT_MOUNTAIN_DENSITY = 0.2
 DEFAULT_CITY_DENSITY = 0.05
 MAX_GENERALSIO_ATTEMPTS = 20
-MIN_GENERALS_DISTANCE = 20
+MIN_GENERALS_DISTANCE = 17
 RADIUS_FROM_GENERAL = [6]
+
+
+@partial(jax.jit, static_argnames=['mode', 'grid_dims', 'pad_to', 'mountain_density', 
+                                    'num_castles_range', 'min_generals_distance', 
+                                    'castle_val_range'])
+def generate_grid(
+    key: jax.random.PRNGKey,
+    mode: Literal['fixed', 'generalsio'] = 'generalsio',
+    grid_dims: Tuple[int, int] = (20, 20),
+    pad_to: int = 24,
+    mountain_density: float = 0.2,
+    num_castles_range: Tuple[int, int] = (9, 15),
+    min_generals_distance: int = 17,
+    castle_val_range: Tuple[int, int] = (40, 51),
+) -> Tuple[jnp.ndarray, bool]:
+    """
+    Generate a Generals.io grid using JAX.
+    
+    Args:
+        key: JAX random key
+        mode: 'fixed' for fixed grid size, 'generalsio' for random size like online game
+        grid_dims: Grid dimensions (height, width). 
+            - If mode='fixed': exact size
+            - If mode='generalsio': base size, actual will be random 18-23
+        pad_to: Pad grid to this size (for batching)
+        mountain_density: Fraction of tiles that are mountains (base density)
+        num_castles_range: (min, max) number of castles to place
+        min_generals_distance: Minimum distance between generals
+        castle_val_range: (min, max) army value for castles
+    
+    Returns:
+        (grid, is_valid): Numeric grid and validity flag
+            Grid encoding: -2=mountain, 0=passable, 1=general1, 2=general2, 40-50=cities
+    
+    Examples:
+        # Generals.io mode (random size 18-23, like online game)
+        >>> key = jax.random.PRNGKey(0)
+        >>> grid, valid = generate_grid(key, mode='generalsio')
+        
+        # Fixed size mode (custom training)
+        >>> grid, valid = generate_grid(key, mode='fixed', grid_dims=(15, 15), pad_to=16)
+    """
+    if mode == 'generalsio':
+        return _generate_generalsio_grid(
+            key, pad_to, mountain_density, num_castles_range, 
+            min_generals_distance, castle_val_range
+        )
+    else:  # mode == 'fixed'
+        return _generate_fixed_grid(
+            key, grid_dims, pad_to, mountain_density, num_castles_range,
+            min_generals_distance, castle_val_range
+        )
+
+
+@partial(jax.jit, static_argnames=['pad_to', 'mountain_density', 'num_castles_range',
+                                    'min_generals_distance', 'castle_val_range'])
+def _generate_generalsio_grid(
+    key: jax.random.PRNGKey,
+    pad_to: int,
+    mountain_density: float,
+    num_castles_range: Tuple[int, int],
+    min_generals_distance: int,
+    castle_val_range: Tuple[int, int],
+) -> Tuple[jnp.ndarray, bool]:
+    """
+    Generate grid with random size like generals.io online game.
+    
+    Grid size: 18-23 x 18-23 (random)
+    Castles: 9-14 (5 + random [4,5,6])
+    Mountains: base_density + 2% random variation
+    
+    Note: Generates at max size (23x23) then pads. The actual grid boundaries
+    are determined by mountain placement at the edges.
+    """
+    _, *subkeys = jax.random.split(key, 11)  # Need 11 subkeys (10 + 1 for _)
+    
+    # Use fixed max size for JAX compatibility (23x23)
+    # We'll pad the unused area with mountains
+    max_size = 23
+    grid_dims = (max_size, max_size)
+    num_tiles = max_size * max_size
+    
+    # Castles: 5 + choice([4, 5, 6]) = 9-11 total
+    castle_bonus = jax.random.choice(subkeys[2], jnp.array([4, 5, 6]))
+    num_cities = 5 + castle_bonus  # 9-11 cities
+    
+    # Mountains: base density + 2% variation
+    mountain_variation = 0.02 * num_tiles * jax.random.uniform(subkeys[3])
+    num_mountains = mountain_density * num_tiles + mountain_variation
+    
+    # Generate grid at max size
+    grid = jnp.full((max_size, max_size), 0, dtype=jnp.int32)
+    grid = place_mountains(grid, num_mountains, subkeys[4])
+    grid = place_cities(grid, num_cities - 2, subkeys[5])  # -2 because 2 near generals
+    
+    # Place generals
+    grid, (i1, j1) = place_value_on_mask(grid, grid == 0, 1, subkeys[6])
+    distances_from_g1 = bfs_distances((i1, j1), grid)
+    
+    grid, (i2, j2) = place_value_on_mask(grid, distances_from_g1 > min_generals_distance, 2, subkeys[7])
+    distances_from_g2 = bfs_distances((i2, j2), grid)
+    
+    # Place one castle near each general
+    castle_val_1 = jax.random.randint(subkeys[8], (), castle_val_range[0], castle_val_range[1])
+    castle_val_2 = jax.random.randint(subkeys[9], (), castle_val_range[0], castle_val_range[1])
+    grid, _ = place_value_on_mask(grid, distances_from_g1 <= 6, castle_val_1, subkeys[8])
+    grid, _ = place_value_on_mask(grid, distances_from_g2 <= 6, castle_val_2, subkeys[9])
+    
+    # Pad to target size
+    if pad_to > max_size:
+        grid = jnp.pad(
+            grid,
+            ((0, pad_to - max_size), (0, pad_to - max_size)),
+            mode='constant',
+            constant_values=-2,  # Mountains
+        )
+    
+    # Validate
+    g1_reachable = jnp.sum((distances_from_g1 > 0) & (distances_from_g1 <= 5))
+    g2_reachable = jnp.sum((distances_from_g2 > 0) & (distances_from_g2 <= 5))
+    far_enough = distances_from_g1[i2, j2] > min_generals_distance
+    fair_spawn = jnp.abs(g1_reachable - g2_reachable) < 10
+    valid = far_enough & fair_spawn
+    
+    return grid, valid
+
+
+@partial(jax.jit, static_argnames=['grid_dims', 'pad_to', 'mountain_density', 
+                                    'num_castles_range', 'min_generals_distance', 
+                                    'castle_val_range'])
+def _generate_fixed_grid(
+    key: jax.random.PRNGKey,
+    grid_dims: Tuple[int, int],
+    pad_to: int,
+    mountain_density: float,
+    num_castles_range: Tuple[int, int],
+    min_generals_distance: int,
+    castle_val_range: Tuple[int, int],
+) -> Tuple[jnp.ndarray, bool]:
+    """
+    Generate grid with fixed dimensions.
+    
+    Useful for custom training scenarios.
+    """
+    _, *subkeys = jax.random.split(key, 9)
+    num_tiles = grid_dims[0] * grid_dims[1]
+    
+    # Random number of castles in range
+    num_cities = jax.random.randint(subkeys[0], (), num_castles_range[0], num_castles_range[1])
+    num_mountains = mountain_density * num_tiles
+    
+    # Generate grid
+    grid = jnp.full(grid_dims, 0, dtype=jnp.int32)
+    grid = place_mountains(grid, num_mountains, subkeys[2])
+    grid = place_cities(grid, num_cities - 2, subkeys[3])
+    
+    # Place generals
+    grid, (i1, j1) = place_value_on_mask(grid, grid == 0, 1, subkeys[4])
+    distances_from_g1 = bfs_distances((i1, j1), grid)
+    
+    grid, (i2, j2) = place_value_on_mask(grid, distances_from_g1 > min_generals_distance, 2, subkeys[5])
+    distances_from_g2 = bfs_distances((i2, j2), grid)
+    
+    # Place castles near generals
+    castle_val_1 = jax.random.randint(subkeys[6], (), castle_val_range[0], castle_val_range[1])
+    castle_val_2 = jax.random.randint(subkeys[7], (), castle_val_range[0], castle_val_range[1])
+    grid, _ = place_value_on_mask(grid, distances_from_g1 <= 6, castle_val_1, subkeys[6])
+    grid, _ = place_value_on_mask(grid, distances_from_g2 <= 6, castle_val_2, subkeys[7])
+    
+    # Pad
+    grid = jnp.pad(
+        grid,
+        ((0, pad_to - grid_dims[0]), (0, pad_to - grid_dims[1])),
+        mode='constant',
+        constant_values=-2,
+    )
+    
+    # Validate
+    g1_reachable = jnp.sum((distances_from_g1 > 0) & (distances_from_g1 <= 5))
+    g2_reachable = jnp.sum((distances_from_g2 > 0) & (distances_from_g2 <= 5))
+    far_enough = distances_from_g1[i2, j2] > min_generals_distance
+    fair_spawn = jnp.abs(g1_reachable - g2_reachable) < 10
+    valid = far_enough & fair_spawn
+    
+    return grid, valid
+
+
+# =============================================================================
+# Helper functions (used by both modes)
+# =============================================================================
 
 
 class InvalidGridError(Exception):
@@ -109,213 +302,111 @@ class Grid:
     def __str__(self):
         return Grid.stringify_grid(self.grid)
 
+def place_value_on_mask(grid: jnp.ndarray, mask: jnp.ndarray, value: int, key: jax.random.PRNGKey):
+    """
+    Given mask of zeros and ones, pick random position with "1" and put "value" on it.
+    Make it jit-able.
+    """
+    mask = mask.reshape(-1)
+    num_ones = jnp.sum(mask)
 
-class GridFactory:
-    def __init__(
-        self,
-        mode: Literal["uniform", "generalsio"] = "uniform",
-        min_grid_dims: tuple[int, int] = DEFAULT_MIN_GRID_DIM,
-        max_grid_dims: tuple[int, int] = DEFAULT_MAX_GRID_DIM,
-        mountain_density: float = DEFAULT_MOUNTAIN_DENSITY,
-        city_density: float = DEFAULT_CITY_DENSITY,
-        min_generals_distance: int = MIN_GENERALS_DISTANCE,
-        general_positions: list[tuple[int, int]] | None = None,
-        seed: int | None = None,
-    ):
-        """
-        Args:
-            mode: Either "uniform" or "generalsio". If "uniform", the grid will be generated uniformly randomly,
-            based on specified probabilities. If "generalsio", the grid will be generated to be similar to generalsio.
-            min_grid_dims: The minimum (inclusive) height & width of the grid.
-            max_grid_dims: The maximum (inclusive) height & width of the grid.
-            mountain_density: The probability any given square is a mountain.
-            city_density: The probability any given square is a city.
-            general_positions: The (row, col) of each general.
-            seed: A random seed i.e. a way to make the randomness repeatable.
-        """
-        self.mode = mode
-        self.rng = np.random.default_rng(seed)
-        self.min_grid_dims = min_grid_dims
-        self.max_grid_dims = max_grid_dims
-        self.mountain_density = mountain_density
-        self.city_density = city_density
-        self.general_positions = general_positions
-        self.min_generals_distance = min_generals_distance
-        assert self.mode in ["uniform", "generalsio"], f"Invalid mode: {self.mode}"
+    p = mask / num_ones
+    idx = jax.random.choice(key, jnp.arange(len(p)), shape=(), p=p)
+    idx = jnp.unravel_index(idx, grid.shape)
+    grid = grid.at[idx].set(value)
+    return grid, idx
 
-    def set_rng(self, rng: np.random.Generator):
-        self.rng = rng
 
-    def generate(self) -> Grid:
-        if self.mode == "uniform":
-            return self.generate_uniform_grid()
-        elif self.mode == "generalsio":
-            return self.generate_generalsio_grid()
-        else:
-            raise ValueError(f"Invalid mode: {self.mode}")
+def create_distance_mask(distances: jax.Array, max_distance: int):
+    return (distances <= max_distance) & (distances > 0)
 
-    def generate_generalsio_grid(self) -> Grid:
-        grid_height = self.rng.integers(DEFAULT_MIN_GRID_DIM[0], DEFAULT_MAX_GRID_DIM[0] + 1)
-        grid_width = self.rng.integers(DEFAULT_MIN_GRID_DIM[1], DEFAULT_MAX_GRID_DIM[1] + 1)
-        grid_dims = (grid_height, grid_width)
-        num_tiles = grid_height * grid_width
 
-        # Counts based on real generals.io 1v1 queue
-        cities_to_place = 5 + self.rng.choice([4, 5, 6])
-        num_mountains = int(DEFAULT_MOUNTAIN_DENSITY * num_tiles + 0.02 * num_tiles * self.rng.random())
+def random_ranks(flat_map, key):
+    # Get a random permutation's inverse: each index's position in the permutation.
+    perm = jax.random.permutation(key, jnp.arange(flat_map.shape[0]))
+    return jnp.argsort(perm)
 
-        def bfs_distance(start, grid):
-            distances = np.full(grid_dims, float("inf"))
-            distances[start] = 0
-            queue = deque([start])
 
-            # Possible moves: up, right, down, left
-            moves = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+def place_mountains(map: jax.Array, num_mountains: int, key):
+    flat_map = map.reshape(-1)
+    ranks = random_ranks(flat_map, key)
+    updated = jnp.where(ranks < num_mountains, -2, flat_map)
+    return updated.reshape(map.shape)
 
-            while queue:
-                current = queue.popleft()
-                current_dist = distances[current]
 
-                for move in moves:
-                    next_pos = (current[0] + move[0], current[1] + move[1])
+def place_cities(map: jax.Array, num_cities: int, key):
+    flat_map = map.reshape(-1)
+    ranks = random_ranks(flat_map, key)
+    # Generate random city armies with the same shape as flat_map.
+    city_armies = jax.random.randint(key, shape=flat_map.shape, minval=40, maxval=51)
+    updated = jnp.where(ranks < num_cities, city_armies, flat_map)
+    return updated.reshape(map.shape)
 
-                    # Check bounds
-                    if 0 <= next_pos[0] < grid_dims[0] and 0 <= next_pos[1] < grid_dims[1]:
-                        # Check if passable (not a mountain) and not visited
-                        if grid[next_pos] != MOUNTAIN and distances[next_pos] == float("inf"):
-                            distances[next_pos] = current_dist + 1
-                            queue.append(next_pos)
 
-            return distances
+def bfs_distances(start_pos: tuple[int, int], grid: jax.Array) -> jax.Array:
+    """
+    Computes distances from a starting position to all other cells in the grid using BFS.
+    JAX-compatible implementation that works with jax.jit.
+    Can only traverse through cells with value 0.
 
-        def create_distance_mask(distances, max_distance):
-            return (distances <= max_distance) & (distances > 0)
+    Args:
+        start_pos: Starting position (i, j) for BFS
+        grid: 2D JAX array representing the grid
 
-        # Initialize empty map
-        map = np.full(grid_dims, PASSABLE, dtype=str)
+    Returns:
+        2D JAX array of the same shape as grid, where each cell contains the
+        shortest distance from start_pos, or infinity if unreachable
+    """
+    height, width = grid.shape
+    max_steps = height * width  # Maximum possible BFS steps
 
-        # Place mountains randomly
-        self._place_mountains(map, num_mountains)
+    # Initialize distances matrix with infinity
+    distances = jnp.full(grid.shape, -1)
+    # Set starting position to 0
+    distances = distances.at[start_pos].set(0)
 
-        g1 = (self.rng.integers(grid_height), self.rng.integers(grid_width))
-        distances_from_g1 = bfs_distance(g1, map)
+    # Create initial frontier matrix (1 for cells in current frontier, 0 otherwise)
+    frontier = jnp.zeros(grid.shape, dtype=jnp.bool_)
+    frontier = frontier.at[start_pos].set(True)
 
-        max_attempts = MAX_GENERALSIO_ATTEMPTS // 5
-        g2 = None
-        for _ in range(max_attempts):
-            candidate_g2 = (self.rng.integers(grid_height), self.rng.integers(grid_width))
-            if distances_from_g1[candidate_g2] >= self.min_generals_distance and distances_from_g1[
-                candidate_g2
-            ] != float("inf"):
-                g2 = candidate_g2
-                break
+    # Define BFS step function for while_loop
+    def bfs_step(state):
+        current_step, current_distances, current_frontier = state
 
-        if g2 is None:
-            # If we couldn't place g2 after max attempts, start over with a new grid
-            return self.generate_generalsio_grid()
+        # Create new frontier from neighbors of current frontier
+        new_frontier = jnp.zeros_like(current_frontier)
 
-        general_positions = [g1, g2]
+        # Expand in four directions
+        for di, dj in [(-1, 0), (0, 1), (1, 0), (0, -1)]:
+            # Shift the frontier in each direction
+            shifted_i = jnp.roll(current_frontier, di, axis=0)
+            if di > 0:  # Fix boundary wrapping
+                shifted_i = shifted_i.at[:di].set(False)
+            elif di < 0:
+                shifted_i = shifted_i.at[di:].set(False)
 
-        distances_from_g2 = bfs_distance(g2, map)
+            shifted = jnp.roll(shifted_i, dj, axis=1)
+            if dj > 0:  # Fix boundary wrapping
+                shifted = shifted.at[:, :dj].set(False)
+            elif dj < 0:
+                shifted = shifted.at[:, dj:].set(False)
 
-        # Place one city close to each general
-        for distance in RADIUS_FROM_GENERAL:
-            mask_close_g1 = create_distance_mask(distances_from_g1, distance)
-            mask_close_g2 = create_distance_mask(distances_from_g2, distance)
-            for mask in [mask_close_g1, mask_close_g2]:
-                valid_positions = np.where(mask)
+            # Cells must be passable (0), not visited yet (-1 distance), and neighbors of current frontier
+            valid_cells = ((grid >= 0) & (grid < 10)) & (current_distances == -1) & shifted
+            new_frontier = new_frontier | valid_cells
 
-                # Randomly select one position from the valid positions
-                idx = self.rng.integers(0, len(valid_positions[0]))
-                city_pos = (valid_positions[0][idx], valid_positions[1][idx])
-                # Generate city value (0 - 9 or 'x')
-                city_cost = self.rng.choice([str(i) for i in range(10)] + ["x"])
-                map[city_pos] = city_cost
+        # Update distances for new frontier cells
+        new_distances = jnp.where(new_frontier, current_step + 1, current_distances)
 
-                cities_to_place -= 1
+        return current_step + 1, new_distances, new_frontier
 
-        # Place remaining cities
-        self._place_cities(map, cities_to_place)
+    # Define while_loop condition
+    def condition(state):
+        current_step, _, current_frontier = state
+        # Continue if frontier is not empty and we haven't reached max steps
+        return (jnp.any(current_frontier)) & (current_step < max_steps)
 
-        # Calculate number of passable cells in radius 5 of both generals
-        radius = 5
+    # Run BFS using jax.lax.while_loop
+    _, final_distances, _ = jax.lax.while_loop(condition, bfs_step, (0, distances, frontier))
 
-        # Use the distance maps we already calculated
-        mask_radius_g1 = create_distance_mask(distances_from_g1, radius)
-        mask_radius_g2 = create_distance_mask(distances_from_g2, radius)
-
-        # Count passable cells (not mountains or cities) within radius
-        passable_mask = map == PASSABLE
-        passable_cells_g1 = np.sum(mask_radius_g1 & passable_mask)
-        passable_cells_g2 = np.sum(mask_radius_g2 & passable_mask)
-
-        if abs(passable_cells_g1 - passable_cells_g2) > 10:
-            return self.generate_generalsio_grid()
-
-        for i, idx in enumerate(general_positions):
-            map[idx[0], idx[1]] = chr(ord("A") + i)
-
-        # Convert map to string
-        map_string = "\n".join(["".join(row) for row in map.astype(str)])
-
-        try:
-            return Grid(map_string)
-        except InvalidGridError:
-            # Keep randomly generating grids until one works!
-            return self.generate_generalsio_grid()
-
-    def generate_uniform_grid(self) -> Grid:
-        grid_height = self.rng.integers(self.min_grid_dims[0], self.max_grid_dims[0] + 1)
-        grid_width = self.rng.integers(self.min_grid_dims[0], self.max_grid_dims[0] + 1)
-        grid_dims = (grid_height, grid_width)
-
-        # Probabilities of each cell type
-        p_neutral = 1 - self.mountain_density - self.city_density
-        if p_neutral < 0:
-            raise ValueError("Sum of mountain_density and city_density cannot exceed 1.")
-        # Distribute city_density across city types
-        p_cities = self.city_density / 11  # 10 digits + 'x'
-        probs = [p_neutral, self.mountain_density] + [p_cities] * 10 + [p_cities]  # For "x"
-
-        # Place cells on the map
-        map = self.rng.choice(
-            [PASSABLE, MOUNTAIN, "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "x"],
-            size=grid_dims,
-            p=probs,
-        )
-
-        general_positions = self.general_positions
-        if general_positions is None:
-            # Select each generals location, they should be atleast some distance apart
-            min_distance = max(grid_dims) // 2
-            p1 = self.rng.integers(0, grid_dims[0]), self.rng.integers(0, grid_dims[1])
-            while True:
-                p2 = self.rng.integers(0, grid_dims[0]), self.rng.integers(0, grid_dims[1])
-                if abs(p1[0] - p2[0]) + abs(p1[1] - p2[1]) >= min_distance:
-                    break
-            general_positions = [p1, p2]
-
-        for i, idx in enumerate(general_positions):
-            map[idx[0], idx[1]] = chr(ord("A") + i)
-
-        # Convert map to string
-        map_string = "\n".join(["".join(row) for row in map.astype(str)])
-
-        try:
-            return Grid(map_string)
-        except InvalidGridError:
-            # Keep randomly generating grids until one works!
-            return self.generate_uniform_grid()
-
-    def _place_mountains(self, map: np.ndarray, num_mountains: int):
-        available_positions = np.argwhere(map == PASSABLE)
-        selected_indices = self.rng.choice(len(available_positions), size=num_mountains, replace=False)
-        selected_positions = available_positions[selected_indices]
-        map[selected_positions[:, 0], selected_positions[:, 1]] = MOUNTAIN
-
-    def _place_cities(self, map: np.ndarray, cities_to_place: int):
-        mountain_positions = np.argwhere(map == MOUNTAIN)
-        selected_indices = self.rng.choice(len(mountain_positions), size=cities_to_place, replace=False)
-        selected_positions = mountain_positions[selected_indices]
-        city_costs = self.rng.choice([str(i) for i in range(10)] + ["x"], size=cities_to_place)
-        map[selected_positions[:, 0], selected_positions[:, 1]] = city_costs
+    return final_distances

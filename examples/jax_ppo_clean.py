@@ -1,5 +1,5 @@
 """
-Clean JAX PPO using the env_jax.GeneralsEnv class.
+Clean JAX PPO using the env.GeneralsEnv class.
 
 Same simple structure as jax_ppo_2.py but using the environment abstraction.
 """
@@ -12,10 +12,10 @@ import jax.random as jrandom
 import equinox as eqx
 import optax
 
-from generals.core.env_jax import GeneralsEnv
-from generals.core.action_jax import compute_valid_move_mask
-from generals.core import game_jax
-from generals.core.rewards_jax import composite_reward_fn
+from generals.core.env import GeneralsEnv
+from generals.core.action import compute_valid_move_mask
+from generals.core import game
+from generals.core.rewards import composite_reward_fn
 
 
 class TinyNetwork(eqx.Module):
@@ -123,8 +123,8 @@ def rollout_step(states, network, key):
     num_envs = states.armies.shape[0]
     
     # Observations (BEFORE step for reward calculation)
-    obs_p0_prior = jax.vmap(lambda s: game_jax.get_observation(s, 0))(states)
-    obs_p1_prior = jax.vmap(lambda s: game_jax.get_observation(s, 1))(states)
+    obs_p0_prior = jax.vmap(lambda s: game.get_observation(s, 0))(states)
+    obs_p1_prior = jax.vmap(lambda s: game.get_observation(s, 1))(states)
     
     # Actions from network
     obs_arr = jax.vmap(obs_to_array)(obs_p0_prior)
@@ -141,10 +141,10 @@ def rollout_step(states, network, key):
     
     # Step game
     actions = jnp.stack([actions_p0, actions_p1], axis=1)
-    new_states, infos = jax.vmap(game_jax.step)(states, actions)
+    new_states, infos = jax.vmap(game.step)(states, actions)
     
     # Get new observations (AFTER step)
-    obs_p0_new = jax.vmap(lambda s: game_jax.get_observation(s, 0))(new_states)
+    obs_p0_new = jax.vmap(lambda s: game.get_observation(s, 0))(new_states)
     
     # Compute rewards using composite reward function
     rewards = jax.vmap(composite_reward_fn)(
@@ -160,7 +160,7 @@ def rollout_step(states, network, key):
     grid = jnp.zeros((4, 4), dtype=jnp.int32)
     grid = grid.at[0, 0].set(1).at[3, 3].set(2)
     grids = jnp.stack([grid] * num_envs)
-    reset_states = jax.vmap(game_jax.create_initial_state)(grids)
+    reset_states = jax.vmap(game.create_initial_state)(grids)
     
     final_states = jax.tree.map(
         lambda reset, current: jnp.where(dones.reshape(num_envs, *([1] * (reset.ndim - 1))), reset, current),
@@ -237,7 +237,7 @@ def main():
     
     print(f"JAX PPO with GeneralsEnv - {num_envs} envs, {num_steps} steps/rollout")
     print(f"Device: {jax.devices()[0]}")
-    print(f"Grid: 4x4 with composite rewards")
+    print(f"Grid: 4x4 with win/lose rewards")
     print()
     
     # Initialize

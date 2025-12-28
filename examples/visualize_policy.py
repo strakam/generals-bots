@@ -10,8 +10,8 @@ import jax.numpy as jnp
 import jax.random as jrandom
 import equinox as eqx
 
-from generals.core import game_jax
-from generals.core.action_jax import compute_valid_move_mask
+from generals.core import game
+from generals.core.action import compute_valid_move_mask
 
 
 class TinyNetwork(eqx.Module):
@@ -109,7 +109,7 @@ def random_action(key, obs):
 
 def visualize_episode(network, grid, key, episode_num, gui):
     """Run a single episode with GUI rendering."""
-    state = game_jax.create_initial_state(grid)
+    state = game.create_initial_state(grid)
     done = False
     step_count = 0
     max_steps = 500
@@ -119,8 +119,8 @@ def visualize_episode(network, grid, key, episode_num, gui):
     print('='*80)
     
     while not done and step_count < max_steps:
-        obs_p0 = game_jax.get_observation(state, 0)
-        obs_p1 = game_jax.get_observation(state, 1)
+        obs_p0 = game.get_observation(state, 0)
+        obs_p1 = game.get_observation(state, 1)
         
         # Player 0 uses trained policy
         obs_arr = obs_to_array(obs_p0)
@@ -135,7 +135,7 @@ def visualize_episode(network, grid, key, episode_num, gui):
         
         # Take step
         actions = jnp.stack([action_p0, action_p1])
-        state, info = game_jax.step(state, actions)
+        state, info = game.step(state, actions)
         
         done = bool(info.is_done)
         step_count += 1
@@ -205,8 +205,8 @@ def main():
     from generals.gui.properties import GuiMode
     
     agent_names = ['PPO Agent', 'Random Agent']
-    initial_state = game_jax.create_initial_state(grid)
-    initial_info = game_jax.get_info(initial_state)
+    initial_state = game.create_initial_state(grid)
+    initial_info = game.get_info(initial_state)
     game_adapter = JaxGameAdapter(initial_state, agent_names, initial_info)
     
     agent_data = {
