@@ -1,72 +1,40 @@
-"""
-JAX-optimized observation using NamedTuples for better performance.
-
-Using NamedTuples avoids Python dictionary overhead and provides:
-- Better JIT compilation
-- Faster attribute access
-- Type safety
-- Pytree compatibility for JAX transformations
-"""
-
+"""Game observation for JAX environment."""
 from typing import NamedTuple
+
 import jax.numpy as jnp
 
 
 class Observation(NamedTuple):
-    """
-    JAX-optimized observation using NamedTuple for minimal Python overhead.
-    All fields are JAX arrays for efficient vectorization and JIT compilation.
-    """
-    armies: jnp.ndarray
-    generals: jnp.ndarray
-    cities: jnp.ndarray
-    mountains: jnp.ndarray
-    neutral_cells: jnp.ndarray
-    owned_cells: jnp.ndarray
-    opponent_cells: jnp.ndarray
-    fog_cells: jnp.ndarray
-    structures_in_fog: jnp.ndarray
-    owned_land_count: jnp.ndarray  # scalar int
-    owned_army_count: jnp.ndarray  # scalar int
-    opponent_land_count: jnp.ndarray  # scalar int
-    opponent_army_count: jnp.ndarray  # scalar int
-    timestep: jnp.ndarray  # scalar int
-    priority: jnp.ndarray = jnp.int32(0)  # scalar int
-    
+    """Player observation with fog of war applied."""
+
+    armies: jnp.ndarray  # (H, W) army counts
+    generals: jnp.ndarray  # (H, W) general positions
+    cities: jnp.ndarray  # (H, W) city positions
+    mountains: jnp.ndarray  # (H, W) mountain positions
+    neutral_cells: jnp.ndarray  # (H, W) neutral cells
+    owned_cells: jnp.ndarray  # (H, W) cells owned by player
+    opponent_cells: jnp.ndarray  # (H, W) cells owned by opponent
+    fog_cells: jnp.ndarray  # (H, W) unexplored cells
+    structures_in_fog: jnp.ndarray  # (H, W) cities/mountains in fog
+    owned_land_count: jnp.ndarray  # scalar
+    owned_army_count: jnp.ndarray  # scalar
+    opponent_land_count: jnp.ndarray  # scalar
+    opponent_army_count: jnp.ndarray  # scalar
+    timestep: jnp.ndarray  # scalar
+    priority: jnp.ndarray = jnp.int32(0)  # scalar
+
     def as_tensor(self) -> jnp.ndarray:
-        """
-        Returns a tensor suitable for neural nets.
-        Shape depends on armies shape:
-        - If armies is (H, W): returns (15, H, W)
-        - If armies is (N, P, H, W): returns (N, P, 15, H, W) for N envs, P players
-        """
+        """Convert to (15, H, W) tensor for neural networks."""
         shape = self.armies.shape
-        
-        # Broadcast scalar values to match spatial dimensions
-        # For vectorized case: armies is (N, P, H, W), scalars are (N, P)
-        # We need to expand to (N, P, H, W) then reshape for stacking
+
         if len(shape) == 4:  # Vectorized: (N, P, H, W)
-            # Expand scalars from (N, P) to (N, P, H, W)
-            owned_land = jnp.broadcast_to(
-                self.owned_land_count[..., None, None], shape
-            )
-            owned_army = jnp.broadcast_to(
-                self.owned_army_count[..., None, None], shape
-            )
-            opponent_land = jnp.broadcast_to(
-                self.opponent_land_count[..., None, None], shape
-            )
-            opponent_army = jnp.broadcast_to(
-                self.opponent_army_count[..., None, None], shape
-            )
-            timestep_broadcast = jnp.broadcast_to(
-                self.timestep[..., None, None], shape
-            )
-            priority_broadcast = jnp.broadcast_to(
-                self.priority[..., None, None], shape
-            )
-            
-            # Stack along new axis at position 2: (N, P, 15, H, W)
+            owned_land = jnp.broadcast_to(self.owned_land_count[..., None, None], shape)
+            owned_army = jnp.broadcast_to(self.owned_army_count[..., None, None], shape)
+            opponent_land = jnp.broadcast_to(self.opponent_land_count[..., None, None], shape)
+            opponent_army = jnp.broadcast_to(self.opponent_army_count[..., None, None], shape)
+            timestep_broadcast = jnp.broadcast_to(self.timestep[..., None, None], shape)
+            priority_broadcast = jnp.broadcast_to(self.priority[..., None, None], shape)
+
             return jnp.stack(
                 [
                     self.armies,
@@ -87,7 +55,7 @@ class Observation(NamedTuple):
                 ],
                 axis=2,
             )
-        else:  # Non-vectorized: (H, W)
+        else:  # Single observation: (H, W)
             return jnp.stack(
                 [
                     self.armies,

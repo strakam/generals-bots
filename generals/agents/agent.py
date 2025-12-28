@@ -1,31 +1,33 @@
 from abc import ABC, abstractmethod
 
-from generals.core.game import Action, Observation
+import jax.numpy as jnp
+
+from generals.core.observation import Observation
 
 
 class Agent(ABC):
-    """
-    Base class for all agents.
-    """
+    """Base class for JAX-compatible agents."""
 
     def __init__(self, id: str = "NPC"):
         self.id = id
 
     @abstractmethod
-    def act(self, observation: Observation) -> Action:
+    def act(self, observation: Observation, key: jnp.ndarray) -> jnp.ndarray:
         """
-        This method should be implemented by the child class.
-        It should receive an observation and return an action.
+        Select an action given an observation.
+
+        Args:
+            observation: Current game observation
+            key: JAX random key for stochastic decisions
+
+        Returns:
+            Action array [pass, row, col, direction, split]
         """
         raise NotImplementedError
 
-    @abstractmethod
     def reset(self):
-        """
-        This method allows the agent to reset its state.
-        If not needed, just pass.
-        """
-        raise NotImplementedError
+        """Reset agent state between episodes."""
+        pass
 
     def __str__(self):
         return self.id

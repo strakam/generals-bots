@@ -1,45 +1,41 @@
 import jax.numpy as jnp
 import jax.random as jrandom
-from generals.core.env import GeneralsEnv
-from generals.core.game import get_observation
+
+from generals import GeneralsEnv, get_observation
+from generals.agents import RandomAgent, ExpanderAgent
 
 
-# Initialize environment
-env = GeneralsEnv(truncation=100)
+# Create environment with truncation at 500 steps
+env = GeneralsEnv(truncation=500, render=True)
+
+# Create agents
+agent_0 = RandomAgent(id="Random")
+agent_1 = ExpanderAgent(id="Expander")
+
 # Initialize random key
 key = jrandom.PRNGKey(42)
-
-# Reset environment
 state = env.reset(key)
 
-terminated = truncated = False
 step_count = 0
+terminated = truncated = False
 
-while not (terminated or truncated) and step_count < 20:
+while not (terminated or truncated):
     # Get observations for both players
-    obs_p0 = get_observation(state, 0)
-    obs_p1 = get_observation(state, 1)
-    
-    # Create dummy actions for both players (both pass)
+    obs_0 = get_observation(state, 0)
+    obs_1 = get_observation(state, 1)
+
+    key, k1, k2 = jrandom.split(key, 3)
     actions = jnp.stack([
-        jnp.array([1, 0, 0, 0, 0], dtype=jnp.int32),
-        jnp.array([1, 0, 0, 0, 0], dtype=jnp.int32)
+        agent_0.act(obs_0, k1),
+        agent_1.act(obs_1, k2),
     ])
-    
-    # Step environment
-    timestep, state = env.step(state, actions, key)
-    
-    # Extract results
-    obs = timestep.observation
-    rewards = timestep.reward
+
+    key, step_key = jrandom.split(key)
+    timestep, state = env.step(state, actions, step_key)
+
     terminated = bool(timestep.terminated)
     truncated = bool(timestep.truncated)
-    info = timestep.info
-
     step_count += 1
-    
-    # Split key for next iteration
-    key, _ = jrandom.split(key)
 
-print("\nExample complete!")
-print(f"Final state - Time: {int(state.time)}, Winner: {int(state.winner)}")
+winner = timestep.info.winner
+print(f"Game over! Winner: {winner}")

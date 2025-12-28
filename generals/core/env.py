@@ -20,8 +20,9 @@ class GeneralsEnv:
     """
     Vectorized environment for Generals.io.
     """
-    def __init__(self, truncation: Optional[int] = 500):
+    def __init__(self, truncation: Optional[int] = 500, render: bool = False):
         self.truncation = truncation
+        self.render = render
     
     def reset(self, key: jnp.ndarray) -> GameState:
         """Reset to 4x4 grid with generals in corners."""

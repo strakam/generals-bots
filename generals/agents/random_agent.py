@@ -1,44 +1,38 @@
-import numpy as np
+import jax.numpy as jnp
+import jax.random as jrandom
 
-from generals.core.action import Action, compute_valid_move_mask
+from generals.core.action import compute_valid_move_mask
 from generals.core.observation import Observation
 
 from .agent import Agent
 
 
 class RandomAgent(Agent):
-    def __init__(
-        self,
-        id: str = "Random",
-        split_prob: float = 0.25,
-        idle_prob: float = 0.05,
-    ):
+    """Agent that selects random valid actions."""
+
+    def __init__(self, id: str = "Random", split_prob: float = 0.25, idle_prob: float = 0.05):
         super().__init__(id)
+        self.idle_prob = idle_prob
+        self.split_prob = split_prob
 
-        self.idle_probability = idle_prob
-        self.split_probability = split_prob
+    def act(self, observation: Observation, key: jnp.ndarray) -> jnp.ndarray:
+        k1, k2, k3 = jrandom.split(key, 3)
 
-    def act(self, observation: Observation) -> Action:
-        """
-        Randomly selects a valid action.
-        """
+        mask = compute_valid_move_mask(observation.armies, observation.owned_cells, observation.mountains)
+        valid = jnp.argwhere(mask, size=100, fill_value=-1)
+        num_valid = jnp.sum(jnp.all(valid >= 0, axis=-1))
 
-        mask = compute_valid_move_mask(observation)
+        # Pass if no valid moves or randomly with idle_prob
+        should_pass = (num_valid == 0) | (jrandom.uniform(k1) < self.idle_prob)
 
-        # Skip the turn if there are no valid moves.
-        valid_moves = np.argwhere(mask == 1)
-        if len(valid_moves) == 0:
-            return Action(to_pass=True)
+        # Select random valid move
+        idx = jrandom.randint(k2, (), 0, jnp.maximum(num_valid, 1))
+        move = valid[jnp.minimum(idx, num_valid - 1)]
 
-        to_pass = 1 if np.random.rand() <= self.idle_probability else 0
-        to_split = 1 if np.random.rand() <= self.split_probability else 0
+        # Random split decision
+        split = jrandom.uniform(k3) < self.split_prob
 
-        move_index = np.random.choice(len(valid_moves))
-        (row, col) = valid_moves[move_index][:2]
-        direction = valid_moves[move_index][2]
-
-        action = Action(to_pass, row, col, direction, to_split)
-        return action
+        return jnp.array([should_pass, move[0], move[1], move[2], split], dtype=jnp.int32)
 
     def reset(self):
         pass

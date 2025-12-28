@@ -9,6 +9,9 @@ __pycache__/
 # Pickle
 *.pkl
 
+# Equinox model files
+*.eqx
+
 # Distribution / packaging
 .Python
 build/

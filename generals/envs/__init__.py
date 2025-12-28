@@ -1,6 +1,4 @@
-#  type: ignore
-from generals.envs.jax_env import VectorizedJaxEnv
+# Environment adapters
+from generals.envs.jax_rendering_adapter import JaxGameAdapter
 
-__all__ = [
-    "VectorizedJaxEnv",
-]
+__all__ = ["JaxGameAdapter"]
