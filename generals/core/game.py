@@ -11,7 +11,7 @@ class Game(Protocol):
     """Protocol for game objects used by the GUI."""
     agents: list[str]
     channels: Any  # Channels-like object
-    grid_dims: Tuple[int, int]
+    grid_dims: tuple[int, int]
     general_positions: dict[str, Any]
     time: int
     
@@ -265,7 +265,7 @@ def _determine_move_order(state: GameState, actions: jnp.ndarray) -> int:
 
 
 @jax.jit
-def step(state: GameState, actions: jnp.ndarray) -> Tuple[GameState, GameInfo]:
+def step(state: GameState, actions: jnp.ndarray) -> tuple[GameState, GameInfo]:
     """Execute one game step with actions from both players."""
     done_before = state.winner >= 0
 

@@ -152,7 +152,7 @@ import jax.random as jrandom
 from generals import generate_grid
 
 key = jrandom.PRNGKey(0)
-grid, is_valid = generate_grid(key)
+grid = generate_grid(key)
 # grid: (24, 24) array with:
 #   1, 2 = generals
 #   -2 = mountains

@@ -6,7 +6,6 @@ Loads a saved model and renders the game using pygame.
 
 import sys
 import time
-import jax
 import jax.numpy as jnp
 import jax.random as jrandom
 import equinox as eqx
@@ -14,7 +13,7 @@ import pygame
 
 from generals.core.action import compute_valid_move_mask
 from generals.core import game
-from generals.core.game import GameState, GameInfo
+from generals.core.game import create_initial_state
 from generals.gui import GUI
 from generals.gui.properties import GuiMode
 from generals.envs.jax_rendering_adapter import JaxGameAdapter
@@ -70,10 +69,13 @@ def main():
     network = load_model(model_path, grid_size=4)
     
     # Initialize game state
-    key = jrandom.PRNGKey(42)
+    key = jrandom.PRNGKey(43)
     grid = jnp.zeros((4, 4), dtype=jnp.int32)
-    grid = grid.at[0, 0].set(1).at[3, 3].set(2)
-    state = game.create_initial_state(grid)
+    idx = jrandom.choice(key, 16, shape=(2,), replace=False)
+    pos_a = (idx[0] // 4, idx[0] % 4)
+    pos_b = (idx[1] // 4, idx[1] % 4)
+    grid = grid.at[pos_a].set(1).at[pos_b].set(2)
+    state = create_initial_state(grid)
     
     # Agent names
     agents = ["PPO Agent", "Random"]
@@ -121,8 +123,11 @@ def main():
             # Reset game
             key, reset_key = jrandom.split(key)
             grid = jnp.zeros((4, 4), dtype=jnp.int32)
-            grid = grid.at[0, 0].set(1).at[3, 3].set(2)
-            state = game.create_initial_state(grid)
+            idx = jrandom.choice(reset_key, 16, shape=(2,), replace=False)
+            pos_a = (idx[0] // 4, idx[0] % 4)
+            pos_b = (idx[1] // 4, idx[1] % 4)
+            grid = grid.at[pos_a].set(1).at[pos_b].set(2)
+            state = create_initial_state(grid)
             info = game.get_info(state)
             game_adapter.update_from_state(state, info)
             step_count = 0

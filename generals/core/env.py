@@ -1,11 +1,13 @@
+from typing import NamedTuple
+
 import jax
 import jax.numpy as jnp
 import jax.random as jrandom
-from typing import Tuple, NamedTuple, Optional
 
-from generals.core.game import GameState, GameInfo, step as game_step, create_initial_state
-from generals.core.observation import Observation
 from generals.core import game
+from generals.core.game import GameInfo, GameState, create_initial_state
+from generals.core.game import step as game_step
+from generals.core.observation import Observation
 
 
 class TimeStep(NamedTuple):
@@ -20,22 +22,26 @@ class GeneralsEnv:
     """
     Vectorized environment for Generals.io.
     """
-    def __init__(self, truncation: Optional[int] = 500, render: bool = False):
+    def __init__(self, truncation: int | None = 500, render: bool = False):
         self.truncation = truncation
         self.render = render
     
     def reset(self, key: jnp.ndarray) -> GameState:
-        """Reset to 4x4 grid with generals in corners."""
+        """Reset to 4x4 grid with random general positions."""
         grid = jnp.zeros((4, 4), dtype=jnp.int32)
-        grid = grid.at[0, 0].set(1).at[3, 3].set(2)
+        # Sample two different random positions out of 16
+        idx = jrandom.choice(key, 16, shape=(2,), replace=False)
+        pos_a = (idx[0] // 4, idx[0] % 4)
+        pos_b = (idx[1] // 4, idx[1] % 4)
+        grid = grid.at[pos_a].set(1).at[pos_b].set(2)
         return create_initial_state(grid)
     
     def step(
-        self, 
-        state: GameState, 
+        self,
+        state: GameState,
         actions: jnp.ndarray,
-        key: jnp.ndarray
-    ) -> Tuple[TimeStep, GameState]:
+        key: jnp.ndarray,
+    ) -> tuple[TimeStep, GameState]:
         """Step environment forward with win/lose rewards."""
         # Store prior observations
         obs_p0_prior = game.get_observation(state, 0)

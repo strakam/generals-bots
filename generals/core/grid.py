@@ -143,7 +143,8 @@ def generate_grid(
     city_gumbel = jax.random.gumbel(keys[9], shape=city_logits.shape)
     city_scores = city_logits + city_gumbel
     
-    max_extra_cities = 20  # Static upper bound
+    # Cap max_extra_cities at the grid size to avoid top_k errors
+    max_extra_cities = min(20, flat_city_available.shape[0])
     _, city_indices = jax.lax.top_k(city_scores, max_extra_cities)
     
     # Generate random city values
