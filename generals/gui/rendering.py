@@ -69,6 +69,7 @@ class Renderer:
             for _ in range(self.grid_height)
         ]
 
+        # Load pre-scaled images (crownie, citie, mountainie are already the right size)
         self._mountain_img = pygame.image.load(str(Path.MOUNTAIN_PATH), "png").convert_alpha()
         self._general_img = pygame.image.load(str(Path.GENERAL_PATH), "png").convert_alpha()
         self._city_img = pygame.image.load(Path.CITY_PATH, "png").convert_alpha()
@@ -260,5 +261,10 @@ class Renderer:
         """
         Draw images on grid tiles of a given channel
         """
+        square_size = Dimension.SQUARE_SIZE.value
+        # Center the image in the cell
+        img_width, img_height = image.get_size()
+        x_offset = (square_size - img_width) // 2
+        y_offset = (square_size - img_height) // 2
         for i, j in self.channel_to_indices(channel):
-            self.tiles[i][j].blit(image, (3, 2))
+            self.tiles[i][j].blit(image, (x_offset, y_offset))

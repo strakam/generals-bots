@@ -147,3 +147,8 @@ class JaxGameAdapter:
         self.channels = JaxChannelsAdapter(state, self.agents)
         self.time = int(state.time)
         self._info = info
+        
+        # Update general positions
+        general_positions_array = np.array(state.general_positions)
+        for i, agent in enumerate(self.agents):
+            self.general_positions[agent] = general_positions_array[i]

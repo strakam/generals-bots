@@ -2,9 +2,22 @@
 import jax
 import jax.numpy as jnp
 from jax import lax
-from typing import Tuple, NamedTuple
+from typing import Tuple, NamedTuple, Protocol, Any
 
 from generals.core.observation import Observation
+
+
+class Game(Protocol):
+    """Protocol for game objects used by the GUI."""
+    agents: list[str]
+    channels: Any  # Channels-like object
+    grid_dims: Tuple[int, int]
+    general_positions: dict[str, Any]
+    time: int
+    
+    def get_infos(self) -> dict[str, dict[str, Any]]:
+        """Return player stats."""
+        ...
 
 
 class GameState(NamedTuple):
