@@ -307,8 +307,8 @@ def valid_base_a_mask(grid_shape: tuple[int, int], min_distance: int, max_distan
 
 def flood_fill_connected(grid: jax.Array, start_pos: tuple[int, int], end_pos: tuple[int, int]) -> bool:
     """
-    Check if start_pos can reach end_pos using parallel flood fill.
-    Uses jax.lax.scan for XLA-compatible iteration.
+    Check if start_pos can reach end_pos using parallel flood fill with early termination.
+    Uses jax.lax.while_loop for efficient early exit when target is reached.
     
     Args:
         grid: 2D grid array (-2=mountain, 0=passable, 1/2=generals, 40-50=cities)
@@ -327,26 +327,32 @@ def flood_fill_connected(grid: jax.Array, start_pos: tuple[int, int], end_pos: t
     reachable = jnp.zeros((h, w), dtype=jnp.bool_)
     reachable = reachable.at[start_pos].set(True)
     
-    def dilate_step(reachable, _):
+    def dilate(reachable):
+        """Single dilation step - expand reachable cells to neighbors."""
         # 4-neighbor dilation using roll + boundary fix
-        up = jnp.roll(reachable, -1, axis=0)
-        up = up.at[-1, :].set(False)
-        
-        down = jnp.roll(reachable, 1, axis=0)
-        down = down.at[0, :].set(False)
-        
-        left = jnp.roll(reachable, -1, axis=1)
-        left = left.at[:, -1].set(False)
-        
-        right = jnp.roll(reachable, 1, axis=1)
-        right = right.at[:, 0].set(False)
-        
-        new_reachable = (reachable | up | down | left | right) & passable
-        return new_reachable, None
+        up = jnp.roll(reachable, -1, axis=0).at[-1, :].set(False)
+        down = jnp.roll(reachable, 1, axis=0).at[0, :].set(False)
+        left = jnp.roll(reachable, -1, axis=1).at[:, -1].set(False)
+        right = jnp.roll(reachable, 1, axis=1).at[:, 0].set(False)
+        return (reachable | up | down | left | right) & passable
     
-    # Run for h + w steps (max shortest path length)
-    max_steps = h + w
-    final_reachable, _ = jax.lax.scan(dilate_step, reachable, None, length=max_steps)
+    def cond_fn(state):
+        reachable, prev_reachable, _ = state
+        # Continue if: target not reached AND frontier is still expanding
+        target_reached = reachable[end_pos]
+        still_expanding = jnp.any(reachable != prev_reachable)
+        return ~target_reached & still_expanding
+    
+    def body_fn(state):
+        reachable, _, step = state
+        new_reachable = dilate(reachable)
+        return (new_reachable, reachable, step + 1)
+    
+    # Initialize with one dilation already done
+    initial_reachable = dilate(reachable)
+    init_state = (initial_reachable, reachable, jnp.int32(1))
+    
+    final_reachable, _, _ = jax.lax.while_loop(cond_fn, body_fn, init_state)
     
     return final_reachable[end_pos]
 

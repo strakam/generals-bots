@@ -21,7 +21,7 @@ def compute_valid_move_mask(
     mountains: jnp.ndarray,
 ) -> jnp.ndarray:
     """
-    Compute valid move mask.
+    Compute valid move mask (fully vectorized).
 
     Returns (H, W, 4) mask where mask[i, j, d] is True if moving from (i, j)
     in direction d is valid.
@@ -31,23 +31,27 @@ def compute_valid_move_mask(
     can_move_from = owned_cells & (armies > 1)
     passable = ~mountains
 
-    valid_mask = jnp.zeros((H, W, 4), dtype=jnp.bool_)
-
-    for dir_idx in range(4):
-        di, dj = DIRECTIONS[dir_idx]
-
-        dest_i = jnp.arange(H)[:, None] + di
-        dest_j = jnp.arange(W)[None, :] + dj
-
-        in_bounds = (dest_i >= 0) & (dest_i < H) & (dest_j >= 0) & (dest_j < W)
-
-        safe_dest_i = jnp.clip(dest_i, 0, H - 1)
-        safe_dest_j = jnp.clip(dest_j, 0, W - 1)
-
-        dest_passable = passable[safe_dest_i, safe_dest_j]
-        valid = can_move_from & in_bounds & dest_passable
-
-        valid_mask = valid_mask.at[:, :, dir_idx].set(valid)
+    # Create coordinate grids: [H, W]
+    i_idx = jnp.arange(H)[:, None]
+    j_idx = jnp.arange(W)[None, :]
+    
+    # Compute destination coords for all 4 directions at once: [H, W, 4]
+    # DIRECTIONS shape is [4, 2], we want dest_i[h, w, d] = h + DIRECTIONS[d, 0]
+    dest_i = i_idx[:, :, None] + DIRECTIONS[None, None, :, 0]  # [H, W, 4]
+    dest_j = j_idx[:, :, None] + DIRECTIONS[None, None, :, 1]  # [H, W, 4]
+    
+    # Check bounds for all directions: [H, W, 4]
+    in_bounds = (dest_i >= 0) & (dest_i < H) & (dest_j >= 0) & (dest_j < W)
+    
+    # Clip to valid indices for safe lookup
+    safe_dest_i = jnp.clip(dest_i, 0, H - 1)
+    safe_dest_j = jnp.clip(dest_j, 0, W - 1)
+    
+    # Check if destinations are passable: [H, W, 4]
+    dest_passable = passable[safe_dest_i, safe_dest_j]
+    
+    # Combine all conditions: [H, W, 4]
+    valid_mask = can_move_from[:, :, None] & in_bounds & dest_passable
 
     return valid_mask
 

@@ -61,18 +61,13 @@ class GeneralsEnv:
         key: jnp.ndarray,
     ) -> tuple[TimeStep, GameState]:
         """Step environment forward with win/lose rewards."""
-        # Store prior observations
-        obs_p0_prior = game.get_observation(state, 0)
         
         # Step game
         new_state, info = game_step(state, actions)
         
-        # Get new observations
-        obs_p0 = game.get_observation(new_state, 0)
-        obs_p1 = game.get_observation(new_state, 1)
         
         # Compute win/lose reward: +1 for capturing a general, -1 for losing, 0 otherwise
-        reward_p0 = (obs_p0.generals.sum() - obs_p0_prior.generals.sum()).astype(jnp.float32)
+        reward_p0 = jnp.where(info.winner == 0, 1.0, jnp.where(info.winner == 1, -1.0, 0.0))
         rewards = jnp.array([reward_p0, -reward_p0])
         
         # Terminated: game ended (someone won)
@@ -88,6 +83,10 @@ class GeneralsEnv:
             new_state
         )
         
+        # Get new observations
+        obs_p0 = game.get_observation(final_state, 0)
+        obs_p1 = game.get_observation(final_state, 1)
+
         # Stack observations
         observation = jax.tree.map(
             lambda p0, p1: jnp.stack([p0, p1], axis=0),

@@ -36,7 +36,7 @@ class PolicyValueNetwork(eqx.Module):
             grid_size: Size of the game grid
             channels: Number of channels in each conv layer
         """
-        keys = jrandom.split(key, 6)
+        keys = jrandom.split(key, 8)  # Need 8 unique keys for all layers
 
         self.conv1 = eqx.nn.Conv2d(9, channels[0], kernel_size=3, padding=1, key=keys[0])
         self.conv2 = eqx.nn.Conv2d(channels[0], channels[1], kernel_size=3, padding=1, key=keys[1])
@@ -46,10 +46,10 @@ class PolicyValueNetwork(eqx.Module):
         # Policy head: 9 channels = 4 dirs + 4 half-moves + 1 pass
         self.policy_conv = eqx.nn.Conv2d(channels[3], 9, kernel_size=1, key=keys[4])
         
-        # Value head
+        # Value head (use separate keys to avoid correlated initialization)
         self.value_conv = eqx.nn.Conv2d(channels[3], 4, kernel_size=1, key=keys[5])
-        self.value_linear1 = eqx.nn.Linear(grid_size * grid_size * 4, 64, key=keys[4])
-        self.value_linear2 = eqx.nn.Linear(64, 1, key=keys[5])
+        self.value_linear1 = eqx.nn.Linear(grid_size * grid_size * 4, 64, key=keys[6])
+        self.value_linear2 = eqx.nn.Linear(64, 1, key=keys[7])
 
     def __call__(self, obs, mask, key, action=None):
         """
