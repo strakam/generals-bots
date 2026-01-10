@@ -52,7 +52,6 @@ class GeneralsEnv:
     Args:
         grid_dims: Tuple of (height, width) for the game grid. Default (4, 4).
         truncation: Maximum number of timesteps before game is truncated. Default 500.
-        render: Whether to enable rendering (for GUI). Default False.
         mountain_density: Fraction of cells that are mountains. Default 0.15.
         num_cities_range: (min, max) number of cities to generate. Default (0, 2).
         min_generals_distance: Minimum Manhattan distance between generals. Default 3.
@@ -71,14 +70,12 @@ class GeneralsEnv:
         self,
         grid_dims: tuple[int, int] = (4, 4),
         truncation: int = 500,
-        render: bool = False,
         mountain_density: float = 0.15,
         num_cities_range: tuple[int, int] = (0, 2),
         min_generals_distance: int = 3,
     ):
         self.grid_dims = grid_dims
         self.truncation = truncation
-        self.render = render
         self.mountain_density = mountain_density
         self.num_cities_range = num_cities_range
         self.min_generals_distance = min_generals_distance

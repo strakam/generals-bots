@@ -17,11 +17,7 @@ GRID_DIMS = (10, 10)    # Grid size (height, width) - try (15, 15) for larger ga
 TRUNCATION = 500        # Max steps before game ends
 
 # Create environment
-env = GeneralsEnv(
-    grid_dims=GRID_DIMS,
-    truncation=TRUNCATION,
-    render=True,  # Enable GUI rendering
-)
+env = GeneralsEnv(grid_dims=GRID_DIMS, truncation=TRUNCATION)
 
 # Create agents
 agent_0 = RandomAgent(id="Random")
