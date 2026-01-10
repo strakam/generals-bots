@@ -1,4 +1,15 @@
-"""JAX game logic for Generals.io."""
+"""
+JAX game logic for Generals.io.
+
+This module contains the core game mechanics including state management,
+action execution, and observation generation. All functions are JIT-compiled
+for maximum performance.
+
+Key functions:
+    - create_initial_state: Create a new game from a grid
+    - step: Execute one game step with actions from both players
+    - get_observation: Get a player's view with fog of war applied
+"""
 import jax
 import jax.numpy as jnp
 from jax import lax
@@ -10,7 +21,7 @@ from generals.core.observation import Observation
 class Game(Protocol):
     """Protocol for game objects used by the GUI."""
     agents: list[str]
-    channels: Any  # Channels-like object
+    channels: Any
     grid_dims: tuple[int, int]
     general_positions: dict[str, Any]
     time: int
@@ -21,38 +32,71 @@ class Game(Protocol):
 
 
 class GameState(NamedTuple):
-    """Immutable game state."""
+    """
+    Immutable game state containing all information about the game.
 
-    armies: jnp.ndarray  # (H, W) army counts
-    ownership: jnp.ndarray  # (2, H, W) player ownership
-    ownership_neutral: jnp.ndarray  # (H, W) neutral cells
-    generals: jnp.ndarray  # (H, W) general positions
-    cities: jnp.ndarray  # (H, W) city positions
-    mountains: jnp.ndarray  # (H, W) mountain positions
-    passable: jnp.ndarray  # (H, W) passable cells
-    general_positions: jnp.ndarray  # (2, 2) positions
-    time: jnp.ndarray  # scalar
-    winner: jnp.ndarray  # -1=none, 0/1=player
+    Attributes:
+        armies: (H, W) array of army counts per cell.
+        ownership: (2, H, W) boolean arrays, ownership[i] is player i's cells.
+        ownership_neutral: (H, W) boolean mask of neutral (unowned) cells.
+        generals: (H, W) boolean mask of general positions.
+        cities: (H, W) boolean mask of city positions.
+        mountains: (H, W) boolean mask of mountain positions.
+        passable: (H, W) boolean mask of passable cells (not mountains).
+        general_positions: (2, 2) array of [row, col] for each general.
+        time: Scalar, current game timestep.
+        winner: Scalar, -1 if game ongoing, 0 or 1 if that player won.
+    """
+
+    armies: jnp.ndarray
+    ownership: jnp.ndarray
+    ownership_neutral: jnp.ndarray
+    generals: jnp.ndarray
+    cities: jnp.ndarray
+    mountains: jnp.ndarray
+    passable: jnp.ndarray
+    general_positions: jnp.ndarray
+    time: jnp.ndarray
+    winner: jnp.ndarray
 
 
 class GameInfo(NamedTuple):
-    """Game statistics."""
+    """
+    Game statistics returned after each step.
 
-    army: jnp.ndarray  # (2,) army counts
-    land: jnp.ndarray  # (2,) land counts
-    is_done: jnp.ndarray  # bool
-    winner: jnp.ndarray  # -1=none, 0/1=player
-    time: jnp.ndarray  # scalar
+    Attributes:
+        army: (2,) array of total army counts per player.
+        land: (2,) array of total land counts per player.
+        is_done: Boolean, True if game has ended.
+        winner: -1 if ongoing, 0 or 1 indicating winner.
+        time: Current game timestep.
+    """
+
+    army: jnp.ndarray
+    land: jnp.ndarray
+    is_done: jnp.ndarray
+    winner: jnp.ndarray
+    time: jnp.ndarray
 
 
+# Direction offsets: UP, DOWN, LEFT, RIGHT
 DIRECTIONS = jnp.array([[-1, 0], [1, 0], [0, -1], [0, 1]], dtype=jnp.int32)
 
 
 def create_initial_state(grid: jnp.ndarray) -> GameState:
     """
-    Create initial state from numeric grid.
+    Create initial game state from a numeric grid.
 
-    Grid values: -2=mountain, 0=empty, 1/2=generals, 40-50=cities
+    Args:
+        grid: 2D array with cell values:
+            - -2: Mountain (impassable)
+            - 0: Empty cell
+            - 1: Player 0's general
+            - 2: Player 1's general
+            - 40-50: City with that army value
+
+    Returns:
+        GameState ready for gameplay.
     """
     H, W = grid.shape
 
@@ -338,7 +382,6 @@ def get_observation(state: GameState, player_idx: int) -> Observation:
         opponent_land_count=info.land[opponent_idx],
         opponent_army_count=info.army[opponent_idx],
         timestep=state.time,
-        priority=jnp.int32(0),
     )
 
 

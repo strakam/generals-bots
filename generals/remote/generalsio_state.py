@@ -63,8 +63,6 @@ class GeneralsIOstate:
         opponent_land_count = self.scores[self.opponent_index]["tiles"]
         opponent_army_count = self.scores[self.opponent_index]["total"]
         timestep = self.turn
-        priority = 1 if self.player_index == 0 else 0
-
         return Observation(
             armies=army,
             generals=generals,
@@ -80,5 +78,4 @@ class GeneralsIOstate:
             opponent_land_count=opponent_land_count,
             opponent_army_count=opponent_army_count,
             timestep=timestep,
-            priority=priority,
         )

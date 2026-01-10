@@ -1,4 +1,15 @@
-"""Action utilities for JAX game."""
+"""
+Action utilities for JAX game.
+
+This module provides functions for creating and validating actions in the game.
+
+Action Format:
+    Actions are 5-element integer arrays: [pass, row, col, direction, split]
+    - pass: 1 to skip turn, 0 to move
+    - row, col: Source cell coordinates
+    - direction: 0=UP, 1=DOWN, 2=LEFT, 3=RIGHT
+    - split: 1 to move half army, 0 to move all-but-one
+"""
 import jax
 import jax.numpy as jnp
 import jax.random as jrandom

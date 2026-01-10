@@ -1,30 +1,68 @@
-"""Game observation for JAX environment."""
+"""
+Game observation for JAX environment.
+
+This module defines the Observation class that represents what a player can see
+during a game. Observations include fog of war - players can only see cells
+within a 3x3 radius of cells they own.
+"""
 from typing import NamedTuple
 
 import jax.numpy as jnp
 
 
 class Observation(NamedTuple):
-    """Player observation with fog of war applied."""
+    """
+    Player observation with fog of war applied.
 
-    armies: jnp.ndarray  # (H, W) army counts
-    generals: jnp.ndarray  # (H, W) general positions
-    cities: jnp.ndarray  # (H, W) city positions
-    mountains: jnp.ndarray  # (H, W) mountain positions
-    neutral_cells: jnp.ndarray  # (H, W) neutral cells
-    owned_cells: jnp.ndarray  # (H, W) cells owned by player
-    opponent_cells: jnp.ndarray  # (H, W) cells owned by opponent
-    fog_cells: jnp.ndarray  # (H, W) unexplored cells
-    structures_in_fog: jnp.ndarray  # (H, W) cities/mountains in fog
-    owned_land_count: jnp.ndarray  # scalar
-    owned_army_count: jnp.ndarray  # scalar
-    opponent_land_count: jnp.ndarray  # scalar
-    opponent_army_count: jnp.ndarray  # scalar
-    timestep: jnp.ndarray  # scalar
-    priority: jnp.ndarray = jnp.int32(0)  # scalar
+    All spatial fields have shape (H, W) where H and W are the grid dimensions.
+    Boolean masks use True to indicate presence. Army counts are integers.
+
+    Attributes:
+        armies: Army counts in visible cells (0 in fog).
+        generals: Boolean mask of visible general positions.
+        cities: Boolean mask of visible city positions.
+        mountains: Boolean mask of visible mountain positions.
+        neutral_cells: Boolean mask of visible neutral (unowned) cells.
+        owned_cells: Boolean mask of cells owned by this player.
+        opponent_cells: Boolean mask of visible opponent cells.
+        fog_cells: Boolean mask of fog cells (not visible, no structure).
+        structures_in_fog: Boolean mask of cities/mountains in fog (visible as obstacles).
+        owned_land_count: Scalar, total number of cells owned by this player.
+        owned_army_count: Scalar, total army count across all owned cells.
+        opponent_land_count: Scalar, opponent's total cell count.
+        opponent_army_count: Scalar, opponent's total army count.
+        timestep: Scalar, current game step (0-indexed).
+    """
+
+    armies: jnp.ndarray
+    generals: jnp.ndarray
+    cities: jnp.ndarray
+    mountains: jnp.ndarray
+    neutral_cells: jnp.ndarray
+    owned_cells: jnp.ndarray
+    opponent_cells: jnp.ndarray
+    fog_cells: jnp.ndarray
+    structures_in_fog: jnp.ndarray
+    owned_land_count: jnp.ndarray
+    owned_army_count: jnp.ndarray
+    opponent_land_count: jnp.ndarray
+    opponent_army_count: jnp.ndarray
+    timestep: jnp.ndarray
 
     def as_tensor(self) -> jnp.ndarray:
-        """Convert to (15, H, W) tensor for neural networks."""
+        """
+        Convert observation to a tensor for neural networks.
+
+        Returns:
+            For single observations: (14, H, W) tensor.
+            For vectorized observations: stacked along axis 2.
+
+        The channels are ordered as:
+            0: armies, 1: generals, 2: cities, 3: mountains, 4: neutral_cells,
+            5: owned_cells, 6: opponent_cells, 7: fog_cells, 8: structures_in_fog,
+            9: owned_land_count, 10: owned_army_count, 11: opponent_land_count,
+            12: opponent_army_count, 13: timestep
+        """
         shape = self.armies.shape
 
         if len(shape) == 4:  # Vectorized: (N, P, H, W)
@@ -33,7 +71,6 @@ class Observation(NamedTuple):
             opponent_land = jnp.broadcast_to(self.opponent_land_count[..., None, None], shape)
             opponent_army = jnp.broadcast_to(self.opponent_army_count[..., None, None], shape)
             timestep_broadcast = jnp.broadcast_to(self.timestep[..., None, None], shape)
-            priority_broadcast = jnp.broadcast_to(self.priority[..., None, None], shape)
 
             return jnp.stack(
                 [
@@ -51,7 +88,6 @@ class Observation(NamedTuple):
                     opponent_land,
                     opponent_army,
                     timestep_broadcast,
-                    priority_broadcast,
                 ],
                 axis=2,
             )
@@ -72,7 +108,6 @@ class Observation(NamedTuple):
                     jnp.ones(shape, dtype=jnp.int32) * self.opponent_land_count,
                     jnp.ones(shape, dtype=jnp.int32) * self.opponent_army_count,
                     jnp.ones(shape, dtype=jnp.int32) * self.timestep,
-                    jnp.ones(shape, dtype=jnp.int32) * self.priority,
                 ],
                 axis=0,
             )

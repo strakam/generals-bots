@@ -21,7 +21,7 @@ def test_grid_generation_no_crash():
 
     start = time.time()
     for i, k in enumerate(keys):
-        grid, valid = generate_grid(k)
+        grid = generate_grid(k)
 
     elapsed = time.time() - start
     grids_per_sec = num_grids / elapsed
@@ -31,21 +31,17 @@ def test_grid_generation_no_crash():
 
 
 def test_100_percent_validity():
-    """Test that all generated grids are valid."""
+    """Test that all generated grids are valid (have both generals)."""
     print("\n=== Testing Validity Rate ===")
 
     num_grids = 100
     key = jax.random.PRNGKey(123)
     keys = jax.random.split(key, num_grids)
 
-    valid_count = 0
     has_both_generals = 0
 
     for k in keys:
-        grid, is_valid = generate_grid(k)
-
-        if is_valid:
-            valid_count += 1
+        grid = generate_grid(k)
 
         # Check for both generals
         has_g1 = jnp.any(grid == 1)
@@ -54,10 +50,8 @@ def test_100_percent_validity():
             has_both_generals += 1
 
     print(f"\nResults from {num_grids} grids:")
-    print(f"  Valid grids: {valid_count}/{num_grids} ({100*valid_count/num_grids:.1f}%)")
     print(f"  Grids with both generals: {has_both_generals}/{num_grids}")
 
-    assert valid_count == num_grids, f"Expected 100% validity, got {100*valid_count/num_grids:.1f}%"
     assert has_both_generals == num_grids, "Expected all grids to have both generals"
 
 
@@ -73,7 +67,7 @@ def test_generals_distance():
     distances = []
 
     for k in keys:
-        grid, valid = generate_grid(k)
+        grid = generate_grid(k)
 
         # Find general positions (in the unpadded portion)
         g1_pos = jnp.argwhere(grid == 1, size=1)[0]
@@ -102,7 +96,7 @@ def test_grid_properties():
     city_counts = []
 
     for k in keys:
-        grid, valid = generate_grid(k)
+        grid = generate_grid(k)
 
         # Count mountains (value -2)
         num_mountains = int(jnp.sum(grid == -2))
@@ -132,7 +126,7 @@ def test_jit_performance():
     start = time.time()
     for _ in range(num_iterations):
         key, subkey = jax.random.split(key)
-        grid, valid = generate_grid(subkey)
+        grid = generate_grid(subkey)
         grid.block_until_ready()
 
     elapsed = time.time() - start

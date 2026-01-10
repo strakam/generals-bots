@@ -47,8 +47,8 @@ import jax.random as jrandom
 from generals import GeneralsEnv, get_observation
 from generals.agents import RandomAgent, ExpanderAgent
 
-# Create environment
-env = GeneralsEnv(truncation=500)
+# Create environment (customize grid size and truncation)
+env = GeneralsEnv(grid_dims=(10, 10), truncation=500)
 
 # Create agents
 agent_0 = RandomAgent()
@@ -79,6 +79,35 @@ while True:
 
 print(f"Winner: Player {int(timestep.info.winner)}")
 ```
+
+### Vectorized Parallel Environments
+
+Run **thousands** of games in parallel using `jax.vmap`:
+
+```python
+import jax
+import jax.random as jrandom
+from generals import GeneralsEnv, get_observation
+
+# Create single environment
+env = GeneralsEnv(grid_dims=(10, 10), truncation=500)
+
+# Vectorize reset and step
+NUM_ENVS = 1024
+reset_vmap = jax.vmap(env.reset)
+step_vmap = jax.vmap(env.step)
+
+# Initialize all environments
+key = jrandom.PRNGKey(0)
+keys = jrandom.split(key, NUM_ENVS)
+states = reset_vmap(keys)  # Batched states
+
+# Step all environments in parallel
+# ... get batched observations and actions ...
+timesteps, states = step_vmap(states, actions, reset_keys)
+```
+
+See `examples/vectorized_example.py` for a complete example.
 
 ### Creating Custom Agents
 

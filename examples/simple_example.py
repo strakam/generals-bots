@@ -1,3 +1,8 @@
+"""
+Simple example of running a single Generals.io game.
+
+This demonstrates the basic game loop with two agents playing against each other.
+"""
 import jax.numpy as jnp
 import jax.random as jrandom
 
@@ -5,8 +10,18 @@ from generals import GeneralsEnv, get_observation
 from generals.agents import RandomAgent, ExpanderAgent
 
 
-# Create environment with truncation at 500 steps
-env = GeneralsEnv(truncation=500, render=True)
+# =============================================================================
+# Configuration - adjust these to your needs
+# =============================================================================
+GRID_DIMS = (10, 10)    # Grid size (height, width) - try (15, 15) for larger games
+TRUNCATION = 500        # Max steps before game ends
+
+# Create environment
+env = GeneralsEnv(
+    grid_dims=GRID_DIMS,
+    truncation=TRUNCATION,
+    render=True,  # Enable GUI rendering
+)
 
 # Create agents
 agent_0 = RandomAgent(id="Random")
