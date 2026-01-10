@@ -1,0 +1,5 @@
+numpy>=2.0.0
+pygame>=2.6.0
+python-socketio[client]>=5.11.4
+jax>=0.4.30
+jaxlib>=0.4.30

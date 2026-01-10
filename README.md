@@ -13,8 +13,7 @@
 A high-performance JAX-based simulator for [generals.io](https://generals.io), designed for reinforcement learning research.
 
 **Highlights:**
-* ⚡ **Blazing-fast JAX simulator** — fully JIT-compiled game logic, 100k+ steps/second
-* 🔀 **Vectorized environments** — run thousands of parallel games with `vmap`
+* ⚡ **1M+ steps/second** — fully JIT-compiled JAX simulator with vectorized `vmap` for massive parallelism
 * 🎯 **Pure functional design** — immutable state, reproducible trajectories
 * 🚀 **Live deployment** — deploy agents to [generals.io](https://generals.io) servers
 * 🎮 **Built-in GUI** — visualize games and debug agent behavior
@@ -25,11 +24,6 @@ A high-performance JAX-based simulator for [generals.io](https://generals.io), d
 
 ## 📦 Installation
 
-```bash
-pip install generals-bots
-```
-
-Or install from source:
 ```bash
 git clone https://github.com/strakam/generals-bots
 cd generals-bots
