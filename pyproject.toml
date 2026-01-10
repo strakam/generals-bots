@@ -1,35 +1,30 @@
-[tool.poetry]
+[project]
 name = "generals-bots"
 version = "2.5.0"
 description = "Develop your agent for generals.io!"
-authors = ["Matej Straka <strakammm@gmail.com>"]
-license = "MIT"
+authors = [{name = "Matej Straka", email = "strakammm@gmail.com"}]
+license = {text = "MIT"}
 readme = "README.md"
-packages = [{include = "generals"}]
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.0.0",
+    "pygame>=2.6.0",
+    "python-socketio[client]>=5.11.4",
+    "jax>=0.4.30",
+    "jaxlib>=0.4.30",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-numpy = "^2.1.1"
-pettingzoo = "^1.24.3"
-gymnasium = "^1.0.0"
-pygame = "^2.6.0"
-scipy = "^1.14.1"
-python-socketio = {extras = ["client"], version = "^5.11.4"}
-numba = "^0.61.0"
-jax = "^0.8.2"
-jaxlib = "^0.8.2"
-
-[tool.poetry.group.dev.dependencies]
-mypy = "^1.11.2"
-pre-commit = "^3.2.2"
-pytest = "^8.3.3"
-types-setuptools = "^75.1.0.20240917"
-typing_extensions = "^4.12.2"
-ruff = "^0.6.9"
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["generals*"]
 
 [tool.ruff]
 line-length = 120
