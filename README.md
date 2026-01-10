@@ -7,7 +7,7 @@
 [![CodeQL](https://github.com/strakam/generals-bots/actions/workflows/codeql.yml/badge.svg)](https://github.com/strakam/generals-bots/actions/workflows/codeql.yml)
 [![CI](https://github.com/strakam/generals-bots/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/strakam/generals-bots/actions/workflows/pre-commit.yml)
 
-[Installation](#-installation) • [Getting Started](#-getting-started) • [Environment](#-environment) • [Agents](#-agents) • [Deployment](#-deployment)
+[Installation](#-installation) • [Getting Started](#-getting-started) • [Environment](#-environment) • [Deployment](#-deployment)
 </div>
 
 A high-performance JAX-based simulator for [generals.io](https://generals.io), designed for reinforcement learning research.
@@ -74,7 +74,7 @@ while True:
 print(f"Winner: Player {int(timestep.info.winner)}")
 ```
 
-### Vectorized Parallel Environments
+### ⚡Vectorized Parallel Environments
 
 Run **thousands** of games in parallel using `jax.vmap`:
 
@@ -102,25 +102,6 @@ timesteps, states = step_vmap(states, actions, reset_keys)
 ```
 
 See `examples/vectorized_example.py` for a complete example.
-
-### Creating Custom Agents
-
-Subclass `Agent` and implement the `act` method:
-
-```python
-import jax.numpy as jnp
-from generals.agents import Agent
-from generals.core.observation import Observation
-
-class MyAgent(Agent):
-    def __init__(self):
-        super().__init__(id="MyAgent")
-
-    def act(self, observation: Observation, key: jnp.ndarray) -> jnp.ndarray:
-        # Your logic here
-        # Return action array: [pass, row, col, direction, split]
-        return jnp.array([1, 0, 0, 0, 0], dtype=jnp.int32)  # Pass
-```
 
 ## 🌍 Environment
 
@@ -166,32 +147,6 @@ mask = compute_valid_move_mask(obs.armies, obs.owned_cells, obs.mountains)
 # mask shape: (H, W, 4) - True where move from (i,j) in direction d is valid
 ```
 
-### Grid Generation
-
-Generate random game grids:
-
-```python
-import jax.random as jrandom
-from generals import generate_grid
-
-key = jrandom.PRNGKey(0)
-grid = generate_grid(key)
-# grid: (24, 24) array with:
-#   1, 2 = generals
-#   -2 = mountains
-#   40-50 = cities (army value)
-#   0 = empty
-```
-
-## 🤖 Agents
-
-Built-in agents:
-
-| Agent | Description |
-|-------|-------------|
-| `RandomAgent` | Selects random valid moves |
-| `ExpanderAgent` | Aggressively captures territory |
-
 ## 🚀 Deployment
 
 Deploy agents to live [generals.io](https://generals.io) servers:
@@ -205,11 +160,6 @@ autopilot(agent, user_id="your_user_id", lobby_id="your_lobby")
 ```
 
 Register at [generals.io](https://generals.io) to get your user ID.
-
-## 🗂️ Dataset
-
-We provide a large dataset of game replays for training:
-[HuggingFace Dataset](https://huggingface.co/datasets/strakammm/generals_io_replays)
 
 ## 📄 Citation
 
