@@ -63,7 +63,9 @@ class GeneralsEnv:
         truncation: Maximum number of timesteps before game is truncated. Default 500.
         mountain_density: Fraction of cells that are mountains. Default 0.15.
         num_cities_range: (min, max) number of cities to generate. Default (0, 2).
-        min_generals_distance: Minimum Manhattan distance between generals. Default 3.
+        min_generals_distance: Minimum BFS (shortest path) distance between generals. Default 3.
+        max_generals_distance: Maximum BFS (shortest path) distance between generals. None means
+            no upper bound. Useful for curriculum learning (start close, increase over time).
         pool_size: Number of pre-generated states for auto-reset. Default 10_000.
 
     Example:
@@ -84,6 +86,7 @@ class GeneralsEnv:
         mountain_density: float = 0.15,
         num_cities_range: tuple[int, int] = (0, 2),
         min_generals_distance: int = 3,
+        max_generals_distance: int | None = None,
         pool_size: int = 10_000,
     ):
         self.grid_dims = grid_dims
@@ -91,6 +94,7 @@ class GeneralsEnv:
         self.mountain_density = mountain_density
         self.num_cities_range = num_cities_range
         self.min_generals_distance = min_generals_distance
+        self.max_generals_distance = max_generals_distance
         self.pool_size = pool_size
         self._pool: GameState | None = None
 
@@ -104,7 +108,7 @@ class GeneralsEnv:
             mountain_density=self.mountain_density,
             num_cities_range=self.num_cities_range,
             min_generals_distance=self.min_generals_distance,
-            max_generals_distance=None,
+            max_generals_distance=self.max_generals_distance,
             castle_val_range=(40, 51),
         )
         return create_initial_state(grid.astype(jnp.int32))

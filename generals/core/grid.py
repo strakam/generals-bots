@@ -37,8 +37,8 @@ def generate_grid(
         pad_to: Pad grid to this size for batching (None = max(h, w) + 1)
         mountain_density: Fraction of tiles that are mountains (0.18-0.22)
         num_cities_range: (min, max) number of cities to place
-        min_generals_distance: Minimum Manhattan distance between generals
-        max_generals_distance: Maximum Manhattan distance between generals (None = no limit)
+        min_generals_distance: Minimum BFS (shortest path) distance between generals
+        max_generals_distance: Maximum BFS (shortest path) distance between generals (None = no limit)
         castle_val_range: (min, max) army value for cities
         
     Returns:
@@ -67,7 +67,7 @@ def generate_grid(
     pos_a = sample_from_mask(base_a_valid, keys[2])
     grid = grid.at[pos_a].set(1)
     
-    # Place Base B: must be within [min_distance, max_distance] Manhattan distance from A
+    # Place Base B: Manhattan distance as placement heuristic (BFS enforced after terrain)
     dist_from_a = manhattan_distance_from(pos_a, grid_dims)
     base_b_valid = dist_from_a >= min_generals_distance
     if max_generals_distance is not None:
@@ -167,6 +167,16 @@ def generate_grid(
         lambda g: carve_l_path(g, pos_a, pos_b),  # Carve path
         grid
     )
+
+    # Step 6b: Enforce max BFS distance (carve L-path if path is too long)
+    if max_generals_distance is not None:
+        dist = bfs_distance(grid, pos_a, pos_b)
+        grid = jax.lax.cond(
+            dist > max_generals_distance,
+            lambda g: carve_l_path(g, pos_a, pos_b),
+            lambda g: g,
+            grid
+        )
     
     # =================================================================
     # Step 7: Dynamic padding
@@ -320,8 +330,8 @@ def flood_fill_connected(grid: jax.Array, start_pos: tuple[int, int], end_pos: t
     """
     h, w = grid.shape
     
-    # Passable cells: empty (0) or generals (1, 2)
-    passable = (grid == 0) | (grid == 1) | (grid == 2)
+    # Everything except mountains is passable (empty, generals, cities)
+    passable = (grid != -2)
     
     # Initialize: only start position is reachable
     reachable = jnp.zeros((h, w), dtype=jnp.bool_)
@@ -355,6 +365,48 @@ def flood_fill_connected(grid: jax.Array, start_pos: tuple[int, int], end_pos: t
     final_reachable, _, _ = jax.lax.while_loop(cond_fn, body_fn, init_state)
     
     return final_reachable[end_pos]
+
+
+def bfs_distance(grid: jax.Array, start_pos: tuple[int, int], end_pos: tuple[int, int]) -> jax.Array:
+    """
+    Compute shortest path (BFS) distance between two positions.
+    Only mountains (-2) are impassable.
+
+    Args:
+        grid: 2D grid array
+        start_pos: Starting position (i, j)
+        end_pos: Target position (i, j)
+
+    Returns:
+        Scalar integer: BFS distance, or h*w if unreachable.
+    """
+    h, w = grid.shape
+    passable = (grid != -2)
+
+    reached = jnp.zeros((h, w), dtype=jnp.bool_)
+    reached = reached.at[start_pos].set(True)
+
+    def dilate(r):
+        up = jnp.roll(r, -1, axis=0).at[-1, :].set(False)
+        down = jnp.roll(r, 1, axis=0).at[0, :].set(False)
+        left = jnp.roll(r, -1, axis=1).at[:, -1].set(False)
+        right = jnp.roll(r, 1, axis=1).at[:, 0].set(False)
+        return (r | up | down | left | right) & passable
+
+    def cond_fn(state):
+        r, prev_r, _ = state
+        return ~r[end_pos] & jnp.any(r != prev_r)
+
+    def body_fn(state):
+        r, _, step = state
+        return (dilate(r), r, step + 1)
+
+    first = dilate(reached)
+    final_r, _, final_step = jax.lax.while_loop(
+        cond_fn, body_fn, (first, reached, jnp.int32(1))
+    )
+
+    return jnp.where(final_r[end_pos], final_step, h * w)
 
 
 def carve_l_path(grid: jax.Array, pos_a: tuple[int, int], pos_b: tuple[int, int]) -> jax.Array:
