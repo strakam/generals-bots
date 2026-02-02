@@ -61,9 +61,8 @@ while True:
     action_1 = agent_1.act(obs_1, k2)
     actions = jnp.stack([action_0, action_1])
 
-    # Step environment
-    key, step_key = jrandom.split(key)
-    timestep, state = env.step(state, actions, step_key)
+    # Step environment (auto-resets from pre-generated pool)
+    timestep, state = env.step(state, actions)
 
     if timestep.terminated or timestep.truncated:
         break
@@ -83,19 +82,18 @@ from generals import GeneralsEnv, get_observation
 # Create single environment
 env = GeneralsEnv(grid_dims=(10, 10), truncation=500)
 
-# Vectorize reset and step
+# Generate state pool once, then create per-env starting states
 NUM_ENVS = 1024
-reset_vmap = jax.vmap(env.reset)
-step_vmap = jax.vmap(env.step)
-
-# Initialize all environments
 key = jrandom.PRNGKey(0)
-keys = jrandom.split(key, NUM_ENVS)
-states = reset_vmap(keys)  # Batched states
+key, pool_key = jrandom.split(key)
+env.reset(pool_key)  # generates shared pool
 
-# Step all environments in parallel
+keys = jrandom.split(key, NUM_ENVS)
+states = jax.vmap(env.init_state)(keys)  # Batched states
+
+# Step all environments in parallel (auto-resets from pool)
 # ... get batched observations and actions ...
-timesteps, states = step_vmap(states, actions, reset_keys)
+timesteps, states = jax.vmap(env.step)(states, actions)
 ```
 
 See `examples/vectorized_example.py` for a complete example.

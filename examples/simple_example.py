@@ -16,7 +16,7 @@ from generals.agents import RandomAgent, ExpanderAgent
 GRID_DIMS = (10, 10)    # Grid size (height, width) - try (15, 15) for larger games
 TRUNCATION = 500        # Max steps before game ends
 
-# Create environment
+# Create environment (generates state pool on reset)
 env = GeneralsEnv(grid_dims=GRID_DIMS, truncation=TRUNCATION)
 
 # Create agents
@@ -41,8 +41,7 @@ while not (terminated or truncated):
         agent_1.act(obs_1, k2),
     ])
 
-    key, step_key = jrandom.split(key)
-    timestep, state = env.step(state, actions, step_key)
+    timestep, state = env.step(state, actions)
 
     terminated = bool(timestep.terminated)
     truncated = bool(timestep.truncated)

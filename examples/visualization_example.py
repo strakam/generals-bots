@@ -33,8 +33,7 @@ while not (terminated or truncated):
     key, k1, k2 = jrandom.split(key, 3)
     actions = jnp.stack([agent_0.act(obs_0, k1), agent_1.act(obs_1, k2)])
 
-    key, step_key = jrandom.split(key)
-    timestep, state = env.step(state, actions, step_key)
+    timestep, state = env.step(state, actions)
 
     gui.update(state, timestep.info)
     gui.tick(fps=FPS)

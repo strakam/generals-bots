@@ -46,6 +46,7 @@ class GameState(NamedTuple):
         general_positions: (2, 2) array of [row, col] for each general.
         time: Scalar, current game timestep.
         winner: Scalar, -1 if game ongoing, 0 or 1 if that player won.
+        pool_idx: Scalar, index into the pre-generated state pool for auto-reset.
     """
 
     armies: jnp.ndarray
@@ -58,6 +59,7 @@ class GameState(NamedTuple):
     general_positions: jnp.ndarray
     time: jnp.ndarray
     winner: jnp.ndarray
+    pool_idx: jnp.ndarray
 
 
 class GameInfo(NamedTuple):
@@ -129,6 +131,7 @@ def create_initial_state(grid: jnp.ndarray) -> GameState:
         general_positions=general_positions,
         time=jnp.int32(0),
         winner=jnp.int32(-1),
+        pool_idx=jnp.int32(0),
     )
 
 
