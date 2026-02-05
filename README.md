@@ -10,7 +10,7 @@
 A high-performance JAX-based simulator for [generals.io](https://generals.io), designed for reinforcement learning research.
 
 **Highlights:**
-* ⚡ **1M+ steps/second** — fully JIT-compiled JAX simulator with vectorized `vmap` for massive parallelism
+* ⚡ **10M+ steps/second** — fully JIT-compiled JAX simulator with vectorized `vmap` for massive parallelism
 * 🎯 **Pure functional design** — immutable state, reproducible trajectories
 * 🚀 **Live deployment** — deploy agents to [generals.io](https://generals.io) servers
 * 🎮 **Built-in GUI** — visualize games and debug agent behavior
