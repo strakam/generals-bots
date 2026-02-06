@@ -4,6 +4,7 @@ from generals.core.game import GameState, GameInfo, create_initial_state, step, 
 from generals.core.observation import Observation
 from generals.core.action import compute_valid_move_mask, create_action
 from generals.core.grid import generate_grid
+from generals.core.rendering import JaxGameAdapter
 
 __all__ = [
     "GeneralsEnv",
@@ -16,5 +17,6 @@ __all__ = [
     "compute_valid_move_mask",
     "create_action",
     "generate_grid",
+    "JaxGameAdapter",
 ]
 

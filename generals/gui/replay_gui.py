@@ -9,7 +9,7 @@ from typing import Any
 import pygame
 
 from generals.core.game import GameState, GameInfo, get_info
-from generals.envs.jax_rendering_adapter import JaxGameAdapter
+from generals.core.rendering import JaxGameAdapter
 from .gui import GUI as FullGUI
 from .properties import GuiMode
 
