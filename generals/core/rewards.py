@@ -130,9 +130,8 @@ def composite_reward_fn(
     Combines:
     - Base win/lose reward (generals owned)
     - Army ratio reward
-    - Land ratio reward  
+    - Land ratio reward
     - City capture reward
-    - Split action bonus
     
     Args:
         city_weight: Weight for city reward
@@ -184,18 +183,14 @@ def composite_reward_fn(
     
     # City reward
     city_reward = compute_num_cities_owned(obs) - compute_num_cities_owned(prior_obs)
-    
-    # Split bonus
-    split_bonus = jnp.where(prior_action[4] == 1, 0.003, 0.0)
-    
+
     # Combine all rewards
     shaped_reward = (
         original_reward
         + ratio_weight * army_reward
         + city_weight * city_reward
         + ratio_weight * land_reward
-        + split_bonus
     )
-    
-    # If game done, only return original reward + split bonus
-    return jnp.where(game_done, original_reward + split_bonus, shaped_reward)
+
+    # If game done, only return original reward
+    return jnp.where(game_done, original_reward, shaped_reward)
