@@ -330,8 +330,8 @@ def flood_fill_connected(grid: jax.Array, start_pos: tuple[int, int], end_pos: t
     """
     h, w = grid.shape
     
-    # Everything except mountains is passable (empty, generals, cities)
-    passable = (grid != -2)
+    # Only empty tiles and generals are passable (not cities/castles)
+    passable = (grid >= 0) & (grid <= 2)
     
     # Initialize: only start position is reachable
     reachable = jnp.zeros((h, w), dtype=jnp.bool_)
@@ -381,7 +381,8 @@ def bfs_distance(grid: jax.Array, start_pos: tuple[int, int], end_pos: tuple[int
         Scalar integer: BFS distance, or h*w if unreachable.
     """
     h, w = grid.shape
-    passable = (grid != -2)
+    # Only empty tiles and generals are passable (not cities/castles)
+    passable = (grid >= 0) & (grid <= 2)
 
     reached = jnp.zeros((h, w), dtype=jnp.bool_)
     reached = reached.at[start_pos].set(True)
