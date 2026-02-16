@@ -39,12 +39,14 @@ class TimeStep(NamedTuple):
         terminated: Boolean scalar, True if game ended (general captured).
         truncated: Boolean scalar, True if max timesteps reached.
         info: GameInfo with statistics (army counts, land counts, winner).
+        last_state: GameState before auto-reset (needed for bootstrap values).
     """
     observation: Observation
     reward: jnp.ndarray
     terminated: jnp.ndarray
     truncated: jnp.ndarray
     info: GameInfo
+    last_state: GameState
 
 
 class GeneralsEnv:
@@ -212,6 +214,7 @@ class GeneralsEnv:
             terminated=terminated,
             truncated=truncated,
             info=info,
+            last_state=new_state,
         )
 
         return timestep, final_state
