@@ -24,12 +24,11 @@ def generate_grid(
     
     Algorithm:
     1. Place generals FIRST on empty grid (guaranteed valid distance)
-    2. Mark protected zones around generals for castle placement
-    3. Place castles in protected zones
-    4. Place mountains on remaining cells
-    5. Place remaining cities
-    6. Check connectivity, carve L-path if needed
-    7. Apply dynamic padding
+    2. Place mountains on empty cells
+    3. Place castles within BFS distance 6 of each general
+    4. Place remaining cities
+    5. Check connectivity, carve L-path if needed
+    6. Apply dynamic padding
     
     Args:
         key: JAX random key
@@ -76,36 +75,9 @@ def generate_grid(
     grid = grid.at[pos_b].set(2)
     
     # =================================================================
-    # Step 2: Mark protected zones (within distance 6 of each general)
+    # Step 2: Place mountains (before castles, so BFS distance is accurate)
     # =================================================================
-    dist_from_b = manhattan_distance_from(pos_b, grid_dims)
-    
-    near_a = (dist_from_a > 0) & (dist_from_a <= 6)
-    near_b = (dist_from_b > 0) & (dist_from_b <= 6)
-    
-    # =================================================================
-    # Step 3: Place one castle near each general (in protected zones)
-    # =================================================================
-    # Generate castle values using keys[4] and keys[5]
-    castle_val_a = jax.random.randint(keys[4], (), castle_val_range[0], castle_val_range[1])
-    castle_val_b = jax.random.randint(keys[5], (), castle_val_range[0], castle_val_range[1])
-    
-    # Sample castle positions using keys[6] and keys[7] (separate from value keys!)
-    # Castle near A (not on A or B)
-    castle_a_mask = near_a & (grid == 0)
-    pos_castle_a = sample_from_mask(castle_a_mask, keys[6])
-    grid = grid.at[pos_castle_a].set(castle_val_a)
-    
-    # Castle near B (not on A, B, or first castle)
-    castle_b_mask = near_b & (grid == 0)
-    pos_castle_b = sample_from_mask(castle_b_mask, keys[7])
-    grid = grid.at[pos_castle_b].set(castle_val_b)
-    
-    # =================================================================
-    # Step 4: Place mountains (can be anywhere empty, including protected zones)
-    # =================================================================
-    # Available for mountains: any empty cell (mountains CAN be in protected zones)
-    mountain_available = (grid == 0)  # Just empty cells
+    mountain_available = (grid == 0)  # Any empty cell
     flat_available = mountain_available.reshape(-1)
     
     # Use Gumbel-max + top_k for mountain placement
@@ -128,9 +100,36 @@ def generate_grid(
     
     flat_grid, _ = jax.lax.scan(place_mountain, flat_grid, (mountain_indices, mountain_mask))
     grid = flat_grid.reshape(grid_dims)
-    
+
     # =================================================================
-    # Step 5: Place remaining cities (num_cities - 2, since 2 are castles)
+    # Step 3: Place castles within BFS distance 6 of each general
+    # =================================================================
+    castle_val_a = jax.random.randint(keys[4], (), castle_val_range[0], castle_val_range[1])
+    castle_val_b = jax.random.randint(keys[5], (), castle_val_range[0], castle_val_range[1])
+
+    # BFS flood fill 6 steps from each general through non-mountain terrain
+    near_a = bfs_reachable_within_k(grid, pos_a, 6)
+    near_b = bfs_reachable_within_k(grid, pos_b, 6)
+
+    # Castle near A: must be empty and within BFS distance 6
+    castle_a_candidates = near_a & (grid == 0)
+    # Fallback: if no candidates, clear nearest mountain neighbor
+    has_candidates_a = jnp.any(castle_a_candidates)
+    fallback_a_mask = near_a & (grid == -2)
+    castle_a_mask = jnp.where(has_candidates_a, castle_a_candidates, fallback_a_mask)
+    pos_castle_a = sample_from_mask(castle_a_mask, keys[6])
+    grid = grid.at[pos_castle_a].set(castle_val_a)
+
+    # Castle near B: must be empty and within BFS distance 6 (not on first castle)
+    castle_b_candidates = near_b & (grid == 0)
+    has_candidates_b = jnp.any(castle_b_candidates)
+    fallback_b_mask = near_b & (grid == -2)
+    castle_b_mask = jnp.where(has_candidates_b, castle_b_candidates, fallback_b_mask)
+    pos_castle_b = sample_from_mask(castle_b_mask, keys[7])
+    grid = grid.at[pos_castle_b].set(castle_val_b)
+
+    # =================================================================
+    # Step 4: Place remaining cities (num_cities - 2, since 2 are castles)
     # =================================================================
     remaining_cities = num_cities - 2
     city_available = (grid == 0)  # Any empty cell
@@ -158,7 +157,7 @@ def generate_grid(
     grid = flat_grid.reshape(grid_dims)
     
     # =================================================================
-    # Step 6: Ensure connectivity (carve L-path if needed)
+    # Step 5: Ensure connectivity (carve L-path if needed)
     # =================================================================
     connected = flood_fill_connected(grid, pos_a, pos_b)
     grid = jax.lax.cond(
@@ -168,7 +167,7 @@ def generate_grid(
         grid
     )
 
-    # Step 6b: Enforce max BFS distance (carve L-path if path is too long)
+    # Step 5b: Enforce max BFS distance (carve L-path if path is too long)
     if max_generals_distance is not None:
         dist = bfs_distance(grid, pos_a, pos_b)
         grid = jax.lax.cond(
@@ -179,7 +178,7 @@ def generate_grid(
         )
     
     # =================================================================
-    # Step 7: Dynamic padding
+    # Step 6: Dynamic padding
     # =================================================================
     # Default padding: max dimension + 1 (for batching)
     if pad_to is None:
@@ -313,6 +312,45 @@ def valid_base_a_mask(grid_shape: tuple[int, int], min_distance: int, max_distan
         )
     
     return valid
+
+
+def bfs_reachable_within_k(grid: jax.Array, start_pos: tuple[int, int], k: int) -> jax.Array:
+    """
+    BFS flood fill from start_pos for exactly k steps.
+    Returns boolean mask of all cells reachable within k BFS steps.
+    The start cell itself is excluded from the result.
+
+    Passable cells: not mountains (-2). Generals and empty cells are passable.
+
+    Args:
+        grid: 2D grid array
+        start_pos: Starting position (i, j)
+        k: Number of BFS steps
+
+    Returns:
+        2D boolean mask of reachable cells (excluding start_pos)
+    """
+    h, w = grid.shape
+    passable = grid != -2
+
+    reachable = jnp.zeros((h, w), dtype=jnp.bool_)
+    reachable = reachable.at[start_pos].set(True)
+
+    def dilate(reachable):
+        up = jnp.roll(reachable, -1, axis=0).at[-1, :].set(False)
+        down = jnp.roll(reachable, 1, axis=0).at[0, :].set(False)
+        left = jnp.roll(reachable, -1, axis=1).at[:, -1].set(False)
+        right = jnp.roll(reachable, 1, axis=1).at[:, 0].set(False)
+        return (reachable | up | down | left | right) & passable
+
+    def body_fn(_, reachable):
+        return dilate(reachable)
+
+    reachable = jax.lax.fori_loop(0, k, body_fn, reachable)
+
+    # Exclude the start position itself
+    reachable = reachable.at[start_pos].set(False)
+    return reachable
 
 
 def flood_fill_connected(grid: jax.Array, start_pos: tuple[int, int], end_pos: tuple[int, int]) -> bool:
