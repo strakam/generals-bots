@@ -20,7 +20,7 @@ def benchmark(num_envs: int = 256, num_steps: int = 10_000):
     # Generate pool once, then create per-env initial states
     key = jrandom.PRNGKey(42)
     key, pool_key = jrandom.split(key)
-    env.reset(pool_key)
+    pool, _ = env.reset(pool_key)
 
     init_keys = jrandom.split(key, num_envs)
     states = jax.vmap(env.init_state)(init_keys)
@@ -30,7 +30,8 @@ def benchmark(num_envs: int = 256, num_steps: int = 10_000):
     actions = jnp.tile(pass_action, (num_envs, 2, 1))  # Shape: [num_envs, 2, 5]
 
     print("Warming up JIT compilation...")
-    timesteps, states = jax.vmap(env.step)(states, actions)
+    step_fn = lambda s, a: env.step(s, a, pool)
+    timesteps, states = jax.vmap(step_fn)(states, actions)
     jax.block_until_ready(states)
     print("JIT compilation complete!\n")
 
@@ -41,7 +42,7 @@ def benchmark(num_envs: int = 256, num_steps: int = 10_000):
     print_interval = 1000
 
     for step in range(num_steps):
-        timesteps, states = jax.vmap(env.step)(states, actions)
+        timesteps, states = jax.vmap(step_fn)(states, actions)
         jax.block_until_ready(states)
 
         if (step + 1) % print_interval == 0:

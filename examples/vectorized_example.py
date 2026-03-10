@@ -17,14 +17,14 @@ agent_1 = ExpanderAgent()
 # Generate state pool (once) and per-env initial states
 key = jrandom.PRNGKey(42)
 key, pool_key = jrandom.split(key)
-env.reset(pool_key)  # generates shared pool
+pool, _ = env.reset(pool_key)  # generates shared pool
 
 # Create initial states for all envs
 init_keys = jrandom.split(key, NUM_ENVS)
 states = jax.vmap(env.init_state)(init_keys)
 
 # Vectorize functions
-step_vmap = jax.vmap(env.step)
+step_vmap = jax.vmap(lambda s, a: env.step(s, a, pool))
 get_obs_p0 = jax.vmap(lambda s: get_observation(s, 0))
 get_obs_p1 = jax.vmap(lambda s: get_observation(s, 1))
 act_p0 = jax.vmap(agent_0.act)

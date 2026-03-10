@@ -18,7 +18,7 @@ agent_1 = ExpanderAgent(id="Expander")
 
 # Initialize game
 key = jrandom.PRNGKey(42)
-state = env.reset(key)
+pool, state = env.reset(key)
 
 # Create GUI
 gui = ReplayGUI(state, agent_ids=[agent_0.id, agent_1.id])
@@ -33,7 +33,7 @@ while not (terminated or truncated):
     key, k1, k2 = jrandom.split(key, 3)
     actions = jnp.stack([agent_0.act(obs_0, k1), agent_1.act(obs_1, k2)])
 
-    timestep, state = env.step(state, actions)
+    timestep, state = env.step(state, actions, pool)
 
     gui.update(state, timestep.info)
     gui.tick(fps=FPS)

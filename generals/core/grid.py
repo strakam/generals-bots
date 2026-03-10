@@ -43,35 +43,42 @@ def generate_grid(
     Returns:
         Grid is always valid (validity=True always)
     """
-    keys = jax.random.split(key, 11)
-    
+    keys = jax.random.split(key, 12)
+
     h, w = grid_dims
     num_tiles = h * w
-    
+
     # Random number of cities in range
     num_cities = jax.random.randint(keys[0], (), num_cities_range[0], num_cities_range[1] + 1)
-    
+
     # Number of mountains: base density + small variation
     base_mountains = int(mountain_density * num_tiles)
     mountain_variation = jax.random.randint(keys[1], (), -10, 11)
     num_mountains = base_mountains + mountain_variation
-    
+
     # =================================================================
     # Step 1: Place generals FIRST on empty grid
+    # Generate positions neutrally, then randomly assign to p0/p1
     # =================================================================
     grid = jnp.full(grid_dims, 0, dtype=jnp.int32)
-    
-    # Place Base A: only in positions where Base B can exist within distance constraints
-    base_a_valid = valid_base_a_mask(grid_dims, min_generals_distance, max_generals_distance)
-    pos_a = sample_from_mask(base_a_valid, keys[2])
-    grid = grid.at[pos_a].set(1)
-    
-    # Place Base B: Manhattan distance as placement heuristic (BFS enforced after terrain)
-    dist_from_a = manhattan_distance_from(pos_a, grid_dims)
-    base_b_valid = dist_from_a >= min_generals_distance
+
+    # Place first general: only in positions where second can exist within distance constraints
+    first_valid = valid_base_a_mask(grid_dims, min_generals_distance, max_generals_distance)
+    pos_first = sample_from_mask(first_valid, keys[2])
+
+    # Place second general: constrained by distance from first
+    dist_from_first = manhattan_distance_from(pos_first, grid_dims)
+    second_valid = dist_from_first >= min_generals_distance
     if max_generals_distance is not None:
-        base_b_valid = base_b_valid & (dist_from_a <= max_generals_distance)
-    pos_b = sample_from_mask(base_b_valid, keys[3])
+        second_valid = second_valid & (dist_from_first <= max_generals_distance)
+    pos_second = sample_from_mask(second_valid, keys[3])
+
+    # Randomly assign which position becomes p0 (Base A) vs p1 (Base B)
+    swap = jax.random.bernoulli(keys[11])
+    pos_a = jax.tree.map(lambda a, b: jnp.where(swap, b, a), pos_first, pos_second)
+    pos_b = jax.tree.map(lambda a, b: jnp.where(swap, a, b), pos_first, pos_second)
+
+    grid = grid.at[pos_a].set(1)
     grid = grid.at[pos_b].set(2)
     
     # =================================================================

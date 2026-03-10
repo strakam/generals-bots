@@ -25,7 +25,7 @@ agent_1 = ExpanderAgent(id="Expander")
 
 # Initialize random key
 key = jrandom.PRNGKey(42)
-state = env.reset(key)
+pool, state = env.reset(key)
 
 step_count = 0
 terminated = truncated = False
@@ -41,7 +41,7 @@ while not (terminated or truncated):
         agent_1.act(obs_1, k2),
     ])
 
-    timestep, state = env.step(state, actions)
+    timestep, state = env.step(state, actions, pool)
 
     terminated = bool(timestep.terminated)
     truncated = bool(timestep.truncated)

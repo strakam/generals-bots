@@ -4,8 +4,8 @@ Generals.io environment for reinforcement learning.
 This module provides the main environment class for running Generals.io games
 with JAX. It supports vectorized execution for running many games in parallel.
 
-The environment pre-generates a pool of GameStates at reset time and uses them
-for cheap auto-resets during training, avoiding expensive grid generation per step.
+The environment is stateless — reset() returns a pool of pre-generated states,
+and step() takes the pool as an explicit argument for cheap auto-resets.
 
 Example:
     >>> import jax.random as jrandom
@@ -13,8 +13,8 @@ Example:
     >>>
     >>> env = GeneralsEnv(grid_dims=(10, 10), truncation=500)
     >>> key = jrandom.PRNGKey(42)
-    >>> state = env.reset(key)
-    >>> timestep, state = env.step(state, actions)
+    >>> pool, state = env.reset(key)
+    >>> timestep, state = env.step(state, actions, pool)
 """
 from typing import NamedTuple
 
@@ -51,96 +51,140 @@ class TimeStep(NamedTuple):
 
 class GeneralsEnv:
     """
-    JAX-based Generals.io environment.
+    JAX-based Generals.io environment (stateless).
 
     This environment simulates the Generals.io game for two players. It supports
     vectorized execution via JAX's vmap for running thousands of games in parallel.
 
-    On reset, a pool of pre-generated GameStates is created. During step, auto-reset
-    indexes into this pool instead of running expensive grid generation, giving ~100x
-    speedup over generating grids at runtime.
+    The env is a stateless config bag — reset() returns a pool of pre-generated
+    GameStates, and step() takes the pool as an explicit argument. This avoids
+    JIT recompilation issues when the pool changes (e.g. curriculum, pool refresh).
 
-    Args:
-        grid_dims: Tuple of (height, width) for the game grid. Default (4, 4).
-        truncation: Maximum number of timesteps before game is truncated. Default 500.
-        mountain_density: Fraction of cells that are mountains. Default 0.15.
-        num_cities_range: (min, max) number of cities to generate. Default (0, 2).
-        min_generals_distance: Minimum BFS (shortest path) distance between generals. Default 3.
-        max_generals_distance: Maximum BFS (shortest path) distance between generals. None means
-            no upper bound. Useful for curriculum learning (start close, increase over time).
-        pool_size: Number of pre-generated states for auto-reset. Default 10_000.
+    Supports two modes:
+        1. Fixed size: GeneralsEnv(grid_dims=(10, 10)) — single grid size
+        2. Variable sizes: GeneralsEnv(min_grid_size=8, max_grid_size=24, pad_to=24)
+           — pool contains all HxW combos in [min, max], padded with mountains to pad_to
 
     Example:
-        >>> # Single environment
         >>> env = GeneralsEnv(grid_dims=(10, 10), truncation=500)
-        >>> state = env.reset(jrandom.PRNGKey(0))
-        >>> timestep, state = env.step(state, actions)
-        >>>
-        >>> # Vectorized environments with vmap
-        >>> env = GeneralsEnv(grid_dims=(10, 10), truncation=500)
-        >>> state = env.reset(jrandom.PRNGKey(0))
-        >>> states = jax.vmap(env.reset)(jrandom.split(jrandom.PRNGKey(1), 1024))
+        >>> pool, state = env.reset(jrandom.PRNGKey(0))
+        >>> timestep, state = env.step(state, actions, pool)
     """
     def __init__(
         self,
-        grid_dims: tuple[int, int] = (4, 4),
+        grid_dims: tuple[int, int] | None = None,
         truncation: int = 500,
         mountain_density: float = 0.15,
         num_cities_range: tuple[int, int] = (0, 2),
         min_generals_distance: int = 3,
         max_generals_distance: int | None = None,
         pool_size: int = 10_000,
+        castle_val_range: tuple[int, int] = (40, 51),
+        # Variable grid size params (alternative to grid_dims)
+        min_grid_size: int | None = None,
+        max_grid_size: int | None = None,
+        pad_to: int | None = None,
     ):
-        self.grid_dims = grid_dims
+        # Handle backward compat: grid_dims=(h,w) → fixed size
+        if grid_dims is not None:
+            h, w = grid_dims
+            self.min_grid_size = h  # assume square for compat
+            self.max_grid_size = max(h, w)
+            self.pad_to = pad_to if pad_to is not None else max(h, w)
+            self._fixed_dims = grid_dims
+        elif min_grid_size is not None and max_grid_size is not None:
+            assert pad_to is not None and pad_to >= max_grid_size, \
+                f"pad_to ({pad_to}) must be >= max_grid_size ({max_grid_size})"
+            self.min_grid_size = min_grid_size
+            self.max_grid_size = max_grid_size
+            self.pad_to = pad_to
+            self._fixed_dims = None
+        else:
+            # Default: 4x4 fixed
+            self.min_grid_size = 4
+            self.max_grid_size = 4
+            self.pad_to = 4
+            self._fixed_dims = (4, 4)
+
         self.truncation = truncation
         self.mountain_density = mountain_density
         self.num_cities_range = num_cities_range
         self.min_generals_distance = min_generals_distance
         self.max_generals_distance = max_generals_distance
         self.pool_size = pool_size
-        self._pool: GameState | None = None
+        self.castle_val_range = castle_val_range
 
-    def _make_single_state(self, key: jnp.ndarray) -> GameState:
-        """Generate a single GameState from a random key."""
-        h, w = self.grid_dims
+    def _make_single_state_fixed(self, key: jnp.ndarray, h: int, w: int) -> GameState:
+        """Generate a single GameState for a specific (h, w) grid size."""
         grid = generate_grid(
             key,
-            grid_dims=self.grid_dims,
-            pad_to=max(h, w),
+            grid_dims=(h, w),
+            pad_to=self.pad_to,
             mountain_density=self.mountain_density,
             num_cities_range=self.num_cities_range,
             min_generals_distance=self.min_generals_distance,
             max_generals_distance=self.max_generals_distance,
-            castle_val_range=(40, 51),
+            castle_val_range=self.castle_val_range,
         )
         return create_initial_state(grid.astype(jnp.int32))
 
-    def reset(self, key: jnp.ndarray) -> GameState:
+    def reset(self, key: jnp.ndarray) -> tuple[GameState, GameState]:
         """
-        Generate the state pool and return an initial state.
+        Generate a state pool and return (pool, init_state).
 
-        The pool is stored internally and used for cheap auto-resets in step().
-        Call this once before stepping. In vectorized settings, call this once
-        (not inside vmap) to generate the shared pool, then vmap over
-        init_state() to get per-env starting states.
+        The pool is a batched GameState with shape (pool_size, ...) used for
+        cheap auto-resets during step(). The init_state is a single GameState.
 
         Args:
             key: JAX random key.
 
         Returns:
-            A single GameState ready for gameplay, with pool_idx=0.
+            Tuple of (pool, init_state).
         """
-        k_pool, k_init = jrandom.split(key)
-        pool_keys = jrandom.split(k_pool, self.pool_size)
-        self._pool = jax.vmap(self._make_single_state)(pool_keys)
-        return self._make_single_state(k_init)
+        k_pool, k_init, k_shuffle = jrandom.split(key, 3)
+
+        if self._fixed_dims is not None and self.min_grid_size == self.max_grid_size:
+            # Fast path: single grid size
+            h, w = self._fixed_dims
+            pool_keys = jrandom.split(k_pool, self.pool_size)
+            make_fn = lambda k: self._make_single_state_fixed(k, h, w)
+            pool = jax.vmap(make_fn)(pool_keys)
+        else:
+            # Variable grid sizes: generate per-combo batches, concat, shuffle
+            sizes = [(h, w)
+                     for h in range(self.min_grid_size, self.max_grid_size + 1)
+                     for w in range(self.min_grid_size, self.max_grid_size + 1)]
+            num_combos = len(sizes)
+            per_combo = self.pool_size // num_combos
+
+            pool_keys = jrandom.split(k_pool, num_combos * per_combo)
+
+            pools = []
+            for i, (h, w) in enumerate(sizes):
+                combo_keys = pool_keys[i * per_combo : (i + 1) * per_combo]
+                make_fn = lambda k, _h=h, _w=w: self._make_single_state_fixed(k, _h, _w)
+                combo_pool = jax.vmap(make_fn)(combo_keys)
+                pools.append(combo_pool)
+
+            # Concatenate all combos into one pool
+            pool = jax.tree.map(lambda *xs: jnp.concatenate(xs), *pools)
+
+            # Shuffle so different sizes are interleaved
+            actual_size = num_combos * per_combo
+            perm = jrandom.permutation(k_shuffle, actual_size)
+            pool = jax.tree.map(lambda x: x[perm], pool)
+
+            # Update pool_size to actual (may differ due to integer division)
+            self.pool_size = actual_size
+
+        init_state = self._make_single_state_fixed(k_init, self.max_grid_size, self.max_grid_size)
+        return pool, init_state
 
     def init_state(self, key: jnp.ndarray) -> GameState:
         """
         Generate a single initial state (without regenerating the pool).
 
-        Useful for creating per-env starting states in vectorized settings:
-            states = jax.vmap(env.init_state)(keys)
+        Uses max_grid_size for consistency in vectorized settings.
 
         Args:
             key: JAX random key.
@@ -148,33 +192,31 @@ class GeneralsEnv:
         Returns:
             A single GameState with pool_idx=0.
         """
-        return self._make_single_state(key)
+        return self._make_single_state_fixed(key, self.max_grid_size, self.max_grid_size)
 
     def step(
         self,
         state: GameState,
         actions: jnp.ndarray,
+        pool: GameState,
     ) -> tuple[TimeStep, GameState]:
         """
-        Execute one game step with auto-reset from pre-generated pool.
+        Execute one game step with auto-reset from pool.
 
         When a game ends (terminated or truncated), the state is replaced with
-        the next state from the internal pool. The pool_idx in the state tracks
+        the next state from the pool. The pool_idx in the state tracks
         which pool entry to use and is incremented on each reset.
 
         Args:
             state: Current game state.
             actions: Array of shape (2, 5) with actions for both players.
                 Each action is [pass, row, col, direction, split].
+            pool: Batched GameState of shape (pool_size, ...) for auto-reset.
 
         Returns:
             Tuple of (TimeStep, new_state). The TimeStep contains observations,
             rewards, and done flags.
         """
-        assert self._pool is not None, "Call env.reset(key) before env.step() to generate the state pool."
-
-        pool = self._pool
-
         # Step game
         new_state, info = game_step(state, actions)
 
