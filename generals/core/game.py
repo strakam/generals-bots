@@ -266,7 +266,7 @@ def global_update(state: GameState) -> GameState:
         armies,
     )
 
-    increment_structures = (time % 2 == 0) & (time > 0)
+    increment_structures = (time % 2 == 1)
     structure_mask = (state.generals | state.cities).astype(jnp.int32)
     armies = lax.cond(
         increment_structures,

@@ -58,11 +58,13 @@ class GeneralsIOstate:
         mountain_cells = np.where(terrain == -2, 1, 0).astype(bool)
         fog_cells = np.where(terrain == -3, 1, 0).astype(bool)
         structures_in_fog = np.where(terrain == -4, 1, 0).astype(bool)
-        owned_land_count = self.scores[self.player_index]["tiles"]
-        owned_army_count = self.scores[self.player_index]["total"]
-        opponent_land_count = self.scores[self.opponent_index]["tiles"]
-        opponent_army_count = self.scores[self.opponent_index]["total"]
-        timestep = self.turn
+        # scores array is NOT indexed by playerIndex — each entry has an "i" field
+        scores_by_player = {s["i"]: s for s in self.scores}
+        owned_land_count = scores_by_player[self.player_index]["tiles"]
+        owned_army_count = scores_by_player[self.player_index]["total"]
+        opponent_land_count = scores_by_player[self.opponent_index]["tiles"]
+        opponent_army_count = scores_by_player[self.opponent_index]["total"]
+        timestep = self.turn - 1
         return Observation(
             armies=army,
             generals=generals,
