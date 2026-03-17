@@ -75,7 +75,7 @@ class GeneralsEnv:
         grid_dims: tuple[int, int] | None = None,
         truncation: int = 500,
         mountain_density: float = 0.15,
-        num_cities_range: tuple[int, int] = (0, 2),
+        num_cities_range: tuple[int, int] = (9, 11),
         min_generals_distance: int = 3,
         max_generals_distance: int | None = None,
         pool_size: int = 10_000,

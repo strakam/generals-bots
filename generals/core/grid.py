@@ -493,7 +493,7 @@ def carve_l_path(grid: jax.Array, pos_a: tuple[int, int], pos_b: tuple[int, int]
     path_mask = h_mask | v_mask
     
     # Clear obstacles on path, but preserve generals (values 1, 2)
-    is_obstacle = (grid == -2) | (grid >= 40)  # Mountain or city
+    is_obstacle = (grid == -2) | (grid > 2)  # Mountain or city
     grid = jnp.where(path_mask & is_obstacle, 0, grid)
     
     return grid

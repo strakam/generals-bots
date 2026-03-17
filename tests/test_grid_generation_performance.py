@@ -103,7 +103,7 @@ def test_grid_properties():
         mountain_counts.append(num_mountains)
 
         # Count cities (values 40-50)
-        num_cities = int(jnp.sum((grid >= 40) & (grid <= 50)))
+        num_cities = int(jnp.sum(grid > 2))
         city_counts.append(num_cities)
 
     print(f"\nStatistics from {num_grids} grids:")

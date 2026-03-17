@@ -108,7 +108,7 @@ def create_initial_state(grid: jnp.ndarray) -> GameState:
 
     mountains = grid == -2
     passable = grid != -2
-    cities = (grid >= 40) & (grid <= 50)
+    cities = grid > 2
 
     ownership = jnp.stack([is_general_0, is_general_1])
     ownership_neutral = passable & ~is_general_0 & ~is_general_1
