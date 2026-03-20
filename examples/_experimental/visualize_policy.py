@@ -16,7 +16,7 @@ from generals.core import game
 from generals.core.game import create_initial_state
 from generals.gui import GUI
 from generals.gui.properties import GuiMode
-from generals.envs.jax_rendering_adapter import JaxGameAdapter
+from generals.core.rendering import JaxGameAdapter
 
 try:
     from ppo.network import PolicyValueNetwork, obs_to_array

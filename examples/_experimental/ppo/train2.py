@@ -60,11 +60,8 @@ def _rollout_step_inner(states, env, network, key):
     # Stack actions for both players
     actions = jnp.stack([actions_p0, actions_p1], axis=1)
     
-    # Step all environments (vmap over states, actions, and keys)
-    key, *reset_keys = jrandom.split(key, num_envs + 1)
-    timesteps, new_states = jax.vmap(lambda s, a, k: env.step(s, a, k))(
-        states, actions, jnp.stack(reset_keys)
-    )
+    # Step all environments (auto-resets from internal pool)
+    timesteps, new_states = jax.vmap(env.step)(states, actions)
     
     # Get new observations from timestep (BEFORE any auto-reset)
     # timestep.observation is [num_envs, 2, ...] for both players, extract player 0
@@ -252,9 +249,11 @@ def main():
     # Create scan-based rollout collector
     collect_rollout = make_collect_rollout(env, num_steps)
     
-    # Initialize states (vmap over reset keys)
-    key, *reset_keys = jrandom.split(key, num_envs + 1)
-    states = jax.vmap(env.reset)(jnp.stack(reset_keys))
+    # Generate state pool once, then create per-env initial states
+    key, pool_key = jrandom.split(key)
+    env.reset(pool_key)
+    key, *init_keys = jrandom.split(key, num_envs + 1)
+    states = jax.vmap(env.init_state)(jnp.stack(init_keys))
     
     print("\nWarming up...")
     for _ in range(3):

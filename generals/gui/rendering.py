@@ -75,6 +75,7 @@ class Renderer:
         self._city_img = pygame.image.load(Path.CITY_PATH, "png").convert_alpha()
 
         self._font = pygame.font.Font(Path.FONT_PATH, self.properties.font_size)
+        self._debug_font = pygame.font.Font(Path.FONT_PATH, 10)  # Smaller font for debug
 
     def render(self, fps=None):
         self.render_grid()
@@ -235,6 +236,10 @@ class Renderer:
                 bg_color=None,  # Transparent background
             )
 
+        # Draw tile type debug labels if enabled
+        if self.properties.show_tile_types:
+            self.draw_tile_types()
+
         # Blit tiles to the self.game_area
         square_size = Dimension.SQUARE_SIZE.value
         for i, j in np.ndindex(self.grid_height, self.grid_width):
@@ -268,3 +273,35 @@ class Renderer:
         y_offset = (square_size - img_height) // 2
         for i, j in self.channel_to_indices(channel):
             self.tiles[i][j].blit(image, (x_offset, y_offset))
+
+    def draw_tile_types(self):
+        """
+        Draw tile type labels in the upper-right corner of each tile.
+        Types: 0=empty, -2=mountain, 1=general0, 2=general1, 40-50=city
+        """
+        square_size = Dimension.SQUARE_SIZE.value
+        channels = self.game.channels
+        agents = self.game.agents
+
+        for i in range(self.grid_height):
+            for j in range(self.grid_width):
+                # Determine tile type
+                if channels.mountains[i, j]:
+                    tile_type = "-2"
+                elif channels.generals[i, j]:
+                    if channels.ownership[agents[0]][i, j]:
+                        tile_type = "1"
+                    else:
+                        tile_type = "2"
+                elif channels.cities[i, j]:
+                    tile_type = "C"  # City
+                else:
+                    tile_type = "0"
+
+                # Render the type label in upper-right corner
+                text_surface = self._debug_font.render(tile_type, True, (0, 255, 0))  # Green text
+                text_rect = text_surface.get_rect()
+                # Position in upper-right with small padding
+                x_pos = square_size - text_rect.width - 2
+                y_pos = 2
+                self.tiles[i][j].blit(text_surface, (x_pos, y_pos))

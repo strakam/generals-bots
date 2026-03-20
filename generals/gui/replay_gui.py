@@ -33,27 +33,29 @@ class ReplayGUI:
         agent_ids: list[str] = None,
         colors: list[str] = None,
         fps: int = 10,
+        show_tile_types: bool = False,
     ):
         """
         Initialize the GUI.
-        
+
         Args:
             initial_state: Initial game state to display.
             agent_ids: Names for the two players. Default ["Player 0", "Player 1"].
             colors: Colors for the two players. Default ["red", "blue"].
             fps: Default frames per second.
+            show_tile_types: If True, show tile type labels (0, -2, C40, etc.) for debugging.
         """
         self.agent_ids = agent_ids or ["Player 0", "Player 1"]
         colors = colors or ["red", "blue"]
         self.fps = fps
-        
+
         # Create adapter and full GUI
         self._adapter = JaxGameAdapter(initial_state, self.agent_ids, get_info(initial_state))
         agent_data = {
             self.agent_ids[0]: {"color": colors[0]},
             self.agent_ids[1]: {"color": colors[1]},
         }
-        self._gui = FullGUI(self._adapter, agent_data, mode=GuiMode.TRAIN)
+        self._gui = FullGUI(self._adapter, agent_data, mode=GuiMode.TRAIN, show_tile_types=show_tile_types)
     
     def update(self, state: GameState, info: GameInfo = None):
         """Update the display with a new game state."""

@@ -22,6 +22,7 @@ class Properties:
     __game_speed: float = 1.0
     __clock: Clock = Clock()
     __font_size = 18
+    __show_tile_types: bool = False
 
     def __post_init__(self):
         self.__grid_height: int = self.__game.grid_dims[0]
@@ -99,3 +100,11 @@ class Properties:
         """multiplier: usually 2.0 or 0.5"""
         new_speed = self.game_speed * multiplier
         self.game_speed = new_speed
+
+    @property
+    def show_tile_types(self):
+        return self.__show_tile_types
+
+    @show_tile_types.setter
+    def show_tile_types(self, value: bool):
+        self.__show_tile_types = value

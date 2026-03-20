@@ -7,12 +7,16 @@ from generals.agents import RandomAgent, ExpanderAgent
 from generals.gui import ReplayGUI
 
 # Configuration
-GRID_DIMS = (12, 12)
+GRID_DIMS = (10, 10)
 TRUNCATION = 500
 FPS = 10
 
 # Create environment and agents
-env = GeneralsEnv(grid_dims=GRID_DIMS, truncation=TRUNCATION)
+env = GeneralsEnv(
+    grid_dims=GRID_DIMS,
+    truncation=TRUNCATION,
+    max_generals_distance=4
+)
 agent_0 = RandomAgent(id="Random")
 agent_1 = ExpanderAgent(id="Expander")
 
