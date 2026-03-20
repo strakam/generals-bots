@@ -85,6 +85,18 @@ class GameInfo(NamedTuple):
 DIRECTIONS = jnp.array([[-1, 0], [1, 0], [0, -1], [0, 1]], dtype=jnp.int32)
 
 
+def fast_forward_state(state: GameState, num_turns: int) -> GameState:
+    """Fast-forward a state by num_turns, simulating both players passing.
+
+    Useful for skipping the early game where armies just accumulate.
+    Applies time increment + global_update each turn (matching step() order).
+    """
+    def body(_, s):
+        s = s._replace(time=s.time + 1)
+        return global_update(s)
+    return lax.fori_loop(0, num_turns, body, state)
+
+
 def create_initial_state(grid: jnp.ndarray) -> GameState:
     """
     Create initial game state from a numeric grid.
