@@ -23,7 +23,7 @@ import jax.numpy as jnp
 import jax.random as jrandom
 
 from generals.core import game
-from generals.core.game import GameInfo, GameState, create_initial_state, fast_forward_state
+from generals.core.game import GameInfo, GameState, create_initial_state
 from generals.core.game import step as game_step
 from generals.core.grid import generate_grid
 from generals.core.observation import Observation
@@ -84,7 +84,6 @@ class GeneralsEnv:
         min_grid_size: int | None = None,
         max_grid_size: int | None = None,
         pad_to: int | None = None,
-        skip_turns: int = 0,
     ):
         # Handle backward compat: grid_dims=(h,w) → fixed size
         if grid_dims is not None:
@@ -114,7 +113,6 @@ class GeneralsEnv:
         self.max_generals_distance = max_generals_distance
         self.pool_size = pool_size
         self.castle_val_range = castle_val_range
-        self.skip_turns = skip_turns
 
     def _make_single_state_fixed(self, key: jnp.ndarray, h: int, w: int) -> GameState:
         """Generate a single GameState for a specific (h, w) grid size."""
@@ -128,10 +126,7 @@ class GeneralsEnv:
             max_generals_distance=self.max_generals_distance,
             castle_val_range=self.castle_val_range,
         )
-        state = create_initial_state(grid.astype(jnp.int32))
-        if self.skip_turns > 0:
-            state = fast_forward_state(state, self.skip_turns)
-        return state
+        return create_initial_state(grid.astype(jnp.int32))
 
     def reset(self, key: jnp.ndarray) -> tuple[GameState, GameState]:
         """
