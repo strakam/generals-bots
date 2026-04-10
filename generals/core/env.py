@@ -74,7 +74,7 @@ class GeneralsEnv:
         self,
         grid_dims: tuple[int, int] | None = None,
         truncation: int = 500,
-        mountain_density: float = 0.15,
+        mountain_density_range: tuple[float, float] = (0.18, 0.26),
         num_cities_range: tuple[int, int] = (9, 11),
         min_generals_distance: int = 3,
         max_generals_distance: int | None = None,
@@ -107,7 +107,7 @@ class GeneralsEnv:
             self._fixed_dims = (4, 4)
 
         self.truncation = truncation
-        self.mountain_density = mountain_density
+        self.mountain_density_range = mountain_density_range
         self.num_cities_range = num_cities_range
         self.min_generals_distance = min_generals_distance
         self.max_generals_distance = max_generals_distance
@@ -120,7 +120,7 @@ class GeneralsEnv:
             key,
             grid_dims=(h, w),
             pad_to=self.pad_to,
-            mountain_density=self.mountain_density,
+            mountain_density_range=self.mountain_density_range,
             num_cities_range=self.num_cities_range,
             min_generals_distance=self.min_generals_distance,
             max_generals_distance=self.max_generals_distance,

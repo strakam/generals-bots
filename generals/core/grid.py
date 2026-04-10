@@ -4,13 +4,13 @@ import jax
 import jax.numpy as jnp
 
 
-@partial(jax.jit, static_argnames=['grid_dims', 'pad_to', 'mountain_density', 'num_cities_range',
+@partial(jax.jit, static_argnames=['grid_dims', 'pad_to', 'mountain_density_range', 'num_cities_range',
                                     'min_generals_distance', 'max_generals_distance', 'castle_val_range'])
 def generate_grid(
     key: jax.random.PRNGKey,
     grid_dims: tuple[int, int] = (23, 23),
     pad_to: int | None = None,
-    mountain_density: float = 0.2,
+    mountain_density_range: tuple[float, float] = (0.18, 0.26),
     num_cities_range: tuple[int, int] = (9, 11),
     min_generals_distance: int = 17,
     max_generals_distance: int | None = None,
@@ -34,7 +34,7 @@ def generate_grid(
         key: JAX random key
         grid_dims: Grid dimensions (height, width) - supports non-square grids
         pad_to: Pad grid to this size for batching (None = max(h, w) + 1)
-        mountain_density: Fraction of tiles that are mountains (0.18-0.22)
+        mountain_density_range: (min, max) fraction of tiles that are mountains
         num_cities_range: (min, max) number of cities to place
         min_generals_distance: Minimum BFS (shortest path) distance between generals
         max_generals_distance: Maximum BFS (shortest path) distance between generals (None = no limit)
@@ -51,10 +51,10 @@ def generate_grid(
     # Random number of cities in range
     num_cities = jax.random.randint(keys[0], (), num_cities_range[0], num_cities_range[1] + 1)
 
-    # Number of mountains: base density + small variation
-    base_mountains = int(mountain_density * num_tiles)
-    mountain_variation = jax.random.randint(keys[1], (), -10, 11)
-    num_mountains = base_mountains + mountain_variation
+    # Number of mountains: sample uniformly from density range
+    min_mountains = int(mountain_density_range[0] * num_tiles)
+    max_mountains = int(mountain_density_range[1] * num_tiles)
+    num_mountains = jax.random.randint(keys[1], (), min_mountains, max_mountains + 1)
 
     # =================================================================
     # Step 1: Place generals FIRST on empty grid
