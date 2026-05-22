@@ -11,10 +11,12 @@ Each agent is a `run.sh` script (or compiled equivalent) speaking the
 protocol in `generals/protocol.py`. See `starters/<lang>/` for examples.
 
 Usage:
-    python examples/stdio_runner.py [<agent0_run.sh> [<agent1_run.sh>]]
+    python examples/stdio_runner.py [-h] [--gui] [--grid-size N] [--fps N]
+                                    [agent0_run.sh] [agent1_run.sh]
 
 Defaults to two copies of `starters/python/run.sh`.
 """
+import argparse
 import subprocess
 import sys
 from pathlib import Path
@@ -58,8 +60,12 @@ def spawn_agent(run_sh: Path, player_id: int, H: int, W: int, label: str) -> sub
     )
     proc.stdin.write(encode_handshake(player_id, H, W))
     proc.stdin.flush()
+    try:
+        rel = run_sh.relative_to(REPO_ROOT)
+    except ValueError:
+        rel = run_sh
     print(f"[runner] spawned {label} as player {player_id} "
-          f"(pid={proc.pid}, {run_sh.relative_to(REPO_ROOT)})", file=sys.stderr)
+          f"(pid={proc.pid}, {rel})", file=sys.stderr)
     return proc
 
 
@@ -86,8 +92,31 @@ def close_agent(proc: subprocess.Popen) -> None:
 
 
 def main():
-    a0_path = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else DEFAULT_AGENT
-    a1_path = Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else DEFAULT_AGENT
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("agent0", nargs="?", default=str(DEFAULT_AGENT),
+                        help="path to player 0's run.sh")
+    parser.add_argument("agent1", nargs="?", default=str(DEFAULT_AGENT),
+                        help="path to player 1's run.sh")
+    parser.add_argument("--grid-size", type=int, default=10,
+                        help="env grid size (default: 10)")
+    parser.add_argument("--truncation", type=int, default=400,
+                        help="max turns before draw (default: 400)")
+    parser.add_argument("--seed", type=int, default=0,
+                        help="env RNG seed (default: 0)")
+    parser.add_argument("--gui", action="store_true",
+                        help="open a pygame replay window")
+    parser.add_argument("--fps", type=int, default=8,
+                        help="GUI frame rate when --gui is set (default: 8)")
+    parser.add_argument("--perfect-info", action="store_true",
+                        help="disable fog of war; agents see the whole board")
+    args = parser.parse_args()
+
+    # Match the env's observation mode for the per-turn obs we send to agents.
+    get_obs = game.get_full_observation if args.perfect_info else game.get_observation
+
+    a0_path = Path(args.agent0).resolve()
+    a1_path = Path(args.agent1).resolve()
     for p in (a0_path, a1_path):
         if not p.exists():
             sys.exit(f"agent script not found: {p}")
@@ -96,10 +125,17 @@ def main():
     if a1_path != a0_path:
         build_agent(a1_path)
 
-    env = GeneralsEnv(grid_dims=(10, 10), truncation=200)
-    key = jrandom.PRNGKey(0)
+    env = GeneralsEnv(grid_dims=(args.grid_size, args.grid_size),
+                      truncation=args.truncation,
+                      perfect_info=args.perfect_info)
+    key = jrandom.PRNGKey(args.seed)
     pool, state = env.reset(key)
     H = W = env.pad_to
+
+    gui = None
+    if args.gui:
+        from generals.gui import ReplayGUI
+        gui = ReplayGUI(state, agent_ids=[a0_path.parent.name, a1_path.parent.name])
 
     agents = [
         spawn_agent(a0_path, 0, H, W, "agent-0"),
@@ -111,8 +147,8 @@ def main():
     turn = 0
     try:
         while turn < env.truncation:
-            obs_0 = game.get_observation(state, 0)
-            obs_1 = game.get_observation(state, 1)
+            obs_0 = get_obs(state, 0)
+            obs_1 = get_obs(state, 1)
 
             a_0 = ask_agent(agents[0], obs_0)
             a_1 = ask_agent(agents[1], obs_1)
@@ -120,6 +156,10 @@ def main():
             actions = jnp.stack([a_0, a_1])
             timestep, state = env.step(state, actions, pool)
             turn += 1
+
+            if gui is not None:
+                gui.update(state, timestep.info)
+                gui.tick(fps=args.fps)
 
             if bool(timestep.terminated):
                 winner = int(timestep.info.winner)
@@ -130,6 +170,8 @@ def main():
     finally:
         for proc in agents:
             close_agent(proc)
+        if gui is not None:
+            gui.close()
 
     if truncated:
         print(f"[runner] turn {turn}: truncated (draw)")
