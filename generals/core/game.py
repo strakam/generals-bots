@@ -389,6 +389,36 @@ def get_observation(state: GameState, player_idx: int) -> Observation:
 
 
 @jax.jit
+def get_full_observation(state: GameState, player_idx: int) -> Observation:
+    """Get a player's observation with NO fog of war — everything is visible.
+
+    Used for perfect-information variants of the competition. fog_cells and
+    structures_in_fog masks are all-zeros; every other field reflects the
+    true game state.
+    """
+    opponent_idx = 1 - player_idx
+    info = get_info(state)
+    z = jnp.zeros_like(state.ownership[0])
+
+    return Observation(
+        armies=state.armies,
+        generals=state.generals,
+        cities=state.cities,
+        mountains=state.mountains,
+        neutral_cells=state.ownership_neutral,
+        owned_cells=state.ownership[player_idx],
+        opponent_cells=state.ownership[opponent_idx],
+        fog_cells=z,
+        structures_in_fog=z,
+        owned_land_count=info.land[player_idx],
+        owned_army_count=info.army[player_idx],
+        opponent_land_count=info.land[opponent_idx],
+        opponent_army_count=info.army[opponent_idx],
+        timestep=state.time,
+    )
+
+
+@jax.jit
 def batch_step(states: GameState, actions: jnp.ndarray) -> Tuple[GameState, GameInfo]:
     """Vectorized step for multiple environments."""
     return jax.vmap(step)(states, actions)

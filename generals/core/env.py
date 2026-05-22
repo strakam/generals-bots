@@ -84,6 +84,8 @@ class GeneralsEnv:
         min_grid_size: int | None = None,
         max_grid_size: int | None = None,
         pad_to: int | None = None,
+        # Observation mode
+        perfect_info: bool = False,
     ):
         # Handle backward compat: grid_dims=(h,w) → fixed size
         if grid_dims is not None:
@@ -113,6 +115,7 @@ class GeneralsEnv:
         self.max_generals_distance = max_generals_distance
         self.pool_size = pool_size
         self.castle_val_range = castle_val_range
+        self.perfect_info = perfect_info
 
     def _make_single_state_fixed(self, key: jnp.ndarray, h: int, w: int) -> GameState:
         """Generate a single GameState for a specific (h, w) grid size."""
@@ -242,9 +245,10 @@ class GeneralsEnv:
             new_state,
         )
 
-        # Get observations
-        obs_p0 = game.get_observation(final_state, 0)
-        obs_p1 = game.get_observation(final_state, 1)
+        # Get observations (perfect-info skips fog-of-war masking)
+        get_obs = game.get_full_observation if self.perfect_info else game.get_observation
+        obs_p0 = get_obs(final_state, 0)
+        obs_p1 = get_obs(final_state, 1)
         observation = jax.tree.map(
             lambda p0, p1: jnp.stack([p0, p1], axis=0),
             obs_p0, obs_p1,
