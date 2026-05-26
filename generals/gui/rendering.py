@@ -167,7 +167,8 @@ class Renderer:
             )
             pygame.draw.rect(self.info_panel[key], BLACK, rect_dim, 1)
 
-            self.right_panel.blit(self.info_panel[key], (i * 2 * gui_cell_width, 3 * gui_cell_height))
+            info_row = 1 + len(self.game.agents)  # below header + per-player rows
+            self.right_panel.blit(self.info_panel[key], (i * 2 * gui_cell_width, info_row * gui_cell_height))
         # Render right_panel on the screen
         self.screen.blit(self.right_panel, (self.display_grid_width, 0))
 

@@ -47,6 +47,7 @@ class ReplayGUI:
         colors: list[str] = None,
         fps: int = 10,
         show_tile_types: bool = False,
+        mode: GuiMode = GuiMode.TRAIN,
     ):
         """
         Initialize the GUI.
@@ -71,7 +72,7 @@ class ReplayGUI:
 
         self._adapter = JaxGameAdapter(initial_state, self.agent_ids, get_info(initial_state))
         agent_data = {aid: {"color": colors[i]} for i, aid in enumerate(self.agent_ids)}
-        self._gui = FullGUI(self._adapter, agent_data, mode=GuiMode.TRAIN, show_tile_types=show_tile_types)
+        self._gui = FullGUI(self._adapter, agent_data, mode=mode, show_tile_types=show_tile_types)
     
     def update(self, state: GameState, info: GameInfo = None):
         """Update the display with a new game state."""
@@ -80,8 +81,16 @@ class ReplayGUI:
         self._adapter.update_from_state(state, info)
     
     def tick(self, fps: int = None):
-        """Render frame and handle events. Call once per game step."""
-        self._gui.tick(fps=fps or self.fps)
+        """Render frame and handle events. Returns the Command from the event handler."""
+        return self._gui.tick(fps=fps or self.fps)
+
+    @property
+    def paused(self) -> bool:
+        return self._gui.properties.paused
+
+    @paused.setter
+    def paused(self, value: bool) -> None:
+        self._gui.properties.paused = value
     
     def close(self):
         """Close the GUI window."""

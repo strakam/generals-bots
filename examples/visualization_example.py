@@ -1,26 +1,50 @@
-"""Visualize a multi-agent game using the pygame GUI.
+"""Run a multi-agent game, save the replay, then step through it in slow motion.
 
-By default runs 4 Expander agents in a 1v1v1v1 free-for-all. Tweak NUM_PLAYERS,
-TEAMS, and the agents list below to try other configurations.
+By default plays a 2v2 of Expander agents. The simulation runs headless (fast),
+then a pygame window opens in replay mode so you can scrub frame-by-frame.
+
+Controls inside the replay window:
+    SPACE      pause / resume autoplay
+    L          next frame
+    H          previous frame
+    LEFT/RIGHT slower / faster autoplay
+    Q          quit
 """
+import pickle
+from pathlib import Path
+
+import jax
 import jax.numpy as jnp
 import jax.random as jrandom
+import numpy as np
 
 from generals import GeneralsEnv, get_observation
-from generals.agents import RandomAgent, ExpanderAgent
+from generals.agents import ExpanderAgent
+from generals.core import game as game_module
 from generals.gui import ReplayGUI
+from generals.gui.properties import GuiMode
 
-# Configuration
+# ---- Configuration ----
 GRID_DIMS = (15, 15)
 TRUNCATION = 1000
-FPS = 8
+FPS = 6
+SEED = 7
 
 NUM_PLAYERS = 4
-TEAMS = jnp.arange(NUM_PLAYERS, dtype=jnp.int32)  # FFA. Use jnp.array([0,0,1,1]) for 2v2.
+TEAMS = jnp.array([0, 0, 1, 1], dtype=jnp.int32)  # 2v2. Use jnp.arange(N) for FFA.
 
-# One agent per player. Mix and match freely.
-agents = [ExpanderAgent(id=f"Expander{i}") for i in range(NUM_PLAYERS)]
+agents = [ExpanderAgent(id=f"Expander{i}(T{int(TEAMS[i])})") for i in range(NUM_PLAYERS)]
 
+PLAYER_COLORS = [
+    (200, 50, 50),    # team 0 — red
+    (230, 120, 60),   # team 0 — orange (warm)
+    (50, 80, 200),    # team 1 — blue
+    (130, 60, 170),   # team 1 — purple (cool)
+]
+
+REPLAY_PATH = Path("/tmp/generals_replay.pkl")
+
+# ---- Phase 1: simulate headlessly, record every frame ----
 env = GeneralsEnv(
     grid_dims=GRID_DIMS,
     truncation=TRUNCATION,
@@ -28,34 +52,68 @@ env = GeneralsEnv(
     teams=TEAMS,
     min_generals_distance=4,
 )
-
-key = jrandom.PRNGKey(42)
+key = jrandom.PRNGKey(SEED)
 pool, state = env.reset(key)
 
-gui = ReplayGUI(state, agent_ids=[a.id for a in agents])
+states_log = [state]
+infos_log = [game_module.get_info(state)]
 
 terminated = truncated = False
-step_count = 0
+step = 0
 while not (terminated or truncated):
     key, *subkeys = jrandom.split(key, NUM_PLAYERS + 1)
     actions = jnp.stack([
         agents[i].act(get_observation(state, i), subkeys[i])
         for i in range(NUM_PLAYERS)
     ])
-
     timestep, state = env.step(state, actions, pool)
-
-    gui.update(state, timestep.info)
-    gui.tick(fps=FPS)
-
+    states_log.append(timestep.last_state)
+    infos_log.append(timestep.info)
     terminated = bool(timestep.terminated)
     truncated = bool(timestep.truncated)
-    step_count += 1
+    step += 1
 
-winner_team = int(timestep.info.winner)
-print(f"Game over after {step_count} steps. Winning team: {winner_team}")
-print(f"Eliminated: {list(map(bool, timestep.last_state.eliminated))}")
+winner_team = int(infos_log[-1].winner)
+print(f"Simulation done: {step} steps, winning team={winner_team}, eliminated={list(map(bool, states_log[-1].eliminated))}")
 
-import time
-time.sleep(3)
+# Persist to disk as numpy so the file is portable / inspectable.
+to_np = lambda tree: jax.tree.map(np.asarray, tree)
+with open(REPLAY_PATH, "wb") as f:
+    pickle.dump({
+        "states": [to_np(s) for s in states_log],
+        "infos": [to_np(i) for i in infos_log],
+        "agent_ids": [a.id for a in agents],
+        "colors": PLAYER_COLORS,
+    }, f)
+print(f"Saved replay to {REPLAY_PATH} ({len(states_log)} frames)")
+
+# ---- Phase 2: replay window with step-through ----
+to_jnp = lambda tree: jax.tree.map(jnp.asarray, tree)
+states = states_log
+infos = infos_log
+
+gui = ReplayGUI(
+    states[0],
+    agent_ids=[a.id for a in agents],
+    colors=PLAYER_COLORS,
+    fps=FPS,
+    mode=GuiMode.REPLAY,
+)
+gui.paused = True
+
+frame = 0
+gui.update(states[frame], infos[frame])
+print("Replay open. Controls: SPACE play/pause | L next | H prev | ←/→ speed | Q quit")
+
+while True:
+    command = gui.tick(fps=FPS)
+    if command.quit:
+        break
+    if command.frame_change != 0:
+        frame = max(0, min(len(states) - 1, frame + command.frame_change))
+        gui.update(states[frame], infos[frame])
+    elif not gui.paused and frame < len(states) - 1:
+        frame += 1
+        gui.update(states[frame], infos[frame])
+
 gui.close()
