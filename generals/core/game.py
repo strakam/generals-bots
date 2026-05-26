@@ -275,7 +275,8 @@ def _apply_move(state: GameState, player_idx, si, sj, di, dj, army_to_move) -> G
     captured_player_idx = jnp.argmax(target_owner_mask)
     captured_cells = ownership[captured_player_idx]
 
-    armies_capture = jnp.where(captured_cells, armies // 2, armies)
+    # Ceiling-half: 5 → 3, 3 → 2, 1 → 1, 0 → 0.
+    armies_capture = jnp.where(captured_cells, (armies + 1) // 2, armies)
     armies_capture = armies_capture.at[di, dj].set(remaining_army)
     armies_capture = armies_capture.at[si, sj].add(-army_to_move)
 
