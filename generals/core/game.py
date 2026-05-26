@@ -448,25 +448,48 @@ def get_info(state: GameState) -> GameInfo:
     )
 
 
+def _team_partition(state: GameState, player_idx):
+    """Compute (own, allied, enemy) cell masks and per-bucket land/army aggregates.
+
+    "Allied" excludes self. For free-for-all (each player on their own team) the
+    allied bucket is empty.
+    """
+    N = state.teams.shape[0]
+    player_team = state.teams[player_idx]
+    is_self = jnp.arange(N) == player_idx
+    is_teammate = (state.teams == player_team) & ~is_self
+    is_enemy = state.teams != player_team
+
+    own_cells = state.ownership[player_idx]
+    allied_cells = jnp.any(state.ownership & is_teammate[:, None, None], axis=0)
+    enemy_cells = jnp.any(state.ownership & is_enemy[:, None, None], axis=0)
+
+    info = get_info(state)
+    owned_land = info.land[player_idx]
+    owned_army = info.army[player_idx]
+    allied_land = jnp.sum(jnp.where(is_teammate, info.land, 0))
+    allied_army = jnp.sum(jnp.where(is_teammate, info.army, 0))
+    enemy_land = jnp.sum(jnp.where(is_enemy, info.land, 0))
+    enemy_army = jnp.sum(jnp.where(is_enemy, info.army, 0))
+
+    return own_cells, allied_cells, enemy_cells, owned_land, owned_army, allied_land, allied_army, enemy_land, enemy_army
+
+
 @jax.jit
 def get_observation(state: GameState, player_idx) -> Observation:
     """
-    Get player observation with fog of war applied.
+    Player observation with team-aware fog of war.
 
-    For phase 1, "opponent" aggregates every non-self player (allies and enemies alike).
-    Phase 4 will split this into separate allied / enemy channels.
+    Visibility extends to a 3x3 radius around any cell owned by the player OR
+    any teammate (team-shared sight). For FFA this is equivalent to the old
+    rule (own cells only).
     """
-    own_ownership = state.ownership[player_idx]
-    visible = get_visibility(own_ownership)
+    (own_cells, allied_cells, enemy_cells,
+     owned_land, owned_army, allied_land, allied_army, enemy_land, enemy_army) = _team_partition(state, player_idx)
+
+    team_cells = own_cells | allied_cells
+    visible = get_visibility(team_cells)
     invisible = ~visible
-
-    all_owned = jnp.any(state.ownership, axis=0)
-    opponent_cells_all = all_owned & ~own_ownership
-
-    info = get_info(state)
-
-    total_land = jnp.sum(info.land)
-    total_army = jnp.sum(info.army)
 
     return Observation(
         armies=state.armies * visible,
@@ -474,30 +497,26 @@ def get_observation(state: GameState, player_idx) -> Observation:
         cities=state.cities * visible,
         mountains=state.mountains * visible,
         neutral_cells=state.ownership_neutral * visible,
-        owned_cells=own_ownership * visible,
-        opponent_cells=opponent_cells_all * visible,
+        owned_cells=own_cells * visible,
+        allied_cells=allied_cells * visible,
+        opponent_cells=enemy_cells * visible,
         fog_cells=invisible & ~(state.mountains | state.cities),
         structures_in_fog=invisible & (state.mountains | state.cities),
-        owned_land_count=info.land[player_idx],
-        owned_army_count=info.army[player_idx],
-        opponent_land_count=total_land - info.land[player_idx],
-        opponent_army_count=total_army - info.army[player_idx],
+        owned_land_count=owned_land,
+        owned_army_count=owned_army,
+        allied_land_count=allied_land,
+        allied_army_count=allied_army,
+        opponent_land_count=enemy_land,
+        opponent_army_count=enemy_army,
         timestep=state.time,
     )
 
 
 @jax.jit
 def get_full_observation(state: GameState, player_idx) -> Observation:
-    """
-    Perfect-info observation. Same content as get_observation but with no fog.
-    """
-    own_ownership = state.ownership[player_idx]
-    all_owned = jnp.any(state.ownership, axis=0)
-    opponent_cells_all = all_owned & ~own_ownership
-
-    info = get_info(state)
-    total_land = jnp.sum(info.land)
-    total_army = jnp.sum(info.army)
+    """Perfect-info observation. Same content as get_observation but with no fog."""
+    (own_cells, allied_cells, enemy_cells,
+     owned_land, owned_army, allied_land, allied_army, enemy_land, enemy_army) = _team_partition(state, player_idx)
 
     z = jnp.zeros_like(state.ownership[0])
 
@@ -507,14 +526,17 @@ def get_full_observation(state: GameState, player_idx) -> Observation:
         cities=state.cities,
         mountains=state.mountains,
         neutral_cells=state.ownership_neutral,
-        owned_cells=own_ownership,
-        opponent_cells=opponent_cells_all,
+        owned_cells=own_cells,
+        allied_cells=allied_cells,
+        opponent_cells=enemy_cells,
         fog_cells=z,
         structures_in_fog=z,
-        owned_land_count=info.land[player_idx],
-        owned_army_count=info.army[player_idx],
-        opponent_land_count=total_land - info.land[player_idx],
-        opponent_army_count=total_army - info.army[player_idx],
+        owned_land_count=owned_land,
+        owned_army_count=owned_army,
+        allied_land_count=allied_land,
+        allied_army_count=allied_army,
+        opponent_land_count=enemy_land,
+        opponent_army_count=enemy_army,
         timestep=state.time,
     )
 

@@ -51,12 +51,13 @@ class Renderer:
         self.screen = pygame.display.set_mode((window_width, window_height), pygame.HWSURFACE | pygame.DOUBLEBUF)
         # Scoreboard
         self.right_panel = pygame.Surface((self.right_panel_width, window_height))
+        num_score_rows = 1 + len(self.agent_data)  # header + one per player
         self.score_cols = {}
         for col in ["Player", "Army", "Land"]:
             size = (width, height)
             if col == "Player":
                 size = (2 * width, height)
-            self.score_cols[col] = [pygame.Surface(size) for _ in range(3)]
+            self.score_cols[col] = [pygame.Surface(size) for _ in range(num_score_rows)]
 
         self.info_panel = {
             "time": pygame.Surface((self.right_panel_width / 2, height)),
@@ -289,10 +290,11 @@ class Renderer:
                 if channels.mountains[i, j]:
                     tile_type = "-2"
                 elif channels.generals[i, j]:
-                    if channels.ownership[agents[0]][i, j]:
-                        tile_type = "1"
-                    else:
-                        tile_type = "2"
+                    tile_type = "?"
+                    for k, agent in enumerate(agents):
+                        if channels.ownership[agent][i, j]:
+                            tile_type = str(k + 1)
+                            break
                 elif channels.cities[i, j]:
                     tile_type = "C"  # City
                 else:
