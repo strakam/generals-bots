@@ -44,7 +44,7 @@ PLAYER_COLORS = [
 
 REPLAY_PATH = Path("/tmp/generals_replay.pkl")
 
-# ---- Phase 1: simulate headlessly, record every frame ----
+# ---- Simulate ----
 env = GeneralsEnv(
     grid_dims=GRID_DIMS,
     truncation=TRUNCATION,
@@ -87,22 +87,18 @@ with open(REPLAY_PATH, "wb") as f:
     }, f)
 print(f"Saved replay to {REPLAY_PATH} ({len(states_log)} frames)")
 
-# ---- Phase 2: replay window with step-through ----
-to_jnp = lambda tree: jax.tree.map(jnp.asarray, tree)
-states = states_log
-infos = infos_log
-
+# ---- Step-through replay ----
 gui = ReplayGUI(
-    states[0],
+    states_log[0],
     agent_ids=[a.id for a in agents],
     colors=PLAYER_COLORS,
     fps=FPS,
     mode=GuiMode.REPLAY,
+    start_paused=True,
 )
-gui.paused = True
 
 frame = 0
-gui.update(states[frame], infos[frame])
+gui.update(states_log[frame], infos_log[frame])
 print("Replay open. Controls: SPACE play/pause | L next | H prev | ←/→ speed | Q quit")
 
 while True:
@@ -110,10 +106,10 @@ while True:
     if command.quit:
         break
     if command.frame_change != 0:
-        frame = max(0, min(len(states) - 1, frame + command.frame_change))
-        gui.update(states[frame], infos[frame])
-    elif not gui.paused and frame < len(states) - 1:
+        frame = max(0, min(len(states_log) - 1, frame + command.frame_change))
+        gui.update(states_log[frame], infos_log[frame])
+    elif not gui.paused and frame < len(states_log) - 1:
         frame += 1
-        gui.update(states[frame], infos[frame])
+        gui.update(states_log[frame], infos_log[frame])
 
 gui.close()

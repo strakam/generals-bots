@@ -43,9 +43,7 @@ def generate_grid(
     Returns:
         Grid is always valid by construction. General positions are encoded as 1..N.
     """
-    # Static number of keys; allocate generously.
     keys = jax.random.split(key, 12 + 2 * num_players)
-    key_idx = 0
 
     h, w = grid_dims
     num_tiles = h * w
@@ -56,46 +54,31 @@ def generate_grid(
     max_mountains = int(mountain_density_range[1] * num_tiles)
     num_mountains = jax.random.randint(keys[1], (), min_mountains, max_mountains + 1)
 
-    # =================================================================
-    # Step 1: Place N generals on an empty grid, respecting distance constraints
-    # =================================================================
     grid = jnp.full(grid_dims, 0, dtype=jnp.int32)
 
-    # First general can sit anywhere a second general can also fit (preserves the
-    # N=2 valid_base_a_mask behavior; for N>2 this is a weaker but reasonable check).
+    # First general's valid-positions mask preserves the N=2 placement statistics;
+    # for N>2 it's a weaker constraint that we accept.
     first_valid = valid_base_a_mask(grid_dims, min_generals_distance, max_generals_distance)
-    positions = []
-    pos = sample_from_mask(first_valid, keys[2])
-    positions.append(pos)
-    grid = grid.at[pos].set(1)
+    positions = [sample_from_mask(first_valid, keys[2])]
+    grid = grid.at[positions[0]].set(1)
 
-    # Each subsequent general must be in min/max distance of all previously placed
     for i in range(1, num_players):
-        valid = jnp.ones(grid_dims, dtype=bool)
+        min_ok = jnp.ones(grid_dims, dtype=bool)
+        max_ok = jnp.ones(grid_dims, dtype=bool)
         for prev_pos in positions:
             dist = manhattan_distance_from(prev_pos, grid_dims)
-            valid = valid & (dist >= min_generals_distance)
+            min_ok = min_ok & (dist >= min_generals_distance)
             if max_generals_distance is not None:
-                valid = valid & (dist <= max_generals_distance)
-        # Must not collide with an existing general
-        valid = valid & (grid == 0)
-        # Fallback: if nothing satisfies the constraint, drop max_distance to allow some placement
-        has_any = jnp.any(valid)
-        relaxed = jnp.ones(grid_dims, dtype=bool)
-        for prev_pos in positions:
-            dist = manhattan_distance_from(prev_pos, grid_dims)
-            relaxed = relaxed & (dist >= min_generals_distance)
-        relaxed = relaxed & (grid == 0)
-        valid = jnp.where(has_any, valid, relaxed)
+                max_ok = max_ok & (dist <= max_generals_distance)
+        empty = grid == 0
+        strict = min_ok & max_ok & empty
+        relaxed = min_ok & empty  # falls back without max constraint
+        valid = jnp.where(jnp.any(strict), strict, relaxed)
         pos = sample_from_mask(valid, keys[3 + i])
         positions.append(pos)
         grid = grid.at[pos].set(i + 1)
 
-    # =================================================================
-    # Step 2: Place mountains on remaining empty cells
-    # =================================================================
-    mountain_available = (grid == 0)
-    flat_available = mountain_available.reshape(-1)
+    flat_available = (grid == 0).reshape(-1)
 
     logits = jnp.where(flat_available, 0.0, -jnp.inf)
     gumbel_noise = jax.random.gumbel(keys[8], shape=logits.shape)
@@ -114,24 +97,17 @@ def generate_grid(
     flat_grid, _ = jax.lax.scan(place_mountain, flat_grid, (mountain_indices, mountain_mask))
     grid = flat_grid.reshape(grid_dims)
 
-    # =================================================================
-    # Step 3: Place one castle within BFS distance 6 of each general
-    # =================================================================
-    castle_key_base = 12  # offset into keys[] for castle keys
+    castle_key_base = 12
     for i, pos in enumerate(positions):
         castle_val = jax.random.randint(keys[castle_key_base + i * 2], (), castle_val_range[0], castle_val_range[1])
         near = bfs_reachable_within_k(grid, pos, 6)
         candidates = near & (grid == 0)
-        has_candidates = jnp.any(candidates)
-        # Fallback: convert a nearby mountain into a castle slot
+        # Fallback to converting a mountain neighbour when no empty cell qualifies.
         fallback = near & (grid == -2)
-        mask = jnp.where(has_candidates, candidates, fallback)
+        mask = jnp.where(jnp.any(candidates), candidates, fallback)
         castle_pos = sample_from_mask(mask, keys[castle_key_base + i * 2 + 1])
         grid = grid.at[castle_pos].set(castle_val)
 
-    # =================================================================
-    # Step 4: Place remaining cities
-    # =================================================================
     remaining_cities = num_cities - num_players
     city_available = (grid == 0)
     flat_city_available = city_available.reshape(-1)
@@ -155,32 +131,22 @@ def generate_grid(
     flat_grid, _ = jax.lax.scan(place_city, flat_grid, (city_indices, city_values, city_mask))
     grid = flat_grid.reshape(grid_dims)
 
-    # =================================================================
-    # Step 5: Connectivity — each general must be reachable from positions[0]
-    # =================================================================
     pos_anchor = positions[0]
     for i in range(1, num_players):
-        connected = flood_fill_connected(grid, pos_anchor, positions[i])
+        p = positions[i]
+        connected = flood_fill_connected(grid, pos_anchor, p)
+        too_far = (
+            (bfs_distance(grid, pos_anchor, p) > max_generals_distance)
+            if max_generals_distance is not None
+            else jnp.bool_(False)
+        )
         grid = jax.lax.cond(
-            connected,
+            connected & ~too_far,
             lambda g: g,
-            lambda g, p=positions[i]: carve_l_path(g, pos_anchor, p),
+            lambda g, p=p: carve_l_path(g, pos_anchor, p),
             grid,
         )
 
-    if max_generals_distance is not None:
-        for i in range(1, num_players):
-            dist = bfs_distance(grid, pos_anchor, positions[i])
-            grid = jax.lax.cond(
-                dist > max_generals_distance,
-                lambda g, p=positions[i]: carve_l_path(g, pos_anchor, p),
-                lambda g: g,
-                grid,
-            )
-
-    # =================================================================
-    # Step 6: Dynamic padding
-    # =================================================================
     if pad_to is None:
         target_size = max(h, w) + 1
     else:

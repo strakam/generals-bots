@@ -48,6 +48,7 @@ class ReplayGUI:
         fps: int = 10,
         show_tile_types: bool = False,
         mode: GuiMode = GuiMode.TRAIN,
+        start_paused: bool = False,
     ):
         """
         Initialize the GUI.
@@ -73,6 +74,8 @@ class ReplayGUI:
         self._adapter = JaxGameAdapter(initial_state, self.agent_ids, get_info(initial_state))
         agent_data = {aid: {"color": colors[i]} for i, aid in enumerate(self.agent_ids)}
         self._gui = FullGUI(self._adapter, agent_data, mode=mode, show_tile_types=show_tile_types)
+        if start_paused:
+            self._gui.properties.paused = True
     
     def update(self, state: GameState, info: GameInfo = None):
         """Update the display with a new game state."""

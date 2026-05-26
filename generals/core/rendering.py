@@ -108,16 +108,14 @@ class JaxGameAdapter:
         if self._info is None:
             from generals.core import game
             ownership_stack = jnp.stack([jnp.array(self.channels.ownership[agent]) for agent in self.agents])
-            any_owned = jnp.any(ownership_stack, axis=0)
-            passable = jnp.array(np.logical_not(self.channels.mountains))
+            mountains = jnp.array(self.channels.mountains)
             state = GameState(
                 armies=jnp.array(self.channels.armies),
                 ownership=ownership_stack,
-                ownership_neutral=passable & ~any_owned,
+                ownership_neutral=~mountains & ~jnp.any(ownership_stack, axis=0),
                 generals=jnp.array(self.channels.generals),
                 cities=jnp.array(self.channels.cities),
-                mountains=jnp.array(self.channels.mountains),
-                passable=passable,
+                mountains=mountains,
                 general_positions=jnp.array([self.general_positions[agent] for agent in self.agents]),
                 teams=jnp.arange(len(self.agents), dtype=jnp.int32),
                 eliminated=jnp.zeros(len(self.agents), dtype=bool),

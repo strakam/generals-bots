@@ -77,13 +77,10 @@ class GeneralsEnv:
         max_generals_distance: int | None = None,
         pool_size: int = 10_000,
         castle_val_range: tuple[int, int] = (40, 51),
-        # Variable grid size params (alternative to grid_dims)
         min_grid_size: int | None = None,
         max_grid_size: int | None = None,
         pad_to: int | None = None,
-        # Observation mode
         perfect_info: bool = False,
-        # Multiplayer config
         num_players: int = 2,
         teams: jnp.ndarray | None = None,
     ):
@@ -115,14 +112,11 @@ class GeneralsEnv:
         self.castle_val_range = castle_val_range
         self.perfect_info = perfect_info
 
-        self.num_players = num_players
         if teams is None:
             self.teams = jnp.arange(num_players, dtype=jnp.int32)
         else:
-            teams = jnp.asarray(teams, dtype=jnp.int32)
-            assert teams.shape == (num_players,), \
-                f"teams must be shape ({num_players},), got {teams.shape}"
-            self.teams = teams
+            self.teams = jnp.asarray(teams, dtype=jnp.int32)
+        self.num_players = self.teams.shape[0]
 
     def _make_single_state_fixed(self, key: jnp.ndarray, h: int, w: int) -> GameState:
         """Generate a single GameState for a specific (h, w) grid size."""

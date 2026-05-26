@@ -14,10 +14,12 @@ Key functions:
     - step: Execute one game step with actions from all players
     - get_observation: Get a player's view with fog of war applied
 """
+from functools import partial
+from typing import Tuple, NamedTuple, Protocol, Any
+
 import jax
 import jax.numpy as jnp
 from jax import lax
-from typing import Tuple, NamedTuple, Protocol, Any
 
 from generals.core.observation import Observation
 
@@ -47,7 +49,6 @@ class GameState(NamedTuple):
             general is captured it converts to a city and is removed from this mask.
         cities: (H, W) boolean mask of city positions.
         mountains: (H, W) boolean mask of mountain positions.
-        passable: (H, W) boolean mask of passable cells (not mountains).
         general_positions: (N, 2) array of [row, col] for each general at start of game.
         teams: (N,) int32 array, teams[i] is team_id of player i.
         eliminated: (N,) bool array, True if player i has been eliminated (general captured).
@@ -62,7 +63,6 @@ class GameState(NamedTuple):
     generals: jnp.ndarray
     cities: jnp.ndarray
     mountains: jnp.ndarray
-    passable: jnp.ndarray
     general_positions: jnp.ndarray
     teams: jnp.ndarray
     eliminated: jnp.ndarray
@@ -109,36 +109,27 @@ def create_initial_state(grid: jnp.ndarray, teams: jnp.ndarray) -> GameState:
     Returns:
         GameState ready for gameplay.
     """
-    H, W = grid.shape
     N = teams.shape[0]
 
-    # Per-player general masks: player i's general has grid value (i+1)
-    player_general_masks = jnp.stack([grid == (i + 1) for i in range(N)])  # (N, H, W)
-    generals = jnp.any(player_general_masks, axis=0)
-
+    ownership = jnp.stack([grid == (i + 1) for i in range(N)])
+    generals = jnp.any(ownership, axis=0)
     mountains = grid == -2
-    passable = grid != -2
-    cities = grid > N  # values above the general range encode cities (40-50)
-
-    ownership = player_general_masks  # (N, H, W)
-    ownership_neutral = passable & ~generals
+    cities = grid > N  # values above the general range (>=40) encode cities
 
     armies = jnp.where(generals, 1, 0).astype(jnp.int32)
     armies = jnp.where(cities, grid, armies)
 
     general_positions = jnp.stack([
-        jnp.argwhere(player_general_masks[i], size=1, fill_value=-1)[0]
-        for i in range(N)
+        jnp.argwhere(ownership[i], size=1, fill_value=-1)[0] for i in range(N)
     ])
 
     return GameState(
         armies=armies,
         ownership=ownership,
-        ownership_neutral=ownership_neutral,
+        ownership_neutral=(grid != -2) & ~generals,
         generals=generals,
         cities=cities,
         mountains=mountains,
-        passable=passable,
         general_positions=general_positions,
         teams=teams,
         eliminated=jnp.zeros(N, dtype=bool),
@@ -201,7 +192,7 @@ def _execute_move(state: GameState, player_idx, si, sj, direction, split_army) -
     army_to_move = lax.cond(split_army == 1, lambda a: a // 2, lambda a: a - 1, source_army)
     army_to_move = jnp.maximum(0, jnp.minimum(army_to_move, source_army - 1))
 
-    valid_move = in_bounds & dest_in_bounds & owns_source & (army_to_move > 0) & state.passable[di, dj]
+    valid_move = in_bounds & dest_in_bounds & owns_source & (army_to_move > 0) & ~state.mountains[di, dj]
 
     return lax.cond(
         valid_move,
@@ -212,21 +203,16 @@ def _execute_move(state: GameState, player_idx, si, sj, direction, split_army) -
 
 
 def _apply_move(state: GameState, player_idx, si, sj, di, dj, army_to_move) -> GameState:
-    """
-    Apply a validated move.
+    """Apply a validated move.
 
-    Three branches by destination ownership:
-      - Friendly (same-team owner, including self): armies add; ownership transfers to
-        the mover if the destination belonged to a teammate.
-      - Enemy/neutral non-general capture: standard attack (subtract, flip ownership
-        if attacker wins).
-      - Enemy general capture: the entire captured player's territory transfers to
-        the capturer with per-cell armies halved, except that the captured general
-        tile itself uses the standard attack remainder (army_to_move - target_army),
-        so the attacker's surplus is preserved at the point of impact. The general
-        tile becomes a city; the captured player is marked eliminated. The game
-        does NOT end here — the win condition is evaluated by step() (last team
-        standing).
+    Branches by destination ownership:
+      - Friendly (same-team, including self): armies add; ownership transfers to the
+        mover if the destination belonged to a teammate.
+      - Enemy/neutral non-general: standard attack (subtract, flip on win).
+      - Enemy general capture: captured player's territory transfers to the capturer
+        with per-cell armies halved (rounded up). The captured general's tile keeps
+        the attacker's remainder (army_to_move - target_army) and converts to a city;
+        the captured player is marked eliminated. Game-over is decided by step().
     """
     armies = state.armies
     ownership = state.ownership
@@ -248,11 +234,9 @@ def _apply_move(state: GameState, player_idx, si, sj, di, dj, army_to_move) -> G
         o = o.at[player_idx, di, dj].set(True)
         return o
 
-    # ---- Friendly merge ----
     armies_friendly = armies.at[di, dj].add(army_to_move).at[si, sj].add(-army_to_move)
     ownership_friendly = lax.cond(is_self_owned, lambda o: o, set_dest_owner_to_mover, ownership)
 
-    # ---- Standard attack (no general capture) ----
     target_army = armies[di, dj]
     attacker_wins = army_to_move > target_army
     remaining_army = jnp.abs(target_army - army_to_move)
@@ -269,13 +253,11 @@ def _apply_move(state: GameState, player_idx, si, sj, di, dj, army_to_move) -> G
     is_general = state.generals[di, dj]
     general_captured = attacker_wins & is_general & ~is_friendly
 
-    # ---- General-capture: sweep captured player's territory to capturer ----
-    # All captured cells get their armies halved, except the captured general tile,
-    # which keeps the attacker's remainder (army_to_move - target_army).
+    # Captured general's tile keeps the attacker's remainder; the rest of the captured
+    # player's cells get their armies halved (rounded up so cells with 1 army survive).
     captured_player_idx = jnp.argmax(target_owner_mask)
     captured_cells = ownership[captured_player_idx]
 
-    # Ceiling-half: 5 → 3, 3 → 2, 1 → 1, 0 → 0.
     armies_capture = jnp.where(captured_cells, (armies + 1) // 2, armies)
     armies_capture = armies_capture.at[di, dj].set(remaining_army)
     armies_capture = armies_capture.at[si, sj].add(-army_to_move)
@@ -287,7 +269,6 @@ def _apply_move(state: GameState, player_idx, si, sj, di, dj, army_to_move) -> G
     cities_capture = cities.at[di, dj].set(True)
     eliminated_capture = eliminated.at[captured_player_idx].set(True)
 
-    # ---- Branch selection ----
     armies = lax.cond(
         is_friendly,
         lambda: armies_friendly,
@@ -322,7 +303,7 @@ def global_update(state: GameState) -> GameState:
     time = state.time
     armies = state.armies
 
-    total_owned = jnp.any(state.ownership, axis=0).astype(jnp.int32)  # (H, W)
+    total_owned = jnp.any(state.ownership, axis=0).astype(jnp.int32)
 
     increment_all = time % 50 == 0
     armies = lax.cond(
@@ -412,7 +393,6 @@ def step(state: GameState, actions: jnp.ndarray) -> tuple[GameState, GameInfo]:
 
     state = lax.cond(done_before, lambda s: s, lambda s: s._replace(time=s.time + 1), state)
 
-    # Last-team-standing check. Once winner is set we hold it.
     new_winner = _check_winner(state)
     state = state._replace(winner=jnp.where(state.winner >= 0, state.winner, new_winner))
 
@@ -482,20 +462,20 @@ def _team_partition(state: GameState, player_idx):
     return own_cells, allied_cells, enemy_cells, owned_land, owned_army, allied_land, allied_army, enemy_land, enemy_army
 
 
-@jax.jit
-def get_observation(state: GameState, player_idx) -> Observation:
-    """
-    Player observation with team-aware fog of war.
+@partial(jax.jit, static_argnames=("fog",))
+def get_observation(state: GameState, player_idx, fog: bool = True) -> Observation:
+    """Player observation, optionally with team-aware fog of war.
 
-    Visibility extends to a 3x3 radius around any cell owned by the player OR
-    any teammate (team-shared sight). For FFA this is equivalent to the old
-    rule (own cells only).
+    Visibility extends to a 3x3 radius around any cell owned by the player or a
+    teammate. Pass ``fog=False`` for the perfect-information variant.
     """
     (own_cells, allied_cells, enemy_cells,
      owned_land, owned_army, allied_land, allied_army, enemy_land, enemy_army) = _team_partition(state, player_idx)
 
-    team_cells = own_cells | allied_cells
-    visible = get_visibility(team_cells)
+    if fog:
+        visible = get_visibility(own_cells | allied_cells)
+    else:
+        visible = jnp.ones_like(own_cells)
     invisible = ~visible
 
     return Observation(
@@ -521,31 +501,8 @@ def get_observation(state: GameState, player_idx) -> Observation:
 
 @jax.jit
 def get_full_observation(state: GameState, player_idx) -> Observation:
-    """Perfect-info observation. Same content as get_observation but with no fog."""
-    (own_cells, allied_cells, enemy_cells,
-     owned_land, owned_army, allied_land, allied_army, enemy_land, enemy_army) = _team_partition(state, player_idx)
-
-    z = jnp.zeros_like(state.ownership[0])
-
-    return Observation(
-        armies=state.armies,
-        generals=state.generals,
-        cities=state.cities,
-        mountains=state.mountains,
-        neutral_cells=state.ownership_neutral,
-        owned_cells=own_cells,
-        allied_cells=allied_cells,
-        opponent_cells=enemy_cells,
-        fog_cells=z,
-        structures_in_fog=z,
-        owned_land_count=owned_land,
-        owned_army_count=owned_army,
-        allied_land_count=allied_land,
-        allied_army_count=allied_army,
-        opponent_land_count=enemy_land,
-        opponent_army_count=enemy_army,
-        timestep=state.time,
-    )
+    """Perfect-information observation. Thin wrapper for `get_observation(..., fog=False)`."""
+    return get_observation(state, player_idx, fog=False)
 
 
 @jax.jit
