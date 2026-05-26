@@ -106,23 +106,23 @@ class JaxGameAdapter:
             }
         """
         if self._info is None:
-            # Compute info if not provided
             from generals.core import game
-            # Create GameState from self.channels
+            ownership_stack = jnp.stack([jnp.array(self.channels.ownership[agent]) for agent in self.agents])
+            any_owned = jnp.any(ownership_stack, axis=0)
+            passable = jnp.array(np.logical_not(self.channels.mountains))
             state = GameState(
                 armies=jnp.array(self.channels.armies),
-                ownership=jnp.stack([jnp.array(self.channels.ownership[agent]) for agent in self.agents]),
-                ownership_neutral=jnp.array(np.logical_not(
-                    np.logical_or(self.channels.ownership[self.agents[0]],
-                                  self.channels.ownership[self.agents[1]])
-                )),
+                ownership=ownership_stack,
+                ownership_neutral=passable & ~any_owned,
                 generals=jnp.array(self.channels.generals),
                 cities=jnp.array(self.channels.cities),
                 mountains=jnp.array(self.channels.mountains),
-                passable=jnp.array(np.logical_not(self.channels.mountains)),
+                passable=passable,
                 general_positions=jnp.array([self.general_positions[agent] for agent in self.agents]),
+                teams=jnp.arange(len(self.agents), dtype=jnp.int32),
                 time=jnp.int32(self.time),
                 winner=jnp.int32(-1),
+                pool_idx=jnp.int32(0),
             )
             self._info = game.get_info(state)
 

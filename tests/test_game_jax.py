@@ -6,6 +6,9 @@ import pytest
 from generals.core import game
 
 
+TEAMS_2P = jnp.arange(2, dtype=jnp.int32)
+
+
 def create_test_grid(size=4):
     """Create a simple test grid with generals in corners."""
     grid = jnp.zeros((size, size), dtype=jnp.int32)
@@ -17,7 +20,7 @@ def create_test_grid(size=4):
 def test_create_initial_state():
     """Test creating initial state from a grid."""
     grid = create_test_grid(4)
-    state = game.create_initial_state(grid)
+    state = game.create_initial_state(grid, TEAMS_2P)
 
     # Check state structure
     assert hasattr(state, "armies")
@@ -42,7 +45,7 @@ def test_create_initial_state():
 def test_step_pass_action():
     """Test that pass actions don't change state."""
     grid = create_test_grid(2)
-    state = game.create_initial_state(grid)
+    state = game.create_initial_state(grid, TEAMS_2P)
 
     # Both players pass
     actions = jnp.array(
@@ -64,7 +67,7 @@ def test_step_pass_action():
 def test_step_move_to_neutral():
     """Test moving to a neutral cell."""
     grid = create_test_grid(3)
-    state = game.create_initial_state(grid)
+    state = game.create_initial_state(grid, TEAMS_2P)
 
     # Give player 0 more armies
     state = state._replace(armies=state.armies.at[0, 0].set(5))
@@ -91,7 +94,7 @@ def test_step_move_to_neutral():
 def test_step_move_to_own_cell():
     """Test moving to own cell (merge armies)."""
     grid = create_test_grid(3)
-    state = game.create_initial_state(grid)
+    state = game.create_initial_state(grid, TEAMS_2P)
 
     # Setup: Give player 0 two cells with armies
     state = state._replace(
@@ -119,7 +122,7 @@ def test_step_move_to_own_cell():
 def test_get_observation():
     """Test observation generation with fog of war."""
     grid = create_test_grid(4)
-    state = game.create_initial_state(grid)
+    state = game.create_initial_state(grid, TEAMS_2P)
 
     obs = game.get_observation(state, 0)
 
@@ -139,7 +142,7 @@ def test_get_observation():
 def test_global_update():
     """Test global army increment mechanics."""
     grid = create_test_grid(2)
-    state = game.create_initial_state(grid)
+    state = game.create_initial_state(grid, TEAMS_2P)
     state = state._replace(armies=state.armies.at[0, 0].set(5), time=jnp.int32(2))
     state = game.global_update(state)
 
@@ -150,7 +153,7 @@ def test_global_update():
 def test_batch_step():
     """Test batched step execution."""
     grid = create_test_grid(2)
-    state = game.create_initial_state(grid)
+    state = game.create_initial_state(grid, TEAMS_2P)
 
     # Stack into batch
     batched_state = jax.tree.map(lambda x: jnp.stack([x, x]), state)
@@ -174,7 +177,7 @@ def test_batch_step():
 def test_jit_compilation():
     """Test that step function can be JIT compiled."""
     grid = create_test_grid(2)
-    state = game.create_initial_state(grid)
+    state = game.create_initial_state(grid, TEAMS_2P)
 
     # JIT compile step
     jitted_step = jax.jit(game.step)
