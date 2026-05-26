@@ -1,4 +1,8 @@
-"""Visualize a game between two agents using the pygame GUI."""
+"""Visualize a multi-agent game using the pygame GUI.
+
+By default runs 4 Expander agents in a 1v1v1v1 free-for-all. Tweak NUM_PLAYERS,
+TEAMS, and the agents list below to try other configurations.
+"""
 import jax.numpy as jnp
 import jax.random as jrandom
 
@@ -7,35 +11,37 @@ from generals.agents import RandomAgent, ExpanderAgent
 from generals.gui import ReplayGUI
 
 # Configuration
-GRID_DIMS = (10, 10)
-TRUNCATION = 500
-FPS = 10
+GRID_DIMS = (15, 15)
+TRUNCATION = 1000
+FPS = 8
 
-# Create environment and agents
+NUM_PLAYERS = 4
+TEAMS = jnp.arange(NUM_PLAYERS, dtype=jnp.int32)  # FFA. Use jnp.array([0,0,1,1]) for 2v2.
+
+# One agent per player. Mix and match freely.
+agents = [ExpanderAgent(id=f"Expander{i}") for i in range(NUM_PLAYERS)]
+
 env = GeneralsEnv(
     grid_dims=GRID_DIMS,
     truncation=TRUNCATION,
-    max_generals_distance=4
+    num_players=NUM_PLAYERS,
+    teams=TEAMS,
+    min_generals_distance=4,
 )
-agent_0 = RandomAgent(id="Random")
-agent_1 = ExpanderAgent(id="Expander")
 
-# Initialize game
 key = jrandom.PRNGKey(42)
 pool, state = env.reset(key)
 
-# Create GUI
-gui = ReplayGUI(state, agent_ids=[agent_0.id, agent_1.id])
+gui = ReplayGUI(state, agent_ids=[a.id for a in agents])
 
 terminated = truncated = False
 step_count = 0
-
 while not (terminated or truncated):
-    obs_0 = get_observation(state, 0)
-    obs_1 = get_observation(state, 1)
-
-    key, k1, k2 = jrandom.split(key, 3)
-    actions = jnp.stack([agent_0.act(obs_0, k1), agent_1.act(obs_1, k2)])
+    key, *subkeys = jrandom.split(key, NUM_PLAYERS + 1)
+    actions = jnp.stack([
+        agents[i].act(get_observation(state, i), subkeys[i])
+        for i in range(NUM_PLAYERS)
+    ])
 
     timestep, state = env.step(state, actions, pool)
 
@@ -46,9 +52,10 @@ while not (terminated or truncated):
     truncated = bool(timestep.truncated)
     step_count += 1
 
-winner = [agent_0.id, agent_1.id][int(timestep.info.winner)] if timestep.info.winner >= 0 else "None"
-print(f"Game over after {step_count} steps! Winner: {winner}")
+winner_team = int(timestep.info.winner)
+print(f"Game over after {step_count} steps. Winning team: {winner_team}")
+print(f"Eliminated: {list(map(bool, timestep.last_state.eliminated))}")
 
 import time
-time.sleep(2)
+time.sleep(3)
 gui.close()

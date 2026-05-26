@@ -27,6 +27,19 @@ class ReplayGUI:
         >>> gui.close()
     """
     
+    # Dark colors only — army counts are drawn in white on top, so all backgrounds
+    # need enough contrast for white text to be readable.
+    DEFAULT_COLORS = [
+        (200, 50, 50),    # red
+        (50, 80, 200),    # blue
+        (50, 130, 60),    # green
+        (130, 60, 170),   # purple
+        (200, 100, 30),   # dark orange
+        (140, 30, 90),    # wine
+        (90, 60, 30),     # brown
+        (30, 130, 130),   # teal
+    ]
+
     def __init__(
         self,
         initial_state: GameState,
@@ -40,21 +53,24 @@ class ReplayGUI:
 
         Args:
             initial_state: Initial game state to display.
-            agent_ids: Names for the two players. Default ["Player 0", "Player 1"].
-            colors: Colors for the two players. Default ["red", "blue"].
+            agent_ids: Names for the players. Default ["Player 0", ..., "Player N-1"]
+                inferred from initial_state.ownership.shape[0].
+            colors: Colors for the players. Default cycles through a built-in palette.
             fps: Default frames per second.
             show_tile_types: If True, show tile type labels (0, -2, C40, etc.) for debugging.
         """
-        self.agent_ids = agent_ids or ["Player 0", "Player 1"]
-        colors = colors or ["red", "blue"]
+        n_players = int(initial_state.ownership.shape[0])
+        self.agent_ids = agent_ids or [f"Player {i}" for i in range(n_players)]
+        if colors is None:
+            colors = [self.DEFAULT_COLORS[i % len(self.DEFAULT_COLORS)] for i in range(n_players)]
+        assert len(self.agent_ids) == n_players, \
+            f"agent_ids has {len(self.agent_ids)} entries but state has {n_players} players"
+        assert len(colors) == n_players, \
+            f"colors has {len(colors)} entries but state has {n_players} players"
         self.fps = fps
 
-        # Create adapter and full GUI
         self._adapter = JaxGameAdapter(initial_state, self.agent_ids, get_info(initial_state))
-        agent_data = {
-            self.agent_ids[0]: {"color": colors[0]},
-            self.agent_ids[1]: {"color": colors[1]},
-        }
+        agent_data = {aid: {"color": colors[i]} for i, aid in enumerate(self.agent_ids)}
         self._gui = FullGUI(self._adapter, agent_data, mode=GuiMode.TRAIN, show_tile_types=show_tile_types)
     
     def update(self, state: GameState, info: GameInfo = None):
