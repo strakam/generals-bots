@@ -43,12 +43,14 @@ class GameState(NamedTuple):
         armies: (H, W) array of army counts per cell.
         ownership: (N, H, W) boolean arrays, ownership[i] is player i's cells.
         ownership_neutral: (H, W) boolean mask of neutral (unowned) cells.
-        generals: (H, W) boolean mask of general positions.
+        generals: (H, W) boolean mask of *active* general positions. When a
+            general is captured it converts to a city and is removed from this mask.
         cities: (H, W) boolean mask of city positions.
         mountains: (H, W) boolean mask of mountain positions.
         passable: (H, W) boolean mask of passable cells (not mountains).
-        general_positions: (N, 2) array of [row, col] for each general.
+        general_positions: (N, 2) array of [row, col] for each general at start of game.
         teams: (N,) int32 array, teams[i] is team_id of player i.
+        eliminated: (N,) bool array, True if player i has been eliminated (general captured).
         time: Scalar, current game timestep.
         winner: Scalar, -1 if game ongoing, team_id of winning team otherwise.
         pool_idx: Scalar, index into the pre-generated state pool for auto-reset.
@@ -63,6 +65,7 @@ class GameState(NamedTuple):
     passable: jnp.ndarray
     general_positions: jnp.ndarray
     teams: jnp.ndarray
+    eliminated: jnp.ndarray
     time: jnp.ndarray
     winner: jnp.ndarray
     pool_idx: jnp.ndarray
@@ -138,6 +141,7 @@ def create_initial_state(grid: jnp.ndarray, teams: jnp.ndarray) -> GameState:
         passable=passable,
         general_positions=general_positions,
         teams=teams,
+        eliminated=jnp.zeros(N, dtype=bool),
         time=jnp.int32(0),
         winner=jnp.int32(-1),
         pool_idx=jnp.int32(0),
@@ -211,18 +215,27 @@ def _apply_move(state: GameState, player_idx, si, sj, di, dj, army_to_move) -> G
     """
     Apply a validated move.
 
-    Team-aware: if destination is owned by a same-team player (including self), the move
-    is a friendly merge (armies add; ownership transfers to mover if it was a teammate).
-    Otherwise it's an attack against an enemy or neutral cell.
+    Three branches by destination ownership:
+      - Friendly (same-team owner, including self): armies add; ownership transfers to
+        the mover if the destination belonged to a teammate.
+      - Enemy/neutral non-general capture: standard attack (subtract, flip ownership
+        if attacker wins).
+      - Enemy general capture: the entire captured player's territory transfers to
+        the capturer with per-cell armies halved; the general tile becomes a city;
+        the captured player is marked eliminated. The game does NOT end here — the
+        win condition is evaluated by step() (last team standing).
     """
     armies = state.armies
     ownership = state.ownership
     ownership_neutral = state.ownership_neutral
+    eliminated = state.eliminated
+    generals = state.generals
+    cities = state.cities
     teams = state.teams
 
     player_team = teams[player_idx]
 
-    target_owner_mask = ownership[:, di, dj]  # (N,) — who currently owns the destination
+    target_owner_mask = ownership[:, di, dj]
     same_team_owners = target_owner_mask & (teams == player_team)
     is_friendly = jnp.any(same_team_owners)
     is_self_owned = ownership[player_idx, di, dj]
@@ -232,27 +245,17 @@ def _apply_move(state: GameState, player_idx, si, sj, di, dj, army_to_move) -> G
         o = o.at[player_idx, di, dj].set(True)
         return o
 
-    # Friendly merge: add armies, transfer ownership to mover if it was a teammate
-    armies_friendly = armies.at[di, dj].add(army_to_move)
-    armies_friendly = armies_friendly.at[si, sj].add(-army_to_move)
+    # ---- Friendly merge ----
+    armies_friendly = armies.at[di, dj].add(army_to_move).at[si, sj].add(-army_to_move)
+    ownership_friendly = lax.cond(is_self_owned, lambda o: o, set_dest_owner_to_mover, ownership)
 
-    ownership_friendly = lax.cond(
-        is_self_owned,
-        lambda o: o,
-        set_dest_owner_to_mover,
-        ownership,
-    )
-
-    # Attack on enemy/neutral
+    # ---- Standard attack (no general capture) ----
     target_army = armies[di, dj]
     attacker_wins = army_to_move > target_army
     remaining_army = jnp.abs(target_army - army_to_move)
 
-    armies_attack = armies.at[di, dj].set(remaining_army)
-    armies_attack = armies_attack.at[si, sj].add(-army_to_move)
-
+    armies_attack = armies.at[di, dj].set(remaining_army).at[si, sj].add(-army_to_move)
     ownership_attack = lax.cond(attacker_wins, set_dest_owner_to_mover, lambda o: o, ownership)
-
     ownership_neutral_attack = lax.cond(
         attacker_wins & ownership_neutral[di, dj],
         lambda o: o.at[di, dj].set(False),
@@ -263,19 +266,47 @@ def _apply_move(state: GameState, player_idx, si, sj, di, dj, army_to_move) -> G
     is_general = state.generals[di, dj]
     general_captured = attacker_wins & is_general & ~is_friendly
 
-    armies = lax.cond(is_friendly, lambda: armies_friendly, lambda: armies_attack)
-    ownership = lax.cond(is_friendly, lambda: ownership_friendly, lambda: ownership_attack)
-    ownership_neutral = lax.cond(is_friendly, lambda: ownership_neutral, lambda: ownership_neutral_attack)
+    # ---- General-capture: sweep captured player's territory to capturer (half armies) ----
+    captured_player_idx = jnp.argmax(target_owner_mask)
+    captured_cells = ownership[captured_player_idx]
 
-    # Phase 1: any general capture ends the game with winner = capturer's team.
-    # Phase 2 will replace this with per-player elimination + last-team-standing.
-    winner = lax.cond(general_captured, lambda: jnp.int32(player_team), lambda: state.winner)
+    armies_capture = jnp.where(captured_cells, armies // 2, armies)
+    armies_capture = armies_capture.at[si, sj].add(-army_to_move)
+
+    ownership_capture = ownership.at[player_idx].set(ownership[player_idx] | captured_cells)
+    ownership_capture = ownership_capture.at[captured_player_idx].set(jnp.zeros_like(captured_cells))
+
+    generals_capture = generals.at[di, dj].set(False)
+    cities_capture = cities.at[di, dj].set(True)
+    eliminated_capture = eliminated.at[captured_player_idx].set(True)
+
+    # ---- Branch selection ----
+    armies = lax.cond(
+        is_friendly,
+        lambda: armies_friendly,
+        lambda: lax.cond(general_captured, lambda: armies_capture, lambda: armies_attack),
+    )
+    ownership = lax.cond(
+        is_friendly,
+        lambda: ownership_friendly,
+        lambda: lax.cond(general_captured, lambda: ownership_capture, lambda: ownership_attack),
+    )
+    ownership_neutral = lax.cond(
+        is_friendly,
+        lambda: ownership_neutral,
+        lambda: lax.cond(general_captured, lambda: ownership_neutral, lambda: ownership_neutral_attack),
+    )
+    generals = lax.cond(general_captured, lambda: generals_capture, lambda: generals)
+    cities = lax.cond(general_captured, lambda: cities_capture, lambda: cities)
+    eliminated = lax.cond(general_captured, lambda: eliminated_capture, lambda: eliminated)
 
     return state._replace(
         armies=armies,
         ownership=ownership,
         ownership_neutral=ownership_neutral,
-        winner=winner,
+        generals=generals,
+        cities=cities,
+        eliminated=eliminated,
     )
 
 
@@ -374,9 +405,13 @@ def step(state: GameState, actions: jnp.ndarray) -> tuple[GameState, GameInfo]:
 
     state = lax.cond(done_before, lambda s: s, lambda s: s._replace(time=s.time + 1), state)
 
+    # Last-team-standing check. Once winner is set we hold it.
+    new_winner = _check_winner(state)
+    state = state._replace(winner=jnp.where(state.winner >= 0, state.winner, new_winner))
+
     state = lax.cond(
         state.winner >= 0,
-        lambda s: _transfer_loser_cells_to_winner(s),
+        lambda s: s,
         lambda s: global_update(s),
         state,
     )
@@ -384,37 +419,15 @@ def step(state: GameState, actions: jnp.ndarray) -> tuple[GameState, GameInfo]:
     return state, get_info(state)
 
 
-def _transfer_loser_cells_to_winner(state: GameState) -> GameState:
-    """
-    Once a winner has been determined, sweep all cells owned by losing-team players
-    into the lowest-indexed winning-team player. Losing players' ownership is cleared.
-
-    This is the phase-1 simple model where any general capture ends the game; phase 2
-    will replace it with per-player elimination and per-capture transfer rules.
-    """
-    winning_team = state.winner
-
-    is_winning_player = state.teams == winning_team  # (N,)
-    is_losing_player = ~is_winning_player
-
-    # All cells held by losing players (regardless of which losing player)
-    losing_cells = jnp.any(state.ownership & is_losing_player[:, None, None], axis=0)  # (H, W)
-
-    # Assign losing cells to the first winning player
-    winning_player_idx = jnp.argmax(is_winning_player)
-    new_ownership = state.ownership.at[winning_player_idx].set(
-        state.ownership[winning_player_idx] | losing_cells
-    )
-    # Clear losing players' ownership entirely
-    new_ownership = jnp.where(
-        is_losing_player[:, None, None],
-        jnp.zeros_like(new_ownership),
-        new_ownership,
-    )
-
-    new_ownership_neutral = state.ownership_neutral & ~losing_cells
-
-    return state._replace(ownership=new_ownership, ownership_neutral=new_ownership_neutral)
+def _check_winner(state: GameState) -> jnp.ndarray:
+    """Return the team_id of the only surviving team, or -1 if more than one team is alive."""
+    active = ~state.eliminated  # (N,)
+    INT_MAX = jnp.iinfo(jnp.int32).max
+    INT_MIN = jnp.iinfo(jnp.int32).min
+    min_team = jnp.min(jnp.where(active, state.teams, INT_MAX))
+    max_team = jnp.max(jnp.where(active, state.teams, INT_MIN))
+    single_team = (min_team == max_team) & jnp.any(active)
+    return jnp.where(single_team, min_team, jnp.int32(-1))
 
 
 @jax.jit

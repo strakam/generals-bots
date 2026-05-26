@@ -120,6 +120,7 @@ class JaxGameAdapter:
                 passable=passable,
                 general_positions=jnp.array([self.general_positions[agent] for agent in self.agents]),
                 teams=jnp.arange(len(self.agents), dtype=jnp.int32),
+                eliminated=jnp.zeros(len(self.agents), dtype=bool),
                 time=jnp.int32(self.time),
                 winner=jnp.int32(-1),
                 pool_idx=jnp.int32(0),
