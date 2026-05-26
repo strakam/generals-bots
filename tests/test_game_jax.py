@@ -241,8 +241,8 @@ def test_teammate_merge_transfers_ownership():
     assert not bool(new_state.ownership[1, 0, 1])
 
 
-def test_general_capture_halves_armies_and_converts_to_city():
-    """3-player FFA: capturer takes all of captured player's cells with armies halved; general → city."""
+def test_general_capture_halves_other_cells_keeps_attacker_surplus_on_general():
+    """3-player FFA: captured general tile keeps the attacker's surplus; other captured cells are halved."""
     teams = jnp.arange(3, dtype=jnp.int32)
     grid = jnp.zeros((5, 5), dtype=jnp.int32)
     grid = grid.at[0, 0].set(1)
@@ -258,9 +258,11 @@ def test_general_capture_halves_armies_and_converts_to_city():
     actions = jnp.array([[0, 0, 0, 3, 0], [1, 0, 0, 0, 0], [1, 0, 0, 0, 0]], dtype=jnp.int32)
     new_state, info = game.step(state, actions)
 
-    # P1's general at (0,1) had army=3; halved → 1; +1 from city structure increment at t=1 → 2
-    assert int(new_state.armies[0, 1]) == 2
-    # P1's other cell at (0,2) had army=20; halved → 10; not a structure, no increment
+    # Attacker brought army_to_move=49 onto a general with target_army=3.
+    # Dest cell uses the attack remainder (49-3=46), then +1 from the city
+    # structure increment at t=1 → 47.
+    assert int(new_state.armies[0, 1]) == 47
+    # P1's other cell at (0,2) had army=20; halved → 10; not a structure, no increment.
     assert int(new_state.armies[0, 2]) == 10
     assert bool(new_state.ownership[0, 0, 1])
     assert bool(new_state.ownership[0, 0, 2])

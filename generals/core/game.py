@@ -221,9 +221,12 @@ def _apply_move(state: GameState, player_idx, si, sj, di, dj, army_to_move) -> G
       - Enemy/neutral non-general capture: standard attack (subtract, flip ownership
         if attacker wins).
       - Enemy general capture: the entire captured player's territory transfers to
-        the capturer with per-cell armies halved; the general tile becomes a city;
-        the captured player is marked eliminated. The game does NOT end here — the
-        win condition is evaluated by step() (last team standing).
+        the capturer with per-cell armies halved, except that the captured general
+        tile itself uses the standard attack remainder (army_to_move - target_army),
+        so the attacker's surplus is preserved at the point of impact. The general
+        tile becomes a city; the captured player is marked eliminated. The game
+        does NOT end here — the win condition is evaluated by step() (last team
+        standing).
     """
     armies = state.armies
     ownership = state.ownership
@@ -266,11 +269,14 @@ def _apply_move(state: GameState, player_idx, si, sj, di, dj, army_to_move) -> G
     is_general = state.generals[di, dj]
     general_captured = attacker_wins & is_general & ~is_friendly
 
-    # ---- General-capture: sweep captured player's territory to capturer (half armies) ----
+    # ---- General-capture: sweep captured player's territory to capturer ----
+    # All captured cells get their armies halved, except the captured general tile,
+    # which keeps the attacker's remainder (army_to_move - target_army).
     captured_player_idx = jnp.argmax(target_owner_mask)
     captured_cells = ownership[captured_player_idx]
 
     armies_capture = jnp.where(captured_cells, armies // 2, armies)
+    armies_capture = armies_capture.at[di, dj].set(remaining_army)
     armies_capture = armies_capture.at[si, sj].add(-army_to_move)
 
     ownership_capture = ownership.at[player_idx].set(ownership[player_idx] | captured_cells)
