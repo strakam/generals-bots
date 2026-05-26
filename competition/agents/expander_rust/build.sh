@@ -3,4 +3,4 @@
 set -e
 cd "$(dirname "$0")"
 cargo build --release
-echo "[build] starters/rust/target/release/agent built" >&2
+echo "[build] competition/agents/expander_rust/target/release/agent built" >&2

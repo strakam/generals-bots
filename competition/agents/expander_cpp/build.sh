@@ -3,4 +3,4 @@
 set -e
 cd "$(dirname "$0")"
 g++ -O2 -std=c++17 -o agent main.cpp
-echo "[build] starters/cpp/agent built" >&2
+echo "[build] competition/agents/expander_cpp/agent built" >&2

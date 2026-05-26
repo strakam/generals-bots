@@ -170,6 +170,8 @@ cython_debug/
 # Generated figures (output of examples/figures/figure_*.py scripts) — top-level only
 /figures/
 
-# Compiled starter binaries
-starters/cpp/agent
-starters/rust/target/
+# Compiled competition agent binaries
+competition/agents/expander_cpp/agent
+competition/agents/expander_rust/target/
+competition/agents/*/agent
+competition/agents/*/target/

@@ -8,13 +8,14 @@ For each turn the runner:
   4. steps the env with both actions
 
 Each agent is a `run.sh` script (or compiled equivalent) speaking the
-protocol in `generals/protocol.py`. See `starters/<lang>/` for examples.
+protocol in `generals/protocol.py`. The convention is to keep agents
+under `competition/agents/<name>/`, but the runner doesn't care — pass
+any path to a `run.sh`.
 
 Usage:
-    python examples/stdio_runner.py [-h] [--gui] [--grid-size N] [--fps N]
-                                    [agent0_run.sh] [agent1_run.sh]
+    python competition/matchup.py [agent0_run.sh] [agent1_run.sh] [flags]
 
-Defaults to two copies of `starters/python/run.sh`.
+Defaults to two copies of `competition/agents/expander_python/run.sh`.
 """
 import argparse
 import subprocess
@@ -34,7 +35,7 @@ from generals.protocol import (
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_AGENT = REPO_ROOT / "starters" / "python" / "run.sh"
+DEFAULT_AGENT = REPO_ROOT / "competition" / "agents" / "expander_python" / "run.sh"
 
 
 def build_agent(run_sh: Path) -> None:
@@ -42,10 +43,10 @@ def build_agent(run_sh: Path) -> None:
     build = run_sh.parent / "build.sh"
     if not build.exists():
         return
-    print(f"[runner] building {build.relative_to(REPO_ROOT)}", file=sys.stderr)
+    print(f"[matchup] building {build.relative_to(REPO_ROOT)}", file=sys.stderr)
     result = subprocess.run(["bash", str(build)], cwd=str(build.parent))
     if result.returncode != 0:
-        sys.exit(f"[runner] build failed: {build}")
+        sys.exit(f"[matchup] build failed: {build}")
 
 
 def spawn_agent(run_sh: Path, player_id: int, H: int, W: int, label: str) -> subprocess.Popen:
@@ -64,7 +65,7 @@ def spawn_agent(run_sh: Path, player_id: int, H: int, W: int, label: str) -> sub
         rel = run_sh.relative_to(REPO_ROOT)
     except ValueError:
         rel = run_sh
-    print(f"[runner] spawned {label} as player {player_id} "
+    print(f"[matchup] spawned {label} as player {player_id} "
           f"(pid={proc.pid}, {rel})", file=sys.stderr)
     return proc
 
@@ -138,8 +139,8 @@ def main():
         gui = ReplayGUI(state, agent_ids=[a0_path.parent.name, a1_path.parent.name])
 
     agents = [
-        spawn_agent(a0_path, 0, H, W, "agent-0"),
-        spawn_agent(a1_path, 1, H, W, "agent-1"),
+        spawn_agent(a0_path, 0, H, W, a0_path.parent.name),
+        spawn_agent(a1_path, 1, H, W, a1_path.parent.name),
     ]
 
     winner = -1
@@ -174,11 +175,11 @@ def main():
             gui.close()
 
     if truncated:
-        print(f"[runner] turn {turn}: truncated (draw)")
+        print(f"[matchup] turn {turn}: truncated (draw)")
     elif winner >= 0:
-        print(f"[runner] turn {turn}: player {winner} captured the enemy general")
+        print(f"[matchup] turn {turn}: player {winner} captured the enemy general")
     else:
-        print(f"[runner] turn {turn}: stopped without resolution")
+        print(f"[matchup] turn {turn}: stopped without resolution")
 
 
 if __name__ == "__main__":
