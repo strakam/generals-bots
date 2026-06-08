@@ -1,6 +1,10 @@
 <div align="center">
 
-![Gameplay GIF](https://raw.githubusercontent.com/strakam/generals-bots/master/generals/assets/gifs/wider_gameplay.gif)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/strakam/generals-bots/master/generals/assets/images/game1.webp" width="250" alt="Self-play game 1" />
+  <img src="https://raw.githubusercontent.com/strakam/generals-bots/master/generals/assets/images/game2.webp" width="250" alt="Self-play game 2" />
+  <img src="https://raw.githubusercontent.com/strakam/generals-bots/master/generals/assets/images/game3.webp" width="250" alt="Self-play game 3" />
+</p>
 
 ## **Generals.io Bots**
 
