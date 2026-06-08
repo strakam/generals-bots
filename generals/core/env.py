@@ -49,6 +49,22 @@ class TimeStep(NamedTuple):
     last_state: GameState
 
 
+# Named rule presets. A mode pins the full ruleset for a competition round so
+# every eval (quick-check + league) generates identical maps. mode is
+# authoritative — it overrides the matching GeneralsEnv constructor arguments.
+_MODE_PRESETS = {
+    "competition-r1": dict(
+        grid_dims=(15, 15),
+        truncation=600,
+        perfect_info=True,
+        mountain_density_range=(0.24, 0.26),
+        num_cities_range=(9, 11),
+        min_generals_distance=12,
+        castle_val_range=(20, 26),   # castle army value in [20, 25]
+    ),
+}
+
+
 class GeneralsEnv:
     """
     JAX-based Generals.io environment (stateless).
@@ -86,7 +102,25 @@ class GeneralsEnv:
         pad_to: int | None = None,
         # Observation mode
         perfect_info: bool = False,
+        # Named ruleset preset (e.g. "competition-r1"); overrides the args above.
+        mode: str | None = None,
     ):
+        # A named mode pins the whole ruleset for a competition round — it is
+        # authoritative and overrides the matching constructor arguments, so every
+        # eval (quick-check and league) generates identical maps.
+        self.mode = mode
+        if mode is not None:
+            if mode not in _MODE_PRESETS:
+                raise ValueError(f"unknown mode {mode!r}; known modes: {sorted(_MODE_PRESETS)}")
+            preset = _MODE_PRESETS[mode]
+            grid_dims = preset["grid_dims"]
+            truncation = preset["truncation"]
+            perfect_info = preset["perfect_info"]
+            mountain_density_range = preset["mountain_density_range"]
+            num_cities_range = preset["num_cities_range"]
+            min_generals_distance = preset["min_generals_distance"]
+            castle_val_range = preset["castle_val_range"]
+
         # Handle backward compat: grid_dims=(h,w) → fixed size
         if grid_dims is not None:
             h, w = grid_dims

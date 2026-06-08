@@ -4,6 +4,15 @@ import jax
 import jax.numpy as jnp
 
 
+def _dilate4(mask: jax.Array) -> jax.Array:
+    """Expand a boolean mask to its 4-neighbours (no wrap-around at the borders)."""
+    up = jnp.roll(mask, -1, axis=0).at[-1, :].set(False)
+    down = jnp.roll(mask, 1, axis=0).at[0, :].set(False)
+    left = jnp.roll(mask, -1, axis=1).at[:, -1].set(False)
+    right = jnp.roll(mask, 1, axis=1).at[:, 0].set(False)
+    return mask | up | down | left | right
+
+
 @partial(jax.jit, static_argnames=['grid_dims', 'pad_to', 'mountain_density_range', 'num_cities_range',
                                     'min_generals_distance', 'max_generals_distance', 'castle_val_range'])
 def generate_grid(
@@ -25,10 +34,15 @@ def generate_grid(
     Algorithm:
     1. Place generals FIRST on empty grid (guaranteed valid distance)
     2. Place mountains on empty cells
-    3. Place castles within BFS distance 6 of each general
-    4. Place remaining cities
-    5. Check connectivity, carve L-path if needed
-    6. Apply dynamic padding
+    3. Ensure connectivity (carve an L-path if needed) BEFORE placing anything
+       else, so every general ends up with an open neighbour and the connecting
+       route is made of empty ground
+    4. Place a castle within walking distance ~6 of each general by CONVERTING a
+       mountain (connectivity-neutral; only falls back to an empty cell if no
+       mountain is near, which still leaves the carved path intact)
+    5. Place the remaining cities, also by converting mountains
+    6. Re-assert the two generals (ground truth — the grid always has both)
+    7. Apply dynamic padding
     
     Args:
         key: JAX random key
@@ -41,7 +55,8 @@ def generate_grid(
         castle_val_range: (min, max) army value for cities
         
     Returns:
-        Grid is always valid (validity=True always)
+        A valid grid: exactly two generals, an empty connecting path between
+        them, and a castle within walking distance ~6 of each general.
     """
     keys = jax.random.split(key, 12)
 
@@ -109,37 +124,55 @@ def generate_grid(
     grid = flat_grid.reshape(grid_dims)
 
     # =================================================================
-    # Step 3: Place castles within BFS distance 6 of each general
+    # Step 3: Ensure connectivity NOW, before any castle/city is placed. Carve an
+    # L-path if the two generals aren't joined through open ground. Doing this
+    # first means every general ends up on the connecting path — so it always has
+    # an open neighbour and can never be boxed in — and the route is empty cells.
+    # =================================================================
+    connected = flood_fill_connected(grid, pos_a, pos_b)
+    grid = jax.lax.cond(
+        connected,
+        lambda g: g,
+        lambda g: carve_l_path(g, pos_a, pos_b),
+        grid,
+    )
+    if max_generals_distance is not None:
+        dist = bfs_distance(grid, pos_a, pos_b)
+        grid = jax.lax.cond(
+            dist > max_generals_distance,
+            lambda g: carve_l_path(g, pos_a, pos_b),
+            lambda g: g,
+            grid,
+        )
+
+    # =================================================================
+    # Step 4: Place one castle within walking distance ~6 of each general by
+    # CONVERTING A MOUNTAIN (preferred), so the empty connecting path is never
+    # touched and placement can't disconnect the map. Falls back to an empty cell
+    # within reach only if no mountain is near (rare). After the carve the general
+    # always has an open neighbour, so a castle is ALWAYS placeable within ~6.
     # =================================================================
     castle_val_a = jax.random.randint(keys[4], (), castle_val_range[0], castle_val_range[1])
     castle_val_b = jax.random.randint(keys[5], (), castle_val_range[0], castle_val_range[1])
 
-    # BFS flood fill 6 steps from each general through non-mountain terrain
-    near_a = bfs_reachable_within_k(grid, pos_a, 6)
-    near_b = bfs_reachable_within_k(grid, pos_b, 6)
+    def place_castle(grid, pos, castle_val, key):
+        reach = bfs_reachable_within_k(grid, pos, 6)             # passable cells within 6, excl. pos
+        reach_incl = reach.at[pos].set(True)
+        frontier_mountain = _dilate4(reach_incl) & (grid == -2)  # mountains capturable within ~6
+        empty_reach = reach & (grid == 0)                        # fallback: empty cells within 6
+        candidates = jnp.where(jnp.any(frontier_mountain), frontier_mountain, empty_reach)
+        pos_castle = sample_from_mask(candidates, key)
+        return jnp.where(jnp.any(candidates), grid.at[pos_castle].set(castle_val), grid)
 
-    # Castle near A: must be empty and within BFS distance 6
-    castle_a_candidates = near_a & (grid == 0)
-    # Fallback: if no candidates, clear nearest mountain neighbor
-    has_candidates_a = jnp.any(castle_a_candidates)
-    fallback_a_mask = near_a & (grid == -2)
-    castle_a_mask = jnp.where(has_candidates_a, castle_a_candidates, fallback_a_mask)
-    pos_castle_a = sample_from_mask(castle_a_mask, keys[6])
-    grid = grid.at[pos_castle_a].set(castle_val_a)
-
-    # Castle near B: must be empty and within BFS distance 6 (not on first castle)
-    castle_b_candidates = near_b & (grid == 0)
-    has_candidates_b = jnp.any(castle_b_candidates)
-    fallback_b_mask = near_b & (grid == -2)
-    castle_b_mask = jnp.where(has_candidates_b, castle_b_candidates, fallback_b_mask)
-    pos_castle_b = sample_from_mask(castle_b_mask, keys[7])
-    grid = grid.at[pos_castle_b].set(castle_val_b)
+    grid = place_castle(grid, pos_a, castle_val_a, keys[6])
+    grid = place_castle(grid, pos_b, castle_val_b, keys[7])
 
     # =================================================================
-    # Step 4: Place remaining cities (num_cities - 2, since 2 are castles)
+    # Step 5: Place the remaining cities, also by converting mountains so they
+    # can't block the carved connecting path either
     # =================================================================
     remaining_cities = num_cities - 2
-    city_available = (grid == 0)  # Any empty cell
+    city_available = (grid == -2)  # convert mountains (not empty) — keeps the carved path clear
     flat_city_available = city_available.reshape(-1)
     
     city_logits = jnp.where(flat_city_available, 0.0, -jnp.inf)
@@ -164,28 +197,15 @@ def generate_grid(
     grid = flat_grid.reshape(grid_dims)
     
     # =================================================================
-    # Step 5: Ensure connectivity (carve L-path if needed)
+    # Step 6: Re-assert the generals as ground truth. Castle/city placement above
+    # never targets a general cell, but this guarantees the grid ALWAYS ends with
+    # exactly one P0 (1) and one P1 (2) general — a spawn can never go missing.
     # =================================================================
-    connected = flood_fill_connected(grid, pos_a, pos_b)
-    grid = jax.lax.cond(
-        connected,
-        lambda g: g,  # Already connected, do nothing
-        lambda g: carve_l_path(g, pos_a, pos_b),  # Carve path
-        grid
-    )
-
-    # Step 5b: Enforce max BFS distance (carve L-path if path is too long)
-    if max_generals_distance is not None:
-        dist = bfs_distance(grid, pos_a, pos_b)
-        grid = jax.lax.cond(
-            dist > max_generals_distance,
-            lambda g: carve_l_path(g, pos_a, pos_b),
-            lambda g: g,
-            grid
-        )
+    grid = grid.at[pos_a].set(1)
+    grid = grid.at[pos_b].set(2)
     
     # =================================================================
-    # Step 6: Dynamic padding
+    # Step 7: Dynamic padding
     # =================================================================
     # Default padding: max dimension + 1 (for batching)
     if pad_to is None:
