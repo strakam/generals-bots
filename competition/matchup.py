@@ -14,6 +14,7 @@ any path to a `run.sh`.
 
 Usage:
     python competition/matchup.py [agent0_run.sh] [agent1_run.sh] [flags]
+    python competition/matchup.py --mode competition-r1   # pin a competition ruleset
 
 Defaults to two copies of `competition/agents/expander_python/run.sh`.
 """
@@ -111,10 +112,10 @@ def main():
                         help="GUI frame rate when --gui is set (default: 8)")
     parser.add_argument("--perfect-info", action="store_true",
                         help="disable fog of war; agents see the whole board")
+    parser.add_argument("--mode", type=str, default=None,
+                        help="named ruleset preset (e.g. competition-r1); pins the full "
+                             "ruleset and overrides --grid-size/--truncation/--perfect-info")
     args = parser.parse_args()
-
-    # Match the env's observation mode for the per-turn obs we send to agents.
-    get_obs = game.get_full_observation if args.perfect_info else game.get_observation
 
     a0_path = Path(args.agent0).resolve()
     a1_path = Path(args.agent1).resolve()
@@ -126,11 +127,24 @@ def main():
     if a1_path != a0_path:
         build_agent(a1_path)
 
-    env = GeneralsEnv(grid_dims=(args.grid_size, args.grid_size),
-                      truncation=args.truncation,
-                      perfect_info=args.perfect_info)
+    # A named mode pins the whole ruleset for a competition round; otherwise the
+    # individual flags build the env.
+    if args.mode is not None:
+        env = GeneralsEnv(mode=args.mode)
+    else:
+        env = GeneralsEnv(grid_dims=(args.grid_size, args.grid_size),
+                          truncation=args.truncation,
+                          perfect_info=args.perfect_info)
+
+    # Observation mode comes from the env so a --mode preset controls it.
+    get_obs = game.get_full_observation if env.perfect_info else game.get_observation
+
+    # Drive the per-turn transition with the already-jitted game.step directly.
+    # env.step() wraps it with vectorised-training machinery (auto-reset from a
+    # 10k-state pool) that a single stdio match neither needs nor wants — and that
+    # eager pool indexing is what made the loop slow. init_state builds one board.
     key = jrandom.PRNGKey(args.seed)
-    pool, state = env.reset(key)
+    state = env.init_state(key)
     H = W = env.pad_to
 
     gui = None
@@ -144,7 +158,6 @@ def main():
     ]
 
     winner = -1
-    truncated = False
     turn = 0
     try:
         while turn < env.truncation:
@@ -155,18 +168,15 @@ def main():
             a_1 = ask_agent(agents[1], obs_1)
 
             actions = jnp.stack([a_0, a_1])
-            timestep, state = env.step(state, actions, pool)
+            state, info = game.step(state, actions)
             turn += 1
 
             if gui is not None:
-                gui.update(state, timestep.info)
+                gui.update(state, info)
                 gui.tick(fps=args.fps)
 
-            if bool(timestep.terminated):
-                winner = int(timestep.info.winner)
-                break
-            if bool(timestep.truncated):
-                truncated = True
+            if bool(info.is_done):
+                winner = int(info.winner)
                 break
     finally:
         for proc in agents:
@@ -174,12 +184,10 @@ def main():
         if gui is not None:
             gui.close()
 
-    if truncated:
-        print(f"[matchup] turn {turn}: truncated (draw)")
-    elif winner >= 0:
+    if winner >= 0:
         print(f"[matchup] turn {turn}: player {winner} captured the enemy general")
     else:
-        print(f"[matchup] turn {turn}: stopped without resolution")
+        print(f"[matchup] turn {turn}: truncated at {env.truncation} turns (draw)")
 
 
 if __name__ == "__main__":
