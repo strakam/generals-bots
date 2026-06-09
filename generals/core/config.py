@@ -9,7 +9,7 @@ MOUNTAIN: Literal["#"] = "#"
 class Dimension(IntEnum):
     SQUARE_SIZE = 50
     GUI_CELL_HEIGHT = 30
-    GUI_CELL_WIDTH = 70
+    GUI_CELL_WIDTH = 84  # right-panel/scoreboard cell width (was 70; +20% for legibility)
     MINIMUM_WINDOW_SIZE = 700
 
 

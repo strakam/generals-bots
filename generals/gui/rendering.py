@@ -178,21 +178,38 @@ class Renderer:
         self.screen.blit(self.right_panel, (self.display_grid_width, 0))
 
     def _render_controls(self):
-        """Draw the replay control legend in the empty area below the scoreboard."""
-        lines = [
-            "Controls",
-            "Space:  play / pause",
-            "Left / Right:  step frame",
-            "   (hold to run through)",
-            "R:  restart      Q:  quit",
+        """Draw a tidy two-column control legend below the scoreboard (REPLAY)."""
+        KEY_COLOR = (236, 206, 112)    # soft gold — key names
+        DESC_COLOR = (170, 174, 178)   # muted gray — descriptions
+        RULE_COLOR = (88, 92, 98)      # subtle divider
+
+        pad = 12
+        top = 4 * Dimension.GUI_CELL_HEIGHT.value + 8
+        rows = [
+            ("Space", "play / pause"),
+            ("Left / Right", "step a frame"),
+            ("", "hold to run through"),
+            ("R", "restart"),
+            ("Q", "quit"),
         ]
-        top = 4 * Dimension.GUI_CELL_HEIGHT.value + 10
-        line_h = 20
-        area = pygame.Rect(0, top - 6, self.right_panel_width, len(lines) * line_h + 12)
-        self.right_panel.fill(BLACK, area)
-        for i, line in enumerate(lines):
-            surf = self._controls_font.render(line, True, WHITE)
-            self.right_panel.blit(surf, (8, top + i * line_h))
+        line_h = 21
+        head_h = self.properties.font_size + 14
+
+        # Clear the legend area, then draw a divider, heading, and the rows.
+        self.right_panel.fill(
+            BLACK, pygame.Rect(0, top, self.right_panel_width, head_h + len(rows) * line_h + 16)
+        )
+        pygame.draw.line(self.right_panel, RULE_COLOR,
+                         (pad, top + 2), (self.right_panel_width - pad, top + 2), 1)
+        self.right_panel.blit(self._font.render("Controls", True, WHITE), (pad, top + 10))
+
+        key_x, desc_x = pad + 4, pad + 120
+        y = top + head_h + 4
+        for key, desc in rows:
+            if key:
+                self.right_panel.blit(self._controls_font.render(key, True, KEY_COLOR), (key_x, y))
+            self.right_panel.blit(self._controls_font.render(desc, True, DESC_COLOR), (desc_x, y))
+            y += line_h
 
     def render_grid(self):
         """
