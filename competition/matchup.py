@@ -93,6 +93,38 @@ def close_agent(proc: subprocess.Popen) -> None:
         proc.wait()
 
 
+def replay(states_log, infos_log, agent_ids, fps):
+    """Open an interactive replay of a recorded match.
+
+    Controls: SPACE play/pause | L next frame | H prev frame |
+    left/right arrows speed | R restart | Q quit.
+    """
+    from generals.gui import ReplayGUI
+    from generals.gui.properties import GuiMode
+
+    gui = ReplayGUI(states_log[0], agent_ids=agent_ids, fps=fps,
+                    mode=GuiMode.REPLAY, start_paused=True)
+    n = len(states_log)
+    frame = 0
+    gui.update(states_log[0], infos_log[0])
+    print("[matchup] replay open — SPACE play/pause | L/H step | "
+          "left/right speed | R restart | Q quit")
+    while True:
+        command = gui.tick(fps=fps)
+        if command.quit:
+            break
+        if command.restart:
+            frame = 0
+            gui.update(states_log[frame], infos_log[frame])
+        elif command.frame_change != 0:
+            frame = max(0, min(n - 1, frame + command.frame_change))
+            gui.update(states_log[frame], infos_log[frame])
+        elif not gui.paused and frame < n - 1:
+            frame += 1
+            gui.update(states_log[frame], infos_log[frame])
+    gui.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -107,7 +139,7 @@ def main():
     parser.add_argument("--seed", type=int, default=0,
                         help="env RNG seed (default: 0)")
     parser.add_argument("--gui", action="store_true",
-                        help="open a pygame replay window")
+                        help="record the match, then open an interactive replay window")
     parser.add_argument("--fps", type=int, default=8,
                         help="GUI frame rate when --gui is set (default: 8)")
     parser.add_argument("--perfect-info", action="store_true",
@@ -147,10 +179,12 @@ def main():
     state = env.init_state(key)
     H = W = env.pad_to
 
-    gui = None
-    if args.gui:
-        from generals.gui import ReplayGUI
-        gui = ReplayGUI(state, agent_ids=[a0_path.parent.name, a1_path.parent.name])
+    # With --gui we record every frame during a full-speed (headless) match,
+    # then open an interactive replay afterwards. Recording the whole game first
+    # decouples match speed from the GUI frame rate and lets you scrub freely.
+    record = args.gui
+    states_log = [state] if record else None
+    infos_log = [game.get_info(state)] if record else None
 
     agents = [
         spawn_agent(a0_path, 0, H, W, a0_path.parent.name),
@@ -171,9 +205,9 @@ def main():
             state, info = game.step(state, actions)
             turn += 1
 
-            if gui is not None:
-                gui.update(state, info)
-                gui.tick(fps=args.fps)
+            if record:
+                states_log.append(state)
+                infos_log.append(info)
 
             if bool(info.is_done):
                 winner = int(info.winner)
@@ -181,13 +215,15 @@ def main():
     finally:
         for proc in agents:
             close_agent(proc)
-        if gui is not None:
-            gui.close()
 
     if winner >= 0:
         print(f"[matchup] turn {turn}: player {winner} captured the enemy general")
     else:
         print(f"[matchup] turn {turn}: truncated at {env.truncation} turns (draw)")
+
+    if record:
+        replay(states_log, infos_log,
+               agent_ids=[a0_path.parent.name, a1_path.parent.name], fps=args.fps)
 
 
 if __name__ == "__main__":

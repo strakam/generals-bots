@@ -34,6 +34,8 @@ class ReplayGUI:
         colors: list[str] = None,
         fps: int = 10,
         show_tile_types: bool = False,
+        mode: GuiMode = GuiMode.TRAIN,
+        start_paused: bool = False,
     ):
         """
         Initialize the GUI.
@@ -44,6 +46,9 @@ class ReplayGUI:
             colors: Colors for the two players. Default ["red", "blue"].
             fps: Default frames per second.
             show_tile_types: If True, show tile type labels (0, -2, C40, etc.) for debugging.
+            mode: GuiMode.TRAIN for live stepping; GuiMode.REPLAY for an interactive
+                scrubable replay (pause, frame stepping — see `tick`).
+            start_paused: Start paused (useful in REPLAY mode).
         """
         self.agent_ids = agent_ids or ["Player 0", "Player 1"]
         # The rendering adapters key every per-player dict (ownership, generals,
@@ -61,18 +66,29 @@ class ReplayGUI:
             self.agent_ids[0]: {"color": colors[0]},
             self.agent_ids[1]: {"color": colors[1]},
         }
-        self._gui = FullGUI(self._adapter, agent_data, mode=GuiMode.TRAIN, show_tile_types=show_tile_types)
-    
+        self._gui = FullGUI(self._adapter, agent_data, mode=mode, show_tile_types=show_tile_types)
+        self._gui.properties.paused = start_paused
+
+    @property
+    def paused(self) -> bool:
+        """Whether replay playback is paused (toggled by SPACE in REPLAY mode)."""
+        return self._gui.properties.paused
+
     def update(self, state: GameState, info: GameInfo = None):
         """Update the display with a new game state."""
         if info is None:
             info = get_info(state)
         self._adapter.update_from_state(state, info)
-    
+
     def tick(self, fps: int = None):
-        """Render frame and handle events. Call once per game step."""
-        self._gui.tick(fps=fps or self.fps)
-    
+        """Render one frame, handle input, and return the input Command.
+
+        In REPLAY mode the command carries navigation intent: `.quit` (Q),
+        `.frame_change` (H/L = back/forward one frame), `.pause_toggle` (SPACE),
+        `.restart` (R), `.speed_change` (left/right arrows).
+        """
+        return self._gui.tick(fps=fps or self.fps)
+
     def close(self):
         """Close the GUI window."""
         self._gui.close()
