@@ -69,9 +69,11 @@ class Renderer:
             size = (self.player_col_width, height) if col == "Player" else (width, height)
             self.score_cols[col] = [pygame.Surface(size) for _ in range(3)]
 
+        # Time box aligns under the (name) Player column; the speed/status box
+        # fills the rest of the width (under Army + Land).
         self.info_panel = {
-            "time": pygame.Surface((self.right_panel_width // 2, height)),
-            "speed": pygame.Surface((self.right_panel_width // 2, height)),
+            "time": pygame.Surface((self.player_col_width, height)),
+            "speed": pygame.Surface((self.right_panel_width - self.player_col_width, height)),
         }
         # Game area and tiles
         self.game_area = pygame.Surface((self.display_grid_width, self.display_grid_height))
@@ -166,8 +168,10 @@ class Renderer:
             "speed": speed_text,
         }
 
-        # Write additional info
-        for i, key in enumerate(["time", "speed"]):
+        # Write additional info. Time box sits under the name column; the
+        # speed/status box fills the remaining width under Army + Land.
+        info_x = {"time": 0, "speed": self.player_col_width}
+        for key in ["time", "speed"]:
             self.render_cell_text(self.info_panel[key], info_text[key])
 
             rect_dim = (
@@ -178,7 +182,7 @@ class Renderer:
             )
             pygame.draw.rect(self.info_panel[key], BLACK, rect_dim, 1)
 
-            self.right_panel.blit(self.info_panel[key], (i * (self.right_panel_width // 2), 3 * gui_cell_height))
+            self.right_panel.blit(self.info_panel[key], (info_x[key], 3 * gui_cell_height))
 
         if self.mode == GuiMode.REPLAY:
             self._render_controls()
