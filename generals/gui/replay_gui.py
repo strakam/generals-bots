@@ -46,6 +46,12 @@ class ReplayGUI:
             show_tile_types: If True, show tile type labels (0, -2, C40, etc.) for debugging.
         """
         self.agent_ids = agent_ids or ["Player 0", "Player 1"]
+        # The rendering adapters key every per-player dict (ownership, generals,
+        # colors, fov, stats) by name, so two identically-named agents (e.g. a
+        # self-play match) would collapse both players onto one entry. Keep names
+        # distinct for display so each player keeps its own slot.
+        if self.agent_ids[0] == self.agent_ids[1]:
+            self.agent_ids = [f"{self.agent_ids[0]} (P0)", f"{self.agent_ids[1]} (P1)"]
         colors = colors or ["red", "blue"]
         self.fps = fps
 
