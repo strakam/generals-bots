@@ -22,7 +22,7 @@ class Renderer:
         """
         pygame.init()
         pygame.display.set_caption("Generals")
-        pygame.key.set_repeat(500, 64)
+        pygame.key.set_repeat(300, 30)  # snappy repeat so holding an arrow scrubs fast
 
         self.properties = properties
 
@@ -76,6 +76,7 @@ class Renderer:
 
         self._font = pygame.font.Font(Path.FONT_PATH, self.properties.font_size)
         self._debug_font = pygame.font.Font(Path.FONT_PATH, 10)  # Smaller font for debug
+        self._controls_font = pygame.font.Font(Path.FONT_PATH, 14)  # replay control legend
 
     def render(self, fps=None):
         self.render_grid()
@@ -147,11 +148,13 @@ class Renderer:
                     position = (0, j * gui_cell_height)
                 self.right_panel.blit(cell, position)
 
+        if self.mode == GuiMode.REPLAY:
+            speed_text = "Paused" if self.properties.paused else "Playing"
+        else:
+            speed_text = f"Speed: {str(self.properties.game_speed)}x"
         info_text = {
             "time": f"Time: {str(self.game.time // 2) + ('.' if self.game.time % 2 == 1 else '')}",
-            "speed": "Paused"
-            if self.mode == GuiMode.REPLAY and self.properties.paused
-            else f"Speed: {str(self.properties.game_speed)}x",
+            "speed": speed_text,
         }
 
         # Write additional info
@@ -167,8 +170,29 @@ class Renderer:
             pygame.draw.rect(self.info_panel[key], BLACK, rect_dim, 1)
 
             self.right_panel.blit(self.info_panel[key], (i * 2 * gui_cell_width, 3 * gui_cell_height))
+
+        if self.mode == GuiMode.REPLAY:
+            self._render_controls()
+
         # Render right_panel on the screen
         self.screen.blit(self.right_panel, (self.display_grid_width, 0))
+
+    def _render_controls(self):
+        """Draw the replay control legend in the empty area below the scoreboard."""
+        lines = [
+            "Controls",
+            "Space:  play / pause",
+            "Left / Right:  step frame",
+            "   (hold to scrub fast)",
+            "R:  restart      Q:  quit",
+        ]
+        top = 4 * Dimension.GUI_CELL_HEIGHT.value + 10
+        line_h = 20
+        area = pygame.Rect(0, top - 6, self.right_panel_width, len(lines) * line_h + 12)
+        self.right_panel.fill(BLACK, area)
+        for i, line in enumerate(lines):
+            surf = self._controls_font.render(line, True, WHITE)
+            self.right_panel.blit(surf, (8, top + i * line_h))
 
     def render_grid(self):
         """
