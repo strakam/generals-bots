@@ -138,8 +138,9 @@ class ReplayEventHandler(EventHandler):
         self._command = ReplayCommand()
 
     def handle_key_event(self, event: Event) -> ReplayCommand:
-        # Frame stepping accumulates within a tick, so holding a key (via
-        # key-repeat) scrubs quickly through many frames per rendered frame.
+        # Quick taps accumulate within a tick; held-key auto-advance (hold to
+        # run through frames) is handled separately by the replay loop in
+        # ReplayGUI.play via polling, not OS key-repeat.
         match event.key:
             case Keybindings.Q.value:
                 self.command.quit = True

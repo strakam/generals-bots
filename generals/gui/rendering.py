@@ -22,7 +22,7 @@ class Renderer:
         """
         pygame.init()
         pygame.display.set_caption("Generals")
-        pygame.key.set_repeat(300, 30)  # snappy repeat so holding an arrow scrubs fast
+        pygame.key.set_repeat()  # OS key-repeat off; replay does its own hold-to-run
 
         self.properties = properties
 
@@ -183,7 +183,7 @@ class Renderer:
             "Controls",
             "Space:  play / pause",
             "Left / Right:  step frame",
-            "   (hold to scrub fast)",
+            "   (hold to run through)",
             "R:  restart      Q:  quit",
         ]
         top = 4 * Dimension.GUI_CELL_HEIGHT.value + 10

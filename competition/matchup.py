@@ -97,32 +97,15 @@ def replay(states_log, infos_log, agent_ids, fps):
     """Open an interactive replay of a recorded match.
 
     Controls (also drawn in the window): SPACE play/pause; Left/Right (or H/L)
-    step one frame and hold to scrub fast; R restart; Q quit.
+    step one frame, hold to run through frames; R restart; Q quit.
     """
     from generals.gui import ReplayGUI
     from generals.gui.properties import GuiMode
 
     gui = ReplayGUI(states_log[0], agent_ids=agent_ids, fps=fps,
                     mode=GuiMode.REPLAY, start_paused=True)
-    n = len(states_log)
-    frame = 0
-    gui.update(states_log[0], infos_log[0])
-    print("[matchup] replay open — controls are shown in the window "
-          "(Space play/pause · arrows step/scrub · R restart · Q quit)")
-    while True:
-        command = gui.tick(fps=fps)
-        if command.quit:
-            break
-        if command.restart:
-            frame = 0
-            gui.update(states_log[frame], infos_log[frame])
-        elif command.frame_change != 0:
-            frame = max(0, min(n - 1, frame + command.frame_change))
-            gui.update(states_log[frame], infos_log[frame])
-        elif not gui.paused and frame < n - 1:
-            frame += 1
-            gui.update(states_log[frame], infos_log[frame])
-    gui.close()
+    print("[matchup] replay open — controls are shown in the window")
+    gui.play(states_log, infos_log)
 
 
 def main():
