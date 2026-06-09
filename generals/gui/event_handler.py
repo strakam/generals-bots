@@ -14,12 +14,12 @@ class Keybindings(Enum):
     Q = pygame.K_q  # Quit the game
 
     ### Replay ###
-    RIGHT = pygame.K_RIGHT  # Increase speed
-    LEFT = pygame.K_LEFT  # Decrease speed
-    SPACE = pygame.K_SPACE  # Pause
+    RIGHT = pygame.K_RIGHT  # Step forward one frame (hold to scrub)
+    LEFT = pygame.K_LEFT  # Step back one frame (hold to scrub)
+    SPACE = pygame.K_SPACE  # Play / pause
     R = pygame.K_r  # Restart
-    L = pygame.K_l  # Move forward one frame
-    H = pygame.K_h  # Move back one frame
+    L = pygame.K_l  # Step forward one frame
+    H = pygame.K_h  # Step back one frame
 
 
 class Command:
@@ -138,21 +138,23 @@ class ReplayEventHandler(EventHandler):
         self._command = ReplayCommand()
 
     def handle_key_event(self, event: Event) -> ReplayCommand:
+        # Frame stepping accumulates within a tick, so holding a key (via
+        # key-repeat) scrubs quickly through many frames per rendered frame.
         match event.key:
             case Keybindings.Q.value:
                 self.command.quit = True
             case Keybindings.RIGHT.value:
-                self.command.speed_change = 2.0
+                self.command.frame_change += 1
             case Keybindings.LEFT.value:
-                self.command.speed_change = 0.5
+                self.command.frame_change -= 1
+            case Keybindings.L.value:
+                self.command.frame_change += 1
+            case Keybindings.H.value:
+                self.command.frame_change -= 1
             case Keybindings.SPACE.value:
                 self.command.pause_toggle = True
             case Keybindings.R.value:
                 self.command.restart = True
-            case Keybindings.H.value:
-                self.command.frame_change = -1
-            case Keybindings.L.value:
-                self.command.frame_change = 1
         return self.command
 
     def handle_mouse_event(self) -> None:

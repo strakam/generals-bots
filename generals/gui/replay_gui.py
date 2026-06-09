@@ -84,8 +84,8 @@ class ReplayGUI:
         """Render one frame, handle input, and return the input Command.
 
         In REPLAY mode the command carries navigation intent: `.quit` (Q),
-        `.frame_change` (H/L = back/forward one frame), `.pause_toggle` (SPACE),
-        `.restart` (R), `.speed_change` (left/right arrows).
+        `.frame_change` (arrows or H/L; accumulates while held so the replay
+        scrubs fast), `.pause_toggle` (SPACE), `.restart` (R).
         """
         return self._gui.tick(fps=fps or self.fps)
 

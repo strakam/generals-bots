@@ -96,8 +96,8 @@ def close_agent(proc: subprocess.Popen) -> None:
 def replay(states_log, infos_log, agent_ids, fps):
     """Open an interactive replay of a recorded match.
 
-    Controls: SPACE play/pause | L next frame | H prev frame |
-    left/right arrows speed | R restart | Q quit.
+    Controls (also drawn in the window): SPACE play/pause; Left/Right (or H/L)
+    step one frame and hold to scrub fast; R restart; Q quit.
     """
     from generals.gui import ReplayGUI
     from generals.gui.properties import GuiMode
@@ -107,8 +107,8 @@ def replay(states_log, infos_log, agent_ids, fps):
     n = len(states_log)
     frame = 0
     gui.update(states_log[0], infos_log[0])
-    print("[matchup] replay open — SPACE play/pause | L/H step | "
-          "left/right speed | R restart | Q quit")
+    print("[matchup] replay open — controls are shown in the window "
+          "(Space play/pause · arrows step/scrub · R restart · Q quit)")
     while True:
         command = gui.tick(fps=fps)
         if command.quit:
