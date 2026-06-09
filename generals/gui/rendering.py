@@ -41,11 +41,24 @@ class Renderer:
         ############
         # Surfaces #
         ############
-        window_width = self.display_grid_width + self.right_panel_width
-        window_height = self.display_grid_height + 1
-
         width = Dimension.GUI_CELL_WIDTH.value
         height = Dimension.GUI_CELL_HEIGHT.value
+        window_height = self.display_grid_height + 1
+
+        # Fonts (loaded up-front so we can measure names to size the columns).
+        self._font = pygame.font.Font(Path.FONT_PATH, self.properties.font_size)
+        self._debug_font = pygame.font.Font(Path.FONT_PATH, 10)  # Smaller font for debug
+        self._controls_font = pygame.font.Font(Path.FONT_PATH, 14)  # replay control legend
+
+        # Size the Player (name) column to the widest agent name so names never
+        # overflow the cell; Army/Land follow at the standard cell width. The
+        # panel width is whatever that adds up to.
+        names = list(self.agent_data.keys())
+        max_name_w = max((self._font.size(n)[0] for n in names), default=0)
+        self.player_col_width = max(2 * width, max_name_w + 20)
+        self.right_panel_width = self.player_col_width + 2 * width
+
+        window_width = self.display_grid_width + self.right_panel_width
 
         # Main window
         self.screen = pygame.display.set_mode((window_width, window_height), pygame.HWSURFACE | pygame.DOUBLEBUF)
@@ -53,14 +66,12 @@ class Renderer:
         self.right_panel = pygame.Surface((self.right_panel_width, window_height))
         self.score_cols = {}
         for col in ["Player", "Army", "Land"]:
-            size = (width, height)
-            if col == "Player":
-                size = (2 * width, height)
+            size = (self.player_col_width, height) if col == "Player" else (width, height)
             self.score_cols[col] = [pygame.Surface(size) for _ in range(3)]
 
         self.info_panel = {
-            "time": pygame.Surface((self.right_panel_width / 2, height)),
-            "speed": pygame.Surface((self.right_panel_width / 2, height)),
+            "time": pygame.Surface((self.right_panel_width // 2, height)),
+            "speed": pygame.Surface((self.right_panel_width // 2, height)),
         }
         # Game area and tiles
         self.game_area = pygame.Surface((self.display_grid_width, self.display_grid_height))
@@ -73,10 +84,6 @@ class Renderer:
         self._mountain_img = pygame.image.load(str(Path.MOUNTAIN_PATH), "png").convert_alpha()
         self._general_img = pygame.image.load(str(Path.GENERAL_PATH), "png").convert_alpha()
         self._city_img = pygame.image.load(Path.CITY_PATH, "png").convert_alpha()
-
-        self._font = pygame.font.Font(Path.FONT_PATH, self.properties.font_size)
-        self._debug_font = pygame.font.Font(Path.FONT_PATH, 10)  # Smaller font for debug
-        self._controls_font = pygame.font.Font(Path.FONT_PATH, 14)  # replay control legend
 
     def render(self, fps=None):
         self.render_grid()
@@ -137,16 +144,18 @@ class Renderer:
                     bg_color=WHITE,
                 )
 
-        # Blit each right_panel cell to the right_panel surface
-        for i, col in enumerate(["Player", "Army", "Land"]):
+        # Blit each right_panel cell. The Player column is sized to the widest
+        # name; Army/Land follow it at the standard cell width.
+        col_x = {
+            "Player": 0,
+            "Army": self.player_col_width,
+            "Land": self.player_col_width + gui_cell_width,
+        }
+        for col in ["Player", "Army", "Land"]:
             for j, cell in enumerate(self.score_cols[col]):
                 rect_dim = (0, 0, cell.get_width(), cell.get_height())
                 pygame.draw.rect(cell, BLACK, rect_dim, 1)
-
-                position = ((i + 1) * gui_cell_width, j * gui_cell_height)
-                if col == "Player":
-                    position = (0, j * gui_cell_height)
-                self.right_panel.blit(cell, position)
+                self.right_panel.blit(cell, (col_x[col], j * gui_cell_height))
 
         if self.mode == GuiMode.REPLAY:
             speed_text = "Paused" if self.properties.paused else "Playing"
@@ -169,7 +178,7 @@ class Renderer:
             )
             pygame.draw.rect(self.info_panel[key], BLACK, rect_dim, 1)
 
-            self.right_panel.blit(self.info_panel[key], (i * 2 * gui_cell_width, 3 * gui_cell_height))
+            self.right_panel.blit(self.info_panel[key], (i * (self.right_panel_width // 2), 3 * gui_cell_height))
 
         if self.mode == GuiMode.REPLAY:
             self._render_controls()
