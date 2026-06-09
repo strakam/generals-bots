@@ -25,8 +25,8 @@ class GUI:
         pygame.init()
         pygame.display.set_caption("Generals")
 
-        # Handle key repeats — snappy so holding an arrow scrubs frames fast.
-        pygame.key.set_repeat(300, 30)
+        # OS key-repeat off; the replay loop polls held keys for hold-to-run.
+        pygame.key.set_repeat()
 
         self.properties = Properties(game, agent_data, mode, speed_multiplier)
         self.properties.show_tile_types = show_tile_types
