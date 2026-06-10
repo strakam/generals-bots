@@ -14,6 +14,17 @@ VISIBLE_MOUNTAIN: Color = (187, 187, 187)
 BLACK: Color = (0, 0, 0)
 WHITE: Color = (230, 230, 230)
 
+# Brightness factors for owned structure tiles, relative to the owner's color.
+GENERAL_SHADE = 0.65
+CITY_SHADE = 0.8
+GRID_LINE_SHADE = 0.72
+
+
+def shade(color, factor: float) -> Color:
+    """Scale a color's brightness by `factor`. Accepts tuples or names ("red")."""
+    c = pygame.Color(color)
+    return (int(c.r * factor), int(c.g * factor), int(c.b * factor))
+
 
 class Renderer:
     def __init__(self, properties: Properties):
@@ -86,6 +97,9 @@ class Renderer:
         self._mountain_img = pygame.image.load(str(Path.MOUNTAIN_PATH), "png").convert_alpha()
         self._general_img = pygame.image.load(str(Path.GENERAL_PATH), "png").convert_alpha()
         self._city_img = pygame.image.load(Path.CITY_PATH, "png").convert_alpha()
+        # Dimmed mountain for terrain that is only remembered under fog of war
+        self._fog_mountain_img = self._mountain_img.copy()
+        self._fog_mountain_img.set_alpha(110)
 
     def render(self, fps=None):
         self.render_grid()
@@ -100,6 +114,7 @@ class Renderer:
         text: str,
         fg_color: Color = BLACK,
         bg_color: Color = WHITE,
+        shadow: bool = False,
     ):
         """
         Draw a text in the middle of the cell with given foreground and background colors
@@ -109,12 +124,17 @@ class Renderer:
             text: text to write on the cell
             fg_color: foreground color of the text
             bg_color: background color of the cell
+            shadow: draw a 1px black drop shadow under the text (keeps light
+                text readable on light tiles)
         """
         center = (cell.get_width() // 2, cell.get_height() // 2)
 
         text_surface = self._font.render(text, True, fg_color)
         if bg_color:
             cell.fill(bg_color)
+        if shadow:
+            shadow_surface = self._font.render(text, True, BLACK)
+            cell.blit(shadow_surface, shadow_surface.get_rect(center=(center[0] + 1, center[1] + 1)))
         cell.blit(text_surface, text_surface.get_rect(center=center))
 
     def render_stats(self):
@@ -243,11 +263,17 @@ class Renderer:
         not_owned_map = np.logical_not(owned_map)
         invisible_map = np.logical_not(visible_map)
 
-        # Draw background of visible owned squares
+        # Draw background of visible owned squares. Generals and cities get a
+        # darker shade of the owner's color so they stand out from body tiles.
         for agent in agents:
             ownership = self.game.channels.ownership[agent]
             visible_ownership = np.logical_and(ownership, visible_map)
-            self.draw_channel(visible_ownership, self.agent_data[agent]["color"])
+            color = self.agent_data[agent]["color"]
+            self.draw_channel(visible_ownership, color)
+            owned_generals = np.logical_and(visible_ownership, self.game.channels.generals)
+            self.draw_channel(owned_generals, shade(color, GENERAL_SHADE))
+            owned_cities = np.logical_and(visible_ownership, self.game.channels.cities)
+            self.draw_channel(owned_cities, shade(color, CITY_SHADE))
 
         # Draw visible generals
         visible_generals = np.logical_and(self.game.channels.generals, visible_map)
@@ -264,17 +290,19 @@ class Renderer:
         visible_mountain = np.logical_and(self.game.channels.mountains, visible_map)
         self.draw_channel(visible_mountain, VISIBLE_MOUNTAIN)
 
-        # Draw mountains (even if they are not visible)
-        self.draw_images(self.game.channels.mountains, self._mountain_img)
+        # Draw mountains: full icon when visible, dimmed when under fog of war
+        self.draw_images(visible_mountain, self._mountain_img)
+        fog_mountain = np.logical_and(self.game.channels.mountains, invisible_map)
+        self.draw_images(fog_mountain, self._fog_mountain_img)
 
         # Draw background of visible neutral cities
         visible_cities = np.logical_and(self.game.channels.cities, visible_map)
         visible_cities_neutral = np.logical_and(visible_cities, self.game.channels.ownership_neutral)
         self.draw_channel(visible_cities_neutral, NEUTRAL_CASTLE)
 
-        # Draw invisible cities as mountains
+        # Draw invisible cities as dimmed mountains
         invisible_cities = np.logical_and(self.game.channels.cities, invisible_map)
-        self.draw_images(invisible_cities, self._mountain_img)
+        self.draw_images(invisible_cities, self._fog_mountain_img)
 
         # Draw visible cities
         self.draw_images(visible_cities, self._city_img)
@@ -288,6 +316,7 @@ class Renderer:
                 str(int(visible_army[i, j])),
                 fg_color=WHITE,
                 bg_color=None,  # Transparent background
+                shadow=True,
             )
 
         # Draw tile type debug labels if enabled
@@ -311,10 +340,12 @@ class Renderer:
         Draw background and borders (left and top) for grid tiles of a given channel
         """
         square_size = Dimension.SQUARE_SIZE.value
+        # Grid lines in a darker shade of the fill, softer than pure black
+        border = shade(color, GRID_LINE_SHADE)
         for i, j in self.channel_to_indices(channel):
             self.tiles[i][j].fill(color)
-            pygame.draw.line(self.tiles[i][j], BLACK, (0, 0), (0, square_size), 1)
-            pygame.draw.line(self.tiles[i][j], BLACK, (0, 0), (square_size, 0), 1)
+            pygame.draw.line(self.tiles[i][j], border, (0, 0), (0, square_size), 1)
+            pygame.draw.line(self.tiles[i][j], border, (0, 0), (square_size, 0), 1)
 
     def draw_images(self, channel: np.ndarray, image: pygame.Surface):
         """
