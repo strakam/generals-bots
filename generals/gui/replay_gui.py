@@ -31,7 +31,7 @@ class ReplayGUI:
         self,
         initial_state: GameState,
         agent_ids: list[str] = None,
-        colors: list[str] = None,
+        colors: list[str | tuple[int, int, int]] = None,
         fps: int = 10,
         show_tile_types: bool = False,
         mode: GuiMode = GuiMode.TRAIN,
@@ -43,7 +43,7 @@ class ReplayGUI:
         Args:
             initial_state: Initial game state to display.
             agent_ids: Names for the two players. Default ["Player 0", "Player 1"].
-            colors: Colors for the two players. Default ["red", "blue"].
+            colors: Colors for the two players. Default soft red and soft blue.
             fps: Default frames per second.
             show_tile_types: If True, show tile type labels (0, -2, C40, etc.) for debugging.
             mode: GuiMode.TRAIN for live stepping; GuiMode.REPLAY for an interactive
@@ -57,7 +57,7 @@ class ReplayGUI:
         # distinct for display so each player keeps its own slot.
         if self.agent_ids[0] == self.agent_ids[1]:
             self.agent_ids = [f"{self.agent_ids[0]} (P0)", f"{self.agent_ids[1]} (P1)"]
-        colors = colors or ["red", "blue"]
+        colors = colors or [(220, 70, 70), (70, 100, 220)]
         self.fps = fps
 
         # Create adapter and full GUI
@@ -103,9 +103,9 @@ class ReplayGUI:
         frame = 0
         self.update(states[0], infos[0])
 
-        loop_fps = 30                                       # responsive render/input rate
+        loop_fps = 60                                       # responsive render/input rate
         play_ms = max(33, round(1000 / max(1, self.fps)))   # auto-play interval (SPACE)
-        initial_delay = 250                                 # ms held before auto-advance starts
+        initial_delay = 180                                 # ms held before auto-advance starts
         repeat_ms = 35                                      # ms between steps while held
 
         held_since = None
@@ -118,6 +118,9 @@ class ReplayGUI:
             if f != frame:
                 frame = f
                 self.update(states[frame], infos[frame])
+                # Redraw now rather than on the next tick, so each step lands
+                # the instant the key registers instead of one loop period late.
+                self._gui.render()
 
         while True:
             command = self.tick(fps=loop_fps)

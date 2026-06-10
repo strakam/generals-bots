@@ -46,5 +46,9 @@ class GUI:
         self.__renderer.render(fps)
         return command
 
+    def render(self):
+        """Redraw immediately (no event handling, no frame-rate wait)."""
+        self.__renderer.render()
+
     def close(self):
         pygame.quit()
