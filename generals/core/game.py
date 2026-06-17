@@ -266,7 +266,12 @@ def global_update(state: GameState) -> GameState:
         armies,
     )
 
-    increment_structures = (time % 2 == 1)
+    # Generals/cities grow every 2 ticks, on EVEN ticks. generals.io has a spawn
+    # frame + a first frame before production starts, so the first increment lands
+    # on tick 2, not tick 1. Matching this phase is required to replay real games
+    # move-for-move (verified: 0 illegal moves across scraped generals.io replays;
+    # the odd-tick phase desynced the general's army by one tick and lost games early).
+    increment_structures = (time % 2 == 0)
     structure_mask = (state.generals | state.cities).astype(jnp.int32)
     armies = lax.cond(
         increment_structures,
