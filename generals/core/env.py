@@ -27,6 +27,7 @@ from generals.core.game import GameInfo, GameState, create_initial_state
 from generals.core.game import step as game_step
 from generals.core.grid import generate_grid
 from generals.core.observation import Observation
+from generals.modifiers import build_castles as _build_castles
 
 
 class TimeStep(NamedTuple):
@@ -102,6 +103,9 @@ class GeneralsEnv:
         pad_to: int | None = None,
         # Observation mode
         perfect_info: bool = False,
+        # Build-castles modifier: no neutral castles spawn; players build their
+        # own via the action [2, row, col, _, _]. See generals.modifiers.build_castles.
+        build_castles: bool = False,
         # Named ruleset preset (e.g. "competition-r1"); overrides the args above.
         mode: str | None = None,
     ):
@@ -150,6 +154,7 @@ class GeneralsEnv:
         self.pool_size = pool_size
         self.castle_val_range = castle_val_range
         self.perfect_info = perfect_info
+        self.build_castles = build_castles
 
     def _make_single_state_fixed(self, key: jnp.ndarray, h: int, w: int) -> GameState:
         """Generate a single GameState for a specific (h, w) grid size."""
@@ -163,6 +168,8 @@ class GeneralsEnv:
             max_generals_distance=self.max_generals_distance,
             castle_val_range=self.castle_val_range,
         )
+        if self.build_castles:
+            grid = _build_castles.strip_neutral_cities(grid)
         return create_initial_state(grid.astype(jnp.int32))
 
     def reset(self, key: jnp.ndarray) -> tuple[GameState, GameState]:
@@ -254,6 +261,14 @@ class GeneralsEnv:
             Tuple of (TimeStep, new_state). The TimeStep contains observations,
             rewards, and done flags.
         """
+        # Build-castles modifier: resolve builds first, rewrite them to passes.
+        # Distances are recomputed from the live state because auto-reset can
+        # swap in a new map between steps; single-game drivers should instead
+        # precompute them once and use generals.modifiers.build_castles.step.
+        if self.build_castles:
+            build_dists = _build_castles.compute_build_distances(state)
+            state, actions = _build_castles.apply_build_actions(state, actions, build_dists)
+
         # Step game
         new_state, info = game_step(state, actions)
 
