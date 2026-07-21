@@ -262,12 +262,10 @@ class GeneralsEnv:
             rewards, and done flags.
         """
         # Build-castles modifier: resolve builds first, rewrite them to passes.
-        # Distances are recomputed from the live state because auto-reset can
-        # swap in a new map between steps; single-game drivers should instead
-        # precompute them once and use generals.modifiers.build_castles.step.
+        # Prices depend on the live castle layout, so they are always computed
+        # from the current state — no per-game precompute to thread through.
         if self.build_castles:
-            build_dists = _build_castles.compute_build_distances(state)
-            state, actions = _build_castles.apply_build_actions(state, actions, build_dists)
+            state, actions = _build_castles.apply_build_actions(state, actions)
 
         # Step game
         new_state, info = game_step(state, actions)
