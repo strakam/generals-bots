@@ -4,7 +4,7 @@ Stdin/stdout wire protocol for language-agnostic generals agents.
 This module is **engine-side only** -- it emits frames to agents and parses
 their replies. The inverse operations (decoding observations, encoding
 actions) belong to the agent and live in each language starter under
-`starters/<lang>/`.
+`competition/agents/<lang>/`.
 
 Frame format (all integers, line-delimited, ASCII):
 
@@ -19,9 +19,9 @@ Frame format (all integers, line-delimited, ASCII):
 
   Per turn (agent -> engine):
     <pass> <row> <col> <dir> <split>
-        pass:  1 to skip, 0 to move
-        dir:   0=up 1=down 2=left 3=right
-        split: 0=move all-but-one, 1=move half
+        pass:  0 to move, 1 to skip, 2 to build a castle at (row, col)
+        dir:   0=up 1=down 2=left 3=right (ignored for pass/build)
+        split: 0=move all-but-one, 1=move half (ignored for pass/build)
 
   Game end: the engine simply closes the agent's stdin. The agent should
   treat EOF on stdin as "game over, exit cleanly". No explicit signal.

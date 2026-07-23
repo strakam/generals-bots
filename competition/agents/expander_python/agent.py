@@ -16,12 +16,17 @@ Edit this file to implement your agent.
 
 `act` must return a 5-tuple `(pass, row, col, direction, split)`:
 
-    pass:       1 to skip the turn, 0 to move
-    row, col:   source cell (must be owned by you and have army > 1)
-    direction:  0=up, 1=down, 2=left, 3=right
-    split:      0=move all-but-one armies, 1=move half (floor division)
+    pass:       0 to move, 1 to skip the turn, 2 to build a castle
+    row, col:   source cell of a move (must be owned by you and have
+                army > 1), or the cell to build a castle on
+    direction:  0=up, 1=down, 2=left, 3=right (ignored for pass/build)
+    split:      0=move all-but-one armies, 1=move half (floor division;
+                ignored for pass/build)
 
-Invalid moves are silently treated as a pass by the engine.
+To build a castle on one of your own plain cells, return (2, r, c, 0, 0) —
+the price is paid from the army standing on (r, c) (see the rules page).
+
+Invalid moves and builds are silently treated as a pass by the engine.
 """
 
 # A no-op action — used when no valid move exists or as a safe default.

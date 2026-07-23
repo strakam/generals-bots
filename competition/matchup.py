@@ -14,7 +14,7 @@ any path to a `run.sh`.
 
 Usage:
     python competition/matchup.py [agent0_run.sh] [agent1_run.sh] [flags]
-    python competition/matchup.py --mode competition-r1   # pin a competition ruleset
+    python competition/matchup.py --mode competition      # pin the competition ruleset
 
 Defaults to two copies of `competition/agents/expander_python/run.sh`.
 """

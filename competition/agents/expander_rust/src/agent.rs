@@ -3,13 +3,16 @@
 // `Observation` is the parsed per-turn view from main.rs.
 // `Agent::act` is called once per turn and must return an `Action`:
 //
-//     pass:      1 to skip the turn, 0 to move
-//     row, col:  source cell
-//     dir:       0=up, 1=down, 2=left, 3=right
-//     split:     0=move all-but-one armies, 1=move half (floor)
+//     pass:      0 to move, 1 to skip the turn, 2 to build a castle
+//     row, col:  source cell of a move, or the cell to build on
+//     dir:       0=up, 1=down, 2=left, 3=right (ignored for pass/build)
+//     split:     0=move all-but-one armies, 1=move half (floor; ignored for pass/build)
+//
+// To build a castle on one of your own plain cells, return Action { pass: 2, row: r,
+// col: c, dir: 0, split: 0 } — the price is paid from the army standing on (r, c).
 //
 // Tile-type codes in obs.type_grid:
-//     0=fog, 1=plain, 2=mountain, 3=city, 4=general, 5=structure-in-fog
+//     0=fog, 1=plain, 2=mountain, 3=castle, 4=general, 5=structure-in-fog
 //
 // Owner codes in obs.owner_grid (perspective-relative):
 //     0=neutral/unknown, 1=me, 2=opp
