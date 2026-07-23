@@ -154,3 +154,6 @@ def test_competition_preset_pins_the_format():
     assert env.build_castles is True
     assert env.deathtouch_turn == 800
     assert env.perfect_info is True
+    # rectangular maps: sides drawn in [18, 21], pool padded to 22
+    assert env._fixed_dims is None
+    assert (env.min_grid_size, env.max_grid_size, env.pad_to) == (18, 21, 22)

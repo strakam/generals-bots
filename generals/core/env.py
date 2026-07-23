@@ -58,12 +58,17 @@ _MODE_PRESETS = {
     # THE competition format: build-castles rules + deathtouch endgame.
     # One ruleset for both parts (Sprint checkpoint + Marathon finish).
     "competition": dict(
-        grid_dims=(15, 15),
+        # Rectangular maps: each side drawn independently in [18, 21] per game.
+        # (The eval driver samples exact dims per seed; the env's training pool
+        # generates every combo padded to pad_to.)
+        min_grid_size=18,
+        max_grid_size=21,
+        pad_to=22,
         truncation=1200,
         perfect_info=True,
         mountain_density_range=(0.24, 0.26),
         num_castles_range=(9, 11),      # generated then stripped (build_castles)
-        min_generals_distance=12,
+        min_generals_distance=14,       # pool-wide floor; the eval driver scales 0.8×min(h,w)
         castle_val_range=(20, 26),      # irrelevant once neutral castles are stripped
         build_castles=True,
         deathtouch_turn=800,
@@ -138,7 +143,10 @@ class GeneralsEnv:
             if mode not in _MODE_PRESETS:
                 raise ValueError(f"unknown mode {mode!r}; known modes: {sorted(_MODE_PRESETS)}")
             preset = _MODE_PRESETS[mode]
-            grid_dims = preset["grid_dims"]
+            grid_dims = preset.get("grid_dims")  # absent → variable-size mode
+            min_grid_size = preset.get("min_grid_size", min_grid_size)
+            max_grid_size = preset.get("max_grid_size", max_grid_size)
+            pad_to = preset.get("pad_to", pad_to)
             truncation = preset["truncation"]
             perfect_info = preset["perfect_info"]
             mountain_density_range = preset["mountain_density_range"]
