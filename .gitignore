@@ -172,3 +172,7 @@ competition/agents/expander_cpp/agent
 competition/agents/expander_rust/target/
 competition/agents/*/agent
 competition/agents/*/target/
+
+# local research artifacts
+figures/
+uv.lock

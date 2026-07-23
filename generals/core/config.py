@@ -25,7 +25,7 @@ DIRECTIONS = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
 
 class Path(StrEnum):
     GENERAL_PATH = str(files("generals.assets.images") / "crownie.png")
-    CITY_PATH = str(files("generals.assets.images") / "citie.png")
+    CASTLE_PATH = str(files("generals.assets.images") / "citie.png")
     MOUNTAIN_PATH = str(files("generals.assets.images") / "mountainie.png")
 
     # Font options are Quicksand-SemiBold.ttf, Quicksand-Medium.ttf, Quicksand-Light.ttf

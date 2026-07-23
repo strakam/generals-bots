@@ -1,7 +1,7 @@
 [project]
 name = "generals-bots"
-version = "2.5.0"
-description = "Develop your agent for generals.io!"
+version = "2.6.0"
+description = "Fast JAX generals.io engine — RL environment and the Generals Competition ruleset"
 authors = [{name = "Matej Straka", email = "strakammm@gmail.com"}]
 license = {text = "MIT"}
 readme = "README.md"
@@ -18,6 +18,10 @@ dependencies = [
 dev = [
     "pytest>=8.0.0",
 ]
+
+[project.urls]
+Homepage = "https://generals.bot"
+Repository = "https://github.com/strakam/generals-bots"
 
 [build-system]
 requires = ["setuptools>=61.0"]

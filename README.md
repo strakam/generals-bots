@@ -49,9 +49,9 @@ env = GeneralsEnv(grid_dims=(10, 10), truncation=500)
 agent_0 = RandomAgent()
 agent_1 = ExpanderAgent()
 
-# Initialize
+# Initialize — reset returns the auto-reset pool plus the first state
 key = jrandom.PRNGKey(42)
-state = env.reset(key)
+pool, state = env.reset(key)
 
 # Game loop
 while True:
@@ -65,8 +65,8 @@ while True:
     action_1 = agent_1.act(obs_1, k2)
     actions = jnp.stack([action_0, action_1])
 
-    # Step environment (auto-resets from pre-generated pool)
-    timestep, state = env.step(state, actions)
+    # Step environment (auto-resets from the pre-generated pool)
+    timestep, state = env.step(state, actions, pool)
 
     if timestep.terminated or timestep.truncated:
         break
@@ -90,17 +90,37 @@ env = GeneralsEnv(grid_dims=(10, 10), truncation=500)
 NUM_ENVS = 1024
 key = jrandom.PRNGKey(0)
 key, pool_key = jrandom.split(key)
-env.reset(pool_key)  # generates shared pool
+pool, _ = env.reset(pool_key)  # generates the shared pool
 
 keys = jrandom.split(key, NUM_ENVS)
 states = jax.vmap(env.init_state)(keys)  # Batched states
 
-# Step all environments in parallel (auto-resets from pool)
+# Step all environments in parallel (auto-resets from the shared pool)
 # ... get batched observations and actions ...
-timesteps, states = jax.vmap(env.step)(states, actions)
+step_vmap = jax.vmap(lambda s, a: env.step(s, a, pool))
+timesteps, states = step_vmap(states, actions)
 ```
 
 See `examples/vectorized_example.py` for a complete example.
+
+## 🏆 Competition
+
+This engine powers the [Generals Competition](https://generals.bot). One preset
+pins the entire competition ruleset:
+
+```python
+env = GeneralsEnv(mode="competition")
+```
+
+Rectangular 18–21 maps, **no neutral castles — you build them** (action
+`[2, row, col, 0, 0]`), **Deathtouch** from turn 800 (a move that executes onto
+the enemy general's tile wins instantly), 1200-turn cap, perfect information.
+The stdio wire protocol and reference bots in Python/C++/Rust live in
+[`competition/`](competition/) — play a local match with:
+
+```bash
+python competition/matchup.py --mode competition
+```
 
 ## 🌍 Environment
 
@@ -112,13 +132,13 @@ Each player receives an `Observation` with these fields:
 |-------|-------|-------------|
 | `armies` | `(H, W)` | Army counts in visible cells |
 | `generals` | `(H, W)` | Mask of visible generals |
-| `cities` | `(H, W)` | Mask of visible cities |
+| `castles` | `(H, W)` | Mask of visible castles (formerly `cities` — a deprecated alias remains) |
 | `mountains` | `(H, W)` | Mask of visible mountains |
 | `owned_cells` | `(H, W)` | Mask of cells you own |
 | `opponent_cells` | `(H, W)` | Mask of opponent's visible cells |
 | `neutral_cells` | `(H, W)` | Mask of neutral visible cells |
 | `fog_cells` | `(H, W)` | Mask of fog (unexplored) cells |
-| `structures_in_fog` | `(H, W)` | Mask of cities/mountains in fog |
+| `structures_in_fog` | `(H, W)` | Mask of castles/mountains in fog |
 | `owned_land_count` | scalar | Total cells you own |
 | `owned_army_count` | scalar | Total armies you have |
 | `opponent_land_count` | scalar | Opponent's cell count |

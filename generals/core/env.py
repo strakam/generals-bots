@@ -73,15 +73,6 @@ _MODE_PRESETS = {
         build_castles=True,
         deathtouch_turn=800,
     ),
-    "competition-r1": dict(
-        grid_dims=(15, 15),
-        truncation=600,
-        perfect_info=True,
-        mountain_density_range=(0.24, 0.26),
-        num_castles_range=(9, 11),
-        min_generals_distance=12,
-        castle_val_range=(20, 26),   # castle army value in [20, 25]
-    ),
 }
 
 
@@ -128,7 +119,7 @@ class GeneralsEnv:
         # Deathtouch: from this turn, a move that executes onto the enemy
         # general's tile wins instantly. None disables. See generals.modifiers.deathtouch.
         deathtouch_turn: int | None = None,
-        # Named ruleset preset (e.g. "competition-r1"); overrides the args above.
+        # Named ruleset preset (e.g. "competition"); overrides the args above.
         mode: str | None = None,
         # Deprecated alias for num_castles_range (castles were renamed from cities).
         num_cities_range: tuple[int, int] | None = None,
