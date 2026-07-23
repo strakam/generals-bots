@@ -28,6 +28,7 @@ from generals.core.game import step as game_step
 from generals.core.grid import generate_grid
 from generals.core.observation import Observation
 from generals.modifiers import build_castles as _build_castles
+from generals.modifiers import deathtouch as _deathtouch
 
 
 class TimeStep(NamedTuple):
@@ -54,6 +55,19 @@ class TimeStep(NamedTuple):
 # every eval (quick-check + league) generates identical maps. mode is
 # authoritative — it overrides the matching GeneralsEnv constructor arguments.
 _MODE_PRESETS = {
+    # THE competition format: build-castles rules + deathtouch endgame.
+    # One ruleset for both parts (Sprint checkpoint + Marathon finish).
+    "competition-bc": dict(
+        grid_dims=(15, 15),
+        truncation=1200,
+        perfect_info=True,
+        mountain_density_range=(0.24, 0.26),
+        num_castles_range=(9, 11),      # generated then stripped (build_castles)
+        min_generals_distance=12,
+        castle_val_range=(20, 26),      # irrelevant once neutral castles are stripped
+        build_castles=True,
+        deathtouch_turn=800,
+    ),
     "competition-r1": dict(
         grid_dims=(15, 15),
         truncation=600,
@@ -106,6 +120,9 @@ class GeneralsEnv:
         # Build-castles modifier: no neutral castles spawn; players build their
         # own via the action [2, row, col, _, _]. See generals.modifiers.build_castles.
         build_castles: bool = False,
+        # Deathtouch: from this turn, a move that executes onto the enemy
+        # general's tile wins instantly. None disables. See generals.modifiers.deathtouch.
+        deathtouch_turn: int | None = None,
         # Named ruleset preset (e.g. "competition-r1"); overrides the args above.
         mode: str | None = None,
         # Deprecated alias for num_castles_range (castles were renamed from cities).
@@ -128,6 +145,8 @@ class GeneralsEnv:
             num_castles_range = preset["num_castles_range"]
             min_generals_distance = preset["min_generals_distance"]
             castle_val_range = preset["castle_val_range"]
+            build_castles = preset.get("build_castles", build_castles)
+            deathtouch_turn = preset.get("deathtouch_turn", deathtouch_turn)
 
         # Handle backward compat: grid_dims=(h,w) → fixed size
         if grid_dims is not None:
@@ -159,6 +178,7 @@ class GeneralsEnv:
         self.castle_val_range = castle_val_range
         self.perfect_info = perfect_info
         self.build_castles = build_castles
+        self.deathtouch_turn = deathtouch_turn
 
     def _make_single_state_fixed(self, key: jnp.ndarray, h: int, w: int) -> GameState:
         """Generate a single GameState for a specific (h, w) grid size."""
@@ -271,8 +291,11 @@ class GeneralsEnv:
         if self.build_castles:
             state, actions = _build_castles.apply_build_actions(state, actions)
 
-        # Step game
-        new_state, info = game_step(state, actions)
+        # Step game (deathtouch wraps the base step when configured)
+        if self.deathtouch_turn is not None:
+            new_state, info = _deathtouch.step(state, actions, self.deathtouch_turn)
+        else:
+            new_state, info = game_step(state, actions)
 
         # Compute win/lose reward
         reward_p0 = jnp.where(info.winner == 0, 1.0, jnp.where(info.winner == 1, -1.0, 0.0))
