@@ -13,14 +13,14 @@ def _dilate4(mask: jax.Array) -> jax.Array:
     return mask | up | down | left | right
 
 
-@partial(jax.jit, static_argnames=['grid_dims', 'pad_to', 'mountain_density_range', 'num_cities_range',
+@partial(jax.jit, static_argnames=['grid_dims', 'pad_to', 'mountain_density_range', 'num_castles_range',
                                     'min_generals_distance', 'max_generals_distance', 'castle_val_range'])
 def generate_grid(
     key: jax.random.PRNGKey,
     grid_dims: tuple[int, int] = (23, 23),
     pad_to: int | None = None,
     mountain_density_range: tuple[float, float] = (0.18, 0.26),
-    num_cities_range: tuple[int, int] = (9, 11),
+    num_castles_range: tuple[int, int] = (9, 11),
     min_generals_distance: int = 17,
     max_generals_distance: int | None = None,
     castle_val_range: tuple[int, int] = (40, 51),
@@ -40,7 +40,7 @@ def generate_grid(
     4. Place a castle within walking distance ~6 of each general by CONVERTING a
        mountain (connectivity-neutral; only falls back to an empty cell if no
        mountain is near, which still leaves the carved path intact)
-    5. Place the remaining cities, also by converting mountains
+    5. Place the remaining castles, also by converting mountains
     6. Re-assert the two generals (ground truth — the grid always has both)
     7. Apply dynamic padding
     
@@ -49,10 +49,10 @@ def generate_grid(
         grid_dims: Grid dimensions (height, width) - supports non-square grids
         pad_to: Pad grid to this size for batching (None = max(h, w) + 1)
         mountain_density_range: (min, max) fraction of tiles that are mountains
-        num_cities_range: (min, max) number of cities to place
+        num_castles_range: (min, max) number of castles to place
         min_generals_distance: Minimum BFS (shortest path) distance between generals
         max_generals_distance: Maximum BFS (shortest path) distance between generals (None = no limit)
-        castle_val_range: (min, max) army value for cities
+        castle_val_range: (min, max) army value for castles
         
     Returns:
         A valid grid: exactly two generals, an empty connecting path between
@@ -63,8 +63,8 @@ def generate_grid(
     h, w = grid_dims
     num_tiles = h * w
 
-    # Random number of cities in range
-    num_cities = jax.random.randint(keys[0], (), num_cities_range[0], num_cities_range[1] + 1)
+    # Random number of castles in range
+    num_castles = jax.random.randint(keys[0], (), num_castles_range[0], num_castles_range[1] + 1)
 
     # Number of mountains: sample uniformly from density range
     min_mountains = int(mountain_density_range[0] * num_tiles)
@@ -124,7 +124,7 @@ def generate_grid(
     grid = flat_grid.reshape(grid_dims)
 
     # =================================================================
-    # Step 3: Ensure connectivity NOW, before any castle/city is placed. Carve an
+    # Step 3: Ensure connectivity NOW, before any castle/castle is placed. Carve an
     # L-path if the two generals aren't joined through open ground. Doing this
     # first means every general ends up on the connecting path — so it always has
     # an open neighbour and can never be boxed in — and the route is empty cells.
@@ -168,36 +168,36 @@ def generate_grid(
     grid = place_castle(grid, pos_b, castle_val_b, keys[7])
 
     # =================================================================
-    # Step 5: Place the remaining cities, also by converting mountains so they
+    # Step 5: Place the remaining castles, also by converting mountains so they
     # can't block the carved connecting path either
     # =================================================================
-    remaining_cities = num_cities - 2
-    city_available = (grid == -2)  # convert mountains (not empty) — keeps the carved path clear
-    flat_city_available = city_available.reshape(-1)
+    remaining_castles = num_castles - 2
+    castle_available = (grid == -2)  # convert mountains (not empty) — keeps the carved path clear
+    flat_castle_available = castle_available.reshape(-1)
     
-    city_logits = jnp.where(flat_city_available, 0.0, -jnp.inf)
-    city_gumbel = jax.random.gumbel(keys[9], shape=city_logits.shape)
-    city_scores = city_logits + city_gumbel
+    castle_logits = jnp.where(flat_castle_available, 0.0, -jnp.inf)
+    castle_gumbel = jax.random.gumbel(keys[9], shape=castle_logits.shape)
+    castle_scores = castle_logits + castle_gumbel
     
-    # Cap max_extra_cities at the grid size to avoid top_k errors
-    max_extra_cities = min(20, flat_city_available.shape[0])
-    _, city_indices = jax.lax.top_k(city_scores, max_extra_cities)
+    # Cap max_extra_castles at the grid size to avoid top_k errors
+    max_extra_castles = min(20, flat_castle_available.shape[0])
+    _, castle_indices = jax.lax.top_k(castle_scores, max_extra_castles)
     
-    # Generate random city values
-    city_values = jax.random.randint(keys[10], (max_extra_cities,), castle_val_range[0], castle_val_range[1])
-    city_mask = jnp.arange(max_extra_cities) < remaining_cities
+    # Generate random castle values
+    castle_values = jax.random.randint(keys[10], (max_extra_castles,), castle_val_range[0], castle_val_range[1])
+    castle_mask = jnp.arange(max_extra_castles) < remaining_castles
     
     flat_grid = grid.reshape(-1)
     
-    def place_city(flat_grid, args):
+    def place_castle(flat_grid, args):
         idx, val, should_place = args
         return jnp.where(should_place, flat_grid.at[idx].set(val), flat_grid), None
     
-    flat_grid, _ = jax.lax.scan(place_city, flat_grid, (city_indices, city_values, city_mask))
+    flat_grid, _ = jax.lax.scan(place_castle, flat_grid, (castle_indices, castle_values, castle_mask))
     grid = flat_grid.reshape(grid_dims)
     
     # =================================================================
-    # Step 6: Re-assert the generals as ground truth. Castle/city placement above
+    # Step 6: Re-assert the generals as ground truth. Castle/castle placement above
     # never targets a general cell, but this guarantees the grid ALWAYS ends with
     # exactly one P0 (1) and one P1 (2) general — a spawn can never go missing.
     # =================================================================
@@ -386,7 +386,7 @@ def flood_fill_connected(grid: jax.Array, start_pos: tuple[int, int], end_pos: t
     Uses jax.lax.while_loop for efficient early exit when target is reached.
     
     Args:
-        grid: 2D grid array (-2=mountain, 0=passable, 1/2=generals, 40-50=cities)
+        grid: 2D grid array (-2=mountain, 0=passable, 1/2=generals, 40-50=castles)
         start_pos: Starting position (i, j)
         end_pos: Target position (i, j)
         
@@ -395,7 +395,7 @@ def flood_fill_connected(grid: jax.Array, start_pos: tuple[int, int], end_pos: t
     """
     h, w = grid.shape
     
-    # Only empty tiles and generals are passable (not cities/castles)
+    # Only empty tiles and generals are passable (not castles/castles)
     passable = (grid >= 0) & (grid <= 2)
     
     # Initialize: only start position is reachable
@@ -446,7 +446,7 @@ def bfs_distance(grid: jax.Array, start_pos: tuple[int, int], end_pos: tuple[int
         Scalar integer: BFS distance, or h*w if unreachable.
     """
     h, w = grid.shape
-    # Only empty tiles and generals are passable (not cities/castles)
+    # Only empty tiles and generals are passable (not castles/castles)
     passable = (grid >= 0) & (grid <= 2)
 
     reached = jnp.zeros((h, w), dtype=jnp.bool_)
@@ -478,7 +478,7 @@ def bfs_distance(grid: jax.Array, start_pos: tuple[int, int], end_pos: tuple[int
 def carve_l_path(grid: jax.Array, pos_a: tuple[int, int], pos_b: tuple[int, int]) -> jax.Array:
     """
     Carve an L-shaped path between two positions using jnp.where (no branching).
-    Clears mountains and cities on the path, preserves generals.
+    Clears mountains and castles on the path, preserves generals.
     
     The path goes: horizontal from pos_a to (pos_a[0], pos_b[1]), 
                    then vertical to pos_b.
@@ -513,7 +513,7 @@ def carve_l_path(grid: jax.Array, pos_a: tuple[int, int], pos_b: tuple[int, int]
     path_mask = h_mask | v_mask
     
     # Clear obstacles on path, but preserve generals (values 1, 2)
-    is_obstacle = (grid == -2) | (grid > 2)  # Mountain or city
+    is_obstacle = (grid == -2) | (grid > 2)  # Mountain or castle
     grid = jnp.where(path_mask & is_obstacle, 0, grid)
     
     return grid

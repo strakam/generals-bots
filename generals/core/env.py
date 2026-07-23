@@ -59,7 +59,7 @@ _MODE_PRESETS = {
         truncation=600,
         perfect_info=True,
         mountain_density_range=(0.24, 0.26),
-        num_cities_range=(9, 11),
+        num_castles_range=(9, 11),
         min_generals_distance=12,
         castle_val_range=(20, 26),   # castle army value in [20, 25]
     ),
@@ -92,7 +92,7 @@ class GeneralsEnv:
         grid_dims: tuple[int, int] | None = None,
         truncation: int = 500,
         mountain_density_range: tuple[float, float] = (0.18, 0.26),
-        num_cities_range: tuple[int, int] = (9, 11),
+        num_castles_range: tuple[int, int] = (9, 11),
         min_generals_distance: int = 3,
         max_generals_distance: int | None = None,
         pool_size: int = 10_000,
@@ -108,7 +108,11 @@ class GeneralsEnv:
         build_castles: bool = False,
         # Named ruleset preset (e.g. "competition-r1"); overrides the args above.
         mode: str | None = None,
+        # Deprecated alias for num_castles_range (castles were renamed from cities).
+        num_cities_range: tuple[int, int] | None = None,
     ):
+        if num_cities_range is not None:
+            num_castles_range = num_cities_range
         # A named mode pins the whole ruleset for a competition round — it is
         # authoritative and overrides the matching constructor arguments, so every
         # eval (quick-check and league) generates identical maps.
@@ -121,7 +125,7 @@ class GeneralsEnv:
             truncation = preset["truncation"]
             perfect_info = preset["perfect_info"]
             mountain_density_range = preset["mountain_density_range"]
-            num_cities_range = preset["num_cities_range"]
+            num_castles_range = preset["num_castles_range"]
             min_generals_distance = preset["min_generals_distance"]
             castle_val_range = preset["castle_val_range"]
 
@@ -148,7 +152,7 @@ class GeneralsEnv:
 
         self.truncation = truncation
         self.mountain_density_range = mountain_density_range
-        self.num_cities_range = num_cities_range
+        self.num_castles_range = num_castles_range
         self.min_generals_distance = min_generals_distance
         self.max_generals_distance = max_generals_distance
         self.pool_size = pool_size
@@ -163,13 +167,13 @@ class GeneralsEnv:
             grid_dims=(h, w),
             pad_to=self.pad_to,
             mountain_density_range=self.mountain_density_range,
-            num_cities_range=self.num_cities_range,
+            num_castles_range=self.num_castles_range,
             min_generals_distance=self.min_generals_distance,
             max_generals_distance=self.max_generals_distance,
             castle_val_range=self.castle_val_range,
         )
         if self.build_castles:
-            grid = _build_castles.strip_neutral_cities(grid)
+            grid = _build_castles.strip_neutral_castles(grid)
         return create_initial_state(grid.astype(jnp.int32))
 
     def reset(self, key: jnp.ndarray) -> tuple[GameState, GameState]:

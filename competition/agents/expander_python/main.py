@@ -38,7 +38,7 @@ class Observation:
     my_army: int                 # total armies on cells you own
     opp_land: int                # opponent's land count
     opp_army: int                # opponent's army total
-    type_grid: List[List[int]]   # 0=fog 1=plain 2=mountain 3=city 4=general 5=structure-in-fog
+    type_grid: List[List[int]]   # 0=fog 1=plain 2=mountain 3=castle 4=general 5=structure-in-fog
     owner_grid: List[List[int]]  # 0=neutral/unknown 1=me 2=opp (perspective-relative)
     army_grid: List[List[int]]   # army count per cell, 0 if not visible
 

@@ -68,7 +68,7 @@ class HunterAgent(Agent):
         a, mine = obs.armies, obs.owned_cells
         H, W = a.shape
         reach = jnp.int32(H * W)
-        passable = ~(obs.mountains | obs.structures_in_fog | (obs.cities & ~mine))
+        passable = ~(obs.mountains | obs.structures_in_fog | (obs.castles & ~mine))
         mine_army = jnp.where(mine, a, 0)
         movable = mine & (a > 1)
 
@@ -79,7 +79,7 @@ class HunterAgent(Agent):
 
         # Goal: the enemy general, else nearest enemy land, else the farthest cell to scout.
         egen = obs.opponent_cells & obs.generals
-        enemy = obs.opponent_cells & ~obs.cities
+        enemy = obs.opponent_cells & ~obs.castles
         fog = obs.fog_cells & passable & (from_gen < reach)
         open_ = passable & ~mine & (from_gen < reach)
         farthest = lambda m: m & (from_gen == jnp.max(jnp.where(m, from_gen, -1)))

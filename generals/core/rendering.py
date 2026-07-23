@@ -21,7 +21,7 @@ class JaxChannelsAdapter:
     - channels.armies: [H, W] array
     - channels.ownership[agent]: [H, W] boolean array
     - channels.generals: [H, W] boolean array
-    - channels.cities: [H, W] boolean array
+    - channels.castles: [H, W] boolean array
     - channels.mountains: [H, W] boolean array
     - channels.get_visibility(agent): method returning [H, W] boolean array
     """
@@ -33,7 +33,7 @@ class JaxChannelsAdapter:
         # Convert JAX arrays to numpy for pygame
         self.armies = np.array(state.armies)
         self.generals = np.array(state.generals)
-        self.cities = np.array(state.cities)
+        self.castles = np.array(state.castles)
         self.mountains = np.array(state.mountains)
         self.ownership_neutral = np.array(state.ownership_neutral)
 
@@ -117,7 +117,7 @@ class JaxGameAdapter:
                                   self.channels.ownership[self.agents[1]])
                 )),
                 generals=jnp.array(self.channels.generals),
-                cities=jnp.array(self.channels.cities),
+                castles=jnp.array(self.channels.castles),
                 mountains=jnp.array(self.channels.mountains),
                 passable=jnp.array(np.logical_not(self.channels.mountains)),
                 general_positions=jnp.array([self.general_positions[agent] for agent in self.agents]),

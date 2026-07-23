@@ -10,7 +10,7 @@ Edit this file to implement your agent.
     obs.my_army             total armies summed over your cells
     obs.opp_land            opponent's land count (visible at all times)
     obs.opp_army            opponent's army total (visible at all times)
-    obs.type_grid[r][c]     0=fog, 1=plain, 2=mountain, 3=city, 4=general, 5=structure-in-fog
+    obs.type_grid[r][c]     0=fog, 1=plain, 2=mountain, 3=castle, 4=general, 5=structure-in-fog
     obs.owner_grid[r][c]    0=neutral/unknown, 1=me, 2=opp  (perspective-relative)
     obs.army_grid[r][c]     army count, 0 in fog or empty
 

@@ -4,11 +4,11 @@ import jax.numpy as jnp
 from generals.core.observation import Observation
 
 
-def compute_num_cities_owned(observation: Observation) -> jnp.ndarray:
-    """Count number of cities owned by the agent."""
-    owned_cities_mask = observation.cities & observation.owned_cells
-    num_cities_owned = jnp.sum(owned_cities_mask)
-    return num_cities_owned.astype(jnp.float32)
+def compute_num_castles_owned(observation: Observation) -> jnp.ndarray:
+    """Count number of castles owned by the agent."""
+    owned_castles_mask = observation.castles & observation.owned_cells
+    num_castles_owned = jnp.sum(owned_castles_mask)
+    return num_castles_owned.astype(jnp.float32)
 
 
 def compute_num_generals_owned(observation: Observation) -> jnp.ndarray:
@@ -20,22 +20,22 @@ def compute_num_generals_owned(observation: Observation) -> jnp.ndarray:
 
 @jax.jit
 def calculate_army_size(castles: jnp.ndarray, ownership: jnp.ndarray) -> jnp.ndarray:
-    """Calculate total army size in castles (cities/generals) owned by the player."""
+    """Calculate total army size in castles (castles/generals) owned by the player."""
     return jnp.sum(castles * ownership).astype(jnp.float32)
 
 
 @jax.jit
-def city_reward_fn(
+def castle_reward_fn(
     prior_obs: Observation, 
     prior_action: jnp.ndarray, 
     obs: Observation,
     shaping_weight: float = 0.3
 ) -> jnp.ndarray:
     """
-    Reward function that shapes the reward based on the number of cities owned.
+    Reward function that shapes the reward based on the number of castles owned.
     
     Args:
-        shaping_weight: Weight for city change shaping term
+        shaping_weight: Weight for castle change shaping term
     """
     original_reward = (
         compute_num_generals_owned(obs) - compute_num_generals_owned(prior_obs)
@@ -44,11 +44,11 @@ def city_reward_fn(
     # If game is done, don't shape the reward
     game_done = (obs.owned_army_count == 0) | (obs.opponent_army_count == 0)
     
-    city_now = calculate_army_size(obs.cities, obs.owned_cells)
-    city_prev = calculate_army_size(prior_obs.cities, prior_obs.owned_cells)
-    city_change = city_now - city_prev
+    castle_now = calculate_army_size(obs.castles, obs.owned_cells)
+    castle_prev = calculate_army_size(prior_obs.castles, prior_obs.owned_cells)
+    castle_change = castle_now - castle_prev
     
-    shaped_reward = original_reward + shaping_weight * city_change
+    shaped_reward = original_reward + shaping_weight * castle_change
     
     return jnp.where(game_done, original_reward, shaped_reward)
 
@@ -119,7 +119,7 @@ def composite_reward_fn(
     prior_obs: Observation, 
     prior_action: jnp.ndarray, 
     obs: Observation,
-    city_weight: float = 0.4,
+    castle_weight: float = 0.4,
     ratio_weight: float = 0.3,
     maximum_army_ratio: float = 1.6,
     maximum_land_ratio: float = 1.3
@@ -131,10 +131,10 @@ def composite_reward_fn(
     - Base win/lose reward (generals owned)
     - Army ratio reward
     - Land ratio reward
-    - City capture reward
+    - Castle capture reward
     
     Args:
-        city_weight: Weight for city reward
+        castle_weight: Weight for castle reward
         ratio_weight: Weight for ratio rewards (army and land)
         maximum_army_ratio: Maximum army ratio for clipping
         maximum_land_ratio: Maximum land ratio for clipping
@@ -181,14 +181,14 @@ def composite_reward_fn(
     )
     land_reward = current_land_ratio - previous_land_ratio
     
-    # City reward
-    city_reward = compute_num_cities_owned(obs) - compute_num_cities_owned(prior_obs)
+    # Castle reward
+    castle_reward = compute_num_castles_owned(obs) - compute_num_castles_owned(prior_obs)
 
     # Combine all rewards
     shaped_reward = (
         original_reward
         + ratio_weight * army_reward
-        + city_weight * city_reward
+        + castle_weight * castle_reward
         + ratio_weight * land_reward
     )
 

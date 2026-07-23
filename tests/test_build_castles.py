@@ -30,7 +30,7 @@ def give_cell(state, player, ij, army):
 def give_castle(state, player, ij):
     """Plant a finished castle owned by `player` at ij."""
     state = give_cell(state, player, ij, 1)
-    return state._replace(cities=state.cities.at[ij].set(True))
+    return state._replace(castles=state.castles.at[ij].set(True))
 
 
 def build_action(i, j):
@@ -98,7 +98,7 @@ def test_build_pays_cost_and_keeps_remainder():
     state = give_cell(game.create_initial_state(make_grid(8)), 0, (0, 1), 60)
     new_state, info = bc.step(state, actions_of(build_action(0, 1)))
 
-    assert bool(new_state.cities[0, 1])
+    assert bool(new_state.castles[0, 1])
     assert int(new_state.armies[0, 1]) == 60 - 43  # next to the general
     assert bool(new_state.ownership[0, 0, 1])
     assert int(new_state.winner) == -1
@@ -109,7 +109,7 @@ def test_build_with_exact_cost_leaves_zero_army_snipeable():
     state = give_cell(state, 1, (0, 2), 2)
 
     state, _ = bc.step(state, actions_of(build_action(0, 1)))
-    assert bool(state.cities[0, 1])
+    assert bool(state.castles[0, 1])
     assert int(state.armies[0, 1]) == 0
 
     # One enemy unit takes the fresh, empty castle.
@@ -117,13 +117,13 @@ def test_build_with_exact_cost_leaves_zero_army_snipeable():
     state, _ = bc.step(state, actions_of(PASS, snipe))
     assert bool(state.ownership[1, 0, 1])
     assert not bool(state.ownership[0, 0, 1])
-    assert bool(state.cities[0, 1])  # still a castle, now enemy-owned
+    assert bool(state.castles[0, 1])  # still a castle, now enemy-owned
 
 
 def test_build_rejected_when_army_insufficient():
     state = give_cell(game.create_initial_state(make_grid(8)), 0, (0, 1), 42)
     new_state, _ = bc.step(state, actions_of(build_action(0, 1)))
-    assert not bool(new_state.cities[0, 1])
+    assert not bool(new_state.castles[0, 1])
     assert int(new_state.armies[0, 1]) == 42
 
 
@@ -131,7 +131,7 @@ def test_build_costs_base_price_away_from_structures():
     # (4,4) is d=8 from the general: no surcharge, exactly 35.
     state = give_cell(game.create_initial_state(make_grid(8)), 0, (4, 4), 35)
     new_state, _ = bc.step(state, actions_of(build_action(4, 4)))
-    assert bool(new_state.cities[4, 4])
+    assert bool(new_state.castles[4, 4])
     assert int(new_state.armies[4, 4]) == 0
 
 
@@ -141,14 +141,14 @@ def test_prices_rise_as_you_build():
     state = give_cell(state, 0, (0, 1), 43)
     state = give_cell(state, 0, (0, 3), 44)
     state, _ = bc.step(state, actions_of(build_action(0, 1)))
-    assert bool(state.cities[0, 1])
+    assert bool(state.castles[0, 1])
 
     short_state, _ = bc.step(state, actions_of(build_action(0, 3)))
-    assert not bool(short_state.cities[0, 3])  # 44 < 45 now
+    assert not bool(short_state.castles[0, 3])  # 44 < 45 now
 
     state = state._replace(armies=state.armies.at[0, 3].set(45))
     state, _ = bc.step(state, actions_of(build_action(0, 3)))
-    assert bool(state.cities[0, 3])
+    assert bool(state.castles[0, 3])
     # Paid 45 exactly, then time hit 2 (even tick) and the new castle produced.
     assert int(state.armies[0, 3]) == 1
 
@@ -160,7 +160,7 @@ def test_build_rejected_on_unowned_and_enemy_cells():
 
     for target in [(2, 2), (3, 3)]:  # neutral, enemy-owned
         new_state, _ = bc.step(state, actions_of(build_action(*target)))
-        assert not bool(new_state.cities[target])
+        assert not bool(new_state.castles[target])
         assert jnp.array_equal(new_state.armies, state.armies)
 
 
@@ -170,10 +170,10 @@ def test_build_rejected_on_general_and_existing_castle():
     state = give_cell(state, 0, (0, 1), 200)
 
     new_state, _ = bc.step(state, actions_of(build_action(0, 0)))
-    assert not bool(new_state.cities[0, 0])  # generals can't become castles
+    assert not bool(new_state.castles[0, 0])  # generals can't become castles
 
     state, _ = bc.step(state, actions_of(build_action(0, 1)))
-    assert bool(state.cities[0, 1])
+    assert bool(state.castles[0, 1])
     armies_after_first = int(state.armies[0, 1])
     state, _ = bc.step(state, actions_of(build_action(0, 1)))
     # No double-charge: the only change is the castle's +1 production
@@ -185,7 +185,7 @@ def test_build_out_of_bounds_is_a_noop():
     state = give_cell(game.create_initial_state(make_grid(8)), 0, (0, 1), 100)
     for i, j in [(-1, 0), (0, -3), (99, 0), (0, 99)]:
         new_state, _ = bc.step(state, actions_of(build_action(i, j)))
-        assert int(new_state.cities.sum()) == 0
+        assert int(new_state.castles.sum()) == 0
         assert jnp.array_equal(new_state.armies[0, 1], state.armies[0, 1])
 
 
@@ -193,7 +193,7 @@ def test_build_ignored_after_game_over():
     state = give_cell(game.create_initial_state(make_grid(8)), 0, (0, 1), 100)
     state = state._replace(winner=jnp.int32(1))
     new_state, _ = bc.step(state, actions_of(build_action(0, 1)))
-    assert not bool(new_state.cities[0, 1])
+    assert not bool(new_state.castles[0, 1])
 
 
 def test_both_players_build_same_turn():
@@ -201,8 +201,8 @@ def test_both_players_build_same_turn():
     state = give_cell(state, 0, (0, 1), 60)
     state = give_cell(state, 1, (7, 6), 60)
     new_state, _ = bc.step(state, actions_of(build_action(0, 1), build_action(7, 6)))
-    assert bool(new_state.cities[0, 1])
-    assert bool(new_state.cities[7, 6])
+    assert bool(new_state.castles[0, 1])
+    assert bool(new_state.castles[7, 6])
     assert int(new_state.armies[0, 1]) == 60 - 43
     assert int(new_state.armies[7, 6]) == 60 - 43
 
@@ -222,7 +222,7 @@ def test_non_build_actions_match_base_step_exactly():
     assert jnp.array_equal(base_info.army, mod_info.army)
 
 
-def test_built_castle_produces_like_a_city():
+def test_built_castle_produces_like_a_castle():
     state = give_cell(game.create_initial_state(make_grid(8)), 0, (0, 1), 60)
     state, _ = bc.step(state, actions_of(build_action(0, 1)))  # time 0 -> 1
     assert int(state.armies[0, 1]) == 17
@@ -241,18 +241,18 @@ def test_built_castle_produces_like_a_city():
 
 def test_env_flag_strips_neutral_castles():
     key = jrandom.PRNGKey(7)
-    params = dict(grid_dims=(12, 12), truncation=100, num_cities_range=(9, 11))
+    params = dict(grid_dims=(12, 12), truncation=100, num_castles_range=(9, 11))
     with_castles = GeneralsEnv(**params).init_state(key)
     without = GeneralsEnv(**params, build_castles=True).init_state(key)
 
-    assert int(with_castles.cities.sum()) >= 2  # generator always places 2+
-    assert int(without.cities.sum()) == 0
-    # Stripped city cells become plain neutral ground, not mountains.
+    assert int(with_castles.castles.sum()) >= 2  # generator always places 2+
+    assert int(without.castles.sum()) == 0
+    # Stripped castle cells become plain neutral ground, not mountains.
     assert int(without.mountains.sum()) <= int(with_castles.mountains.sum())
 
 
 def test_env_step_applies_build():
-    env = GeneralsEnv(grid_dims=(8, 8), truncation=100, num_cities_range=(9, 11),
+    env = GeneralsEnv(grid_dims=(8, 8), truncation=100, num_castles_range=(9, 11),
                       mountain_density_range=(0.0, 0.0), build_castles=True)
     key = jrandom.PRNGKey(3)
     pool, state = env.reset(key)
@@ -263,8 +263,8 @@ def test_env_step_applies_build():
     state = give_cell(state, 0, (ti, tj), 80)
 
     timestep, new_state = env.step(state, actions_of(build_action(ti, tj)), pool)
-    assert bool(new_state.cities[ti, tj])
-    assert bool(timestep.observation.cities[0][ti, tj])  # visible to the builder
+    assert bool(new_state.castles[ti, tj])
+    assert bool(timestep.observation.castles[0][ti, tj])  # visible to the builder
 
 
 def test_full_game_with_builder_policy_runs():
@@ -282,11 +282,11 @@ def test_full_game_with_builder_policy_runs():
         else:
             a0 = PASS
         state, info = bc.step(state, actions_of(a0))
-        if bool(state.cities[build_site]):
+        if bool(state.castles[build_site]):
             built = True
         if bool(info.is_done):
             break
 
     assert built, "builder never managed to build a castle"
-    assert int(state.cities.sum()) == 1
+    assert int(state.castles.sum()) == 1
     assert int(state.winner) == -1  # nobody died from passing around

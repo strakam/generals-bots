@@ -20,13 +20,13 @@ class Observation(NamedTuple):
     Attributes:
         armies: Army counts in visible cells (0 in fog).
         generals: Boolean mask of visible general positions.
-        cities: Boolean mask of visible city positions.
+        castles: Boolean mask of visible castle positions.
         mountains: Boolean mask of visible mountain positions.
         neutral_cells: Boolean mask of visible neutral (unowned) cells.
         owned_cells: Boolean mask of cells owned by this player.
         opponent_cells: Boolean mask of visible opponent cells.
         fog_cells: Boolean mask of fog cells (not visible, no structure).
-        structures_in_fog: Boolean mask of cities/mountains in fog (visible as obstacles).
+        structures_in_fog: Boolean mask of castles/mountains in fog (visible as obstacles).
         owned_land_count: Scalar, total number of cells owned by this player.
         owned_army_count: Scalar, total army count across all owned cells.
         opponent_land_count: Scalar, opponent's total cell count.
@@ -36,7 +36,7 @@ class Observation(NamedTuple):
 
     armies: jnp.ndarray
     generals: jnp.ndarray
-    cities: jnp.ndarray
+    castles: jnp.ndarray
     mountains: jnp.ndarray
     neutral_cells: jnp.ndarray
     owned_cells: jnp.ndarray
@@ -49,6 +49,11 @@ class Observation(NamedTuple):
     opponent_army_count: jnp.ndarray
     timestep: jnp.ndarray
 
+    @property
+    def cities(self):
+        """Deprecated alias — castles were renamed from cities."""
+        return self.castles
+
     def as_tensor(self) -> jnp.ndarray:
         """
         Convert observation to a tensor for neural networks.
@@ -58,7 +63,7 @@ class Observation(NamedTuple):
             For vectorized observations: stacked along axis 2.
 
         The channels are ordered as:
-            0: armies, 1: generals, 2: cities, 3: mountains, 4: neutral_cells,
+            0: armies, 1: generals, 2: castles, 3: mountains, 4: neutral_cells,
             5: owned_cells, 6: opponent_cells, 7: fog_cells, 8: structures_in_fog,
             9: owned_land_count, 10: owned_army_count, 11: opponent_land_count,
             12: opponent_army_count, 13: timestep
@@ -76,7 +81,7 @@ class Observation(NamedTuple):
                 [
                     self.armies,
                     self.generals,
-                    self.cities,
+                    self.castles,
                     self.mountains,
                     self.neutral_cells,
                     self.owned_cells,
@@ -96,7 +101,7 @@ class Observation(NamedTuple):
                 [
                     self.armies,
                     self.generals,
-                    self.cities,
+                    self.castles,
                     self.mountains,
                     self.neutral_cells,
                     self.owned_cells,

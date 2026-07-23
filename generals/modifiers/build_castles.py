@@ -19,11 +19,11 @@ Rules:
     treats invalid moves as no-ops.
   - Builds resolve BEFORE either player's move each tick, then the base
     game.step runs with the build actions rewritten to passes. The base game
-    is never modified. A built castle is an ordinary owned city: +1 army on
+    is never modified. A built castle is an ordinary owned castle: +1 army on
     even ticks, just like a captured one.
 
 Maps for this mode carry no neutral castles: GeneralsEnv(build_castles=True)
-strips them from generated grids via strip_neutral_cities().
+strips them from generated grids via strip_neutral_castles().
 """
 import jax
 import jax.numpy as jnp
@@ -37,8 +37,8 @@ PROXIMITY_DECAY = 2      # ...this much per manhattan step (zero from d=5)
 _RADIUS = (PROXIMITY_PENALTY - 1) // PROXIMITY_DECAY  # farthest d with a surcharge
 
 
-def strip_neutral_cities(grid: jnp.ndarray) -> jnp.ndarray:
-    """Remove neutral castles from a generated grid (values > 2 are cities)."""
+def strip_neutral_castles(grid: jnp.ndarray) -> jnp.ndarray:
+    """Remove neutral castles from a generated grid (values > 2 are castles)."""
     return jnp.where(grid > 2, 0, grid)
 
 
@@ -51,7 +51,7 @@ def build_cost_grid(state: game.GameState, player_idx: int) -> jnp.ndarray:
     """
     H, W = state.armies.shape
     own = state.ownership[player_idx]
-    structures = ((state.cities | state.generals) & own).astype(jnp.int32)
+    structures = ((state.castles | state.generals) & own).astype(jnp.int32)
     padded = jnp.pad(structures, _RADIUS)
 
     cost = jnp.full((H, W), BASE_COST, dtype=jnp.int32)
@@ -73,7 +73,7 @@ def _apply_one(state: game.GameState, player_idx: int, action: jnp.ndarray) -> g
     cs = jnp.clip(c, 0, W - 1)
 
     owns = state.ownership[player_idx, rs, cs]  # implies passable, not enemy/neutral
-    plain = ~state.generals[rs, cs] & ~state.cities[rs, cs]
+    plain = ~state.generals[rs, cs] & ~state.castles[rs, cs]
     cost = build_cost_grid(state, player_idx)[rs, cs]
     affords = state.armies[rs, cs] >= cost
     alive = state.winner < 0
@@ -81,7 +81,7 @@ def _apply_one(state: game.GameState, player_idx: int, action: jnp.ndarray) -> g
 
     return state._replace(
         armies=jnp.where(valid, state.armies.at[rs, cs].add(-cost), state.armies),
-        cities=jnp.where(valid, state.cities.at[rs, cs].set(True), state.cities),
+        castles=jnp.where(valid, state.castles.at[rs, cs].set(True), state.castles),
     )
 
 

@@ -12,12 +12,12 @@ class GeneralsIOstate:
         self.n_players = len(self.usernames)
 
         self.map: list[int] = []
-        self.cities: list[int] = []
+        self.castles: list[int] = []
 
     def update(self, data: dict) -> None:
         self.turn = data["turn"]
         self.map = self.apply_diff(self.map, data["map_diff"])
-        self.cities = self.apply_diff(self.cities, data["cities_diff"])
+        self.castles = self.apply_diff(self.castles, data["cities_diff"])
         self.generals = data["generals"]
         self.scores = data["scores"]
         if "stars" in data:
@@ -42,9 +42,9 @@ class GeneralsIOstate:
 
         armies = np.array(self.map[2 : 2 + size]).reshape((height, width))
         terrain = np.array(self.map[2 + size : 2 + 2 * size]).reshape((height, width))
-        cities = np.zeros((height, width))
-        for city in self.cities:
-            cities[city // width, city % width] = 1
+        castles = np.zeros((height, width))
+        for castle in self.castles:
+            castles[castle // width, castle % width] = 1
 
         generals = np.zeros((height, width))
         for general in self.generals:
@@ -68,7 +68,7 @@ class GeneralsIOstate:
         return Observation(
             armies=army,
             generals=generals,
-            cities=cities,
+            castles=castles,
             mountains=mountain_cells,
             neutral_cells=neutral_cells,
             owned_cells=owned_cells,

@@ -16,7 +16,7 @@ WHITE: Color = (230, 230, 230)
 
 # Brightness factors for owned structure tiles, relative to the owner's color.
 GENERAL_SHADE = 0.65
-CITY_SHADE = 0.8
+CASTLE_SHADE = 0.8
 GRID_LINE_SHADE = 0.72
 
 
@@ -96,7 +96,7 @@ class Renderer:
         # Load pre-scaled images (crownie, citie, mountainie are already the right size)
         self._mountain_img = pygame.image.load(str(Path.MOUNTAIN_PATH), "png").convert_alpha()
         self._general_img = pygame.image.load(str(Path.GENERAL_PATH), "png").convert_alpha()
-        self._city_img = pygame.image.load(Path.CITY_PATH, "png").convert_alpha()
+        self._castle_img = pygame.image.load(Path.CASTLE_PATH, "png").convert_alpha()
         # Dimmed mountain for terrain that is only remembered under fog of war
         self._fog_mountain_img = self._mountain_img.copy()
         self._fog_mountain_img.set_alpha(110)
@@ -263,7 +263,7 @@ class Renderer:
         not_owned_map = np.logical_not(owned_map)
         invisible_map = np.logical_not(visible_map)
 
-        # Draw background of visible owned squares. Generals and cities get a
+        # Draw background of visible owned squares. Generals and castles get a
         # darker shade of the owner's color so they stand out from body tiles.
         for agent in agents:
             ownership = self.game.channels.ownership[agent]
@@ -272,8 +272,8 @@ class Renderer:
             self.draw_channel(visible_ownership, color)
             owned_generals = np.logical_and(visible_ownership, self.game.channels.generals)
             self.draw_channel(owned_generals, shade(color, GENERAL_SHADE))
-            owned_cities = np.logical_and(visible_ownership, self.game.channels.cities)
-            self.draw_channel(owned_cities, shade(color, CITY_SHADE))
+            owned_castles = np.logical_and(visible_ownership, self.game.channels.castles)
+            self.draw_channel(owned_castles, shade(color, CASTLE_SHADE))
 
         # Draw visible generals
         visible_generals = np.logical_and(self.game.channels.generals, visible_map)
@@ -295,17 +295,17 @@ class Renderer:
         fog_mountain = np.logical_and(self.game.channels.mountains, invisible_map)
         self.draw_images(fog_mountain, self._fog_mountain_img)
 
-        # Draw background of visible neutral cities
-        visible_cities = np.logical_and(self.game.channels.cities, visible_map)
-        visible_cities_neutral = np.logical_and(visible_cities, self.game.channels.ownership_neutral)
-        self.draw_channel(visible_cities_neutral, NEUTRAL_CASTLE)
+        # Draw background of visible neutral castles
+        visible_castles = np.logical_and(self.game.channels.castles, visible_map)
+        visible_castles_neutral = np.logical_and(visible_castles, self.game.channels.ownership_neutral)
+        self.draw_channel(visible_castles_neutral, NEUTRAL_CASTLE)
 
-        # Draw invisible cities as dimmed mountains
-        invisible_cities = np.logical_and(self.game.channels.cities, invisible_map)
-        self.draw_images(invisible_cities, self._fog_mountain_img)
+        # Draw invisible castles as dimmed mountains
+        invisible_castles = np.logical_and(self.game.channels.castles, invisible_map)
+        self.draw_images(invisible_castles, self._fog_mountain_img)
 
-        # Draw visible cities
-        self.draw_images(visible_cities, self._city_img)
+        # Draw visible castles
+        self.draw_images(visible_castles, self._castle_img)
 
         # Draw nonzero army counts on visible squares
         visible_army = self.game.channels.armies * visible_map
@@ -362,7 +362,7 @@ class Renderer:
     def draw_tile_types(self):
         """
         Draw tile type labels in the upper-right corner of each tile.
-        Types: 0=empty, -2=mountain, 1=general0, 2=general1, 40-50=city
+        Types: 0=empty, -2=mountain, 1=general0, 2=general1, 40-50=castle
         """
         square_size = Dimension.SQUARE_SIZE.value
         channels = self.game.channels
@@ -378,8 +378,8 @@ class Renderer:
                         tile_type = "1"
                     else:
                         tile_type = "2"
-                elif channels.cities[i, j]:
-                    tile_type = "C"  # City
+                elif channels.castles[i, j]:
+                    tile_type = "C"  # Castle
                 else:
                     tile_type = "0"
 

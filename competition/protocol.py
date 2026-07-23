@@ -13,7 +13,7 @@ Frame format (all integers, line-delimited, ASCII):
 
   Per turn (engine -> agent):
     <turn> <my_land> <my_army> <opp_land> <opp_army>
-    H lines of W ints   # type:  0=fog 1=plain 2=mountain 3=city 4=general 5=structure-in-fog
+    H lines of W ints   # type:  0=fog 1=plain 2=mountain 3=castle 4=general 5=structure-in-fog
     H lines of W ints   # owner: 0=neutral/unknown 1=me 2=opp
     H lines of W ints   # army:  0 if not visible
 
@@ -40,7 +40,7 @@ from generals.core.observation import Observation
 TYPE_FOG = 0
 TYPE_PLAIN = 1
 TYPE_MOUNTAIN = 2
-TYPE_CITY = 3
+TYPE_CASTLE = 3
 TYPE_GENERAL = 4
 TYPE_STRUCTURE_IN_FOG = 5
 
@@ -61,14 +61,14 @@ def encode_observation(obs: Observation) -> str:
     fog = np.asarray(obs.fog_cells, dtype=bool)
     structures_fog = np.asarray(obs.structures_in_fog, dtype=bool)
     mountains = np.asarray(obs.mountains, dtype=bool)
-    cities = np.asarray(obs.cities, dtype=bool)
+    castles = np.asarray(obs.castles, dtype=bool)
     generals = np.asarray(obs.generals, dtype=bool)
 
     type_grid = np.full((H, W), TYPE_PLAIN, dtype=np.int32)
     type_grid[fog] = TYPE_FOG
     type_grid[structures_fog] = TYPE_STRUCTURE_IN_FOG
     type_grid[mountains] = TYPE_MOUNTAIN
-    type_grid[cities] = TYPE_CITY
+    type_grid[castles] = TYPE_CASTLE
     type_grid[generals] = TYPE_GENERAL
 
     owned = np.asarray(obs.owned_cells, dtype=bool)

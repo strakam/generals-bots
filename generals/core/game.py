@@ -40,7 +40,7 @@ class GameState(NamedTuple):
         ownership: (2, H, W) boolean arrays, ownership[i] is player i's cells.
         ownership_neutral: (H, W) boolean mask of neutral (unowned) cells.
         generals: (H, W) boolean mask of general positions.
-        cities: (H, W) boolean mask of city positions.
+        castles: (H, W) boolean mask of castle positions.
         mountains: (H, W) boolean mask of mountain positions.
         passable: (H, W) boolean mask of passable cells (not mountains).
         general_positions: (2, 2) array of [row, col] for each general.
@@ -53,13 +53,18 @@ class GameState(NamedTuple):
     ownership: jnp.ndarray
     ownership_neutral: jnp.ndarray
     generals: jnp.ndarray
-    cities: jnp.ndarray
+    castles: jnp.ndarray
     mountains: jnp.ndarray
     passable: jnp.ndarray
     general_positions: jnp.ndarray
     time: jnp.ndarray
     winner: jnp.ndarray
     pool_idx: jnp.ndarray
+
+    @property
+    def cities(self):
+        """Deprecated alias — castles were renamed from cities."""
+        return self.castles
 
 
 class GameInfo(NamedTuple):
@@ -95,7 +100,7 @@ def create_initial_state(grid: jnp.ndarray) -> GameState:
             - 0: Empty cell
             - 1: Player 0's general
             - 2: Player 1's general
-            - 40-50: City with that army value
+            - 40-50: Castle with that army value
 
     Returns:
         GameState ready for gameplay.
@@ -108,13 +113,13 @@ def create_initial_state(grid: jnp.ndarray) -> GameState:
 
     mountains = grid == -2
     passable = grid != -2
-    cities = grid > 2
+    castles = grid > 2
 
     ownership = jnp.stack([is_general_0, is_general_1])
     ownership_neutral = passable & ~is_general_0 & ~is_general_1
 
     armies = jnp.where(is_general_0 | is_general_1, 1, 0).astype(jnp.int32)
-    armies = jnp.where(cities, grid, armies)
+    armies = jnp.where(castles, grid, armies)
 
     general_pos_0 = jnp.argwhere(is_general_0, size=1, fill_value=-1)[0]
     general_pos_1 = jnp.argwhere(is_general_1, size=1, fill_value=-1)[0]
@@ -125,7 +130,7 @@ def create_initial_state(grid: jnp.ndarray) -> GameState:
         ownership=ownership,
         ownership_neutral=ownership_neutral,
         generals=generals,
-        cities=cities,
+        castles=castles,
         mountains=mountains,
         passable=passable,
         general_positions=general_positions,
@@ -266,13 +271,13 @@ def global_update(state: GameState) -> GameState:
         armies,
     )
 
-    # Generals/cities grow every 2 ticks, on EVEN ticks. generals.io has a spawn
+    # Generals/castles grow every 2 ticks, on EVEN ticks. generals.io has a spawn
     # frame + a first frame before production starts, so the first increment lands
     # on tick 2, not tick 1. Matching this phase is required to replay real games
     # move-for-move (verified: 0 illegal moves across scraped generals.io replays;
     # the odd-tick phase desynced the general's army by one tick and lost games early).
     increment_structures = (time % 2 == 0)
-    structure_mask = (state.generals | state.cities).astype(jnp.int32)
+    structure_mask = (state.generals | state.castles).astype(jnp.int32)
     armies = lax.cond(
         increment_structures,
         lambda a: a + structure_mask * state.ownership[0].astype(jnp.int32) + structure_mask * state.ownership[1].astype(jnp.int32),
@@ -378,13 +383,13 @@ def get_observation(state: GameState, player_idx: int) -> Observation:
     return Observation(
         armies=state.armies * visible,
         generals=state.generals * visible,
-        cities=state.cities * visible,
+        castles=state.castles * visible,
         mountains=state.mountains * visible,
         neutral_cells=state.ownership_neutral * visible,
         owned_cells=state.ownership[player_idx] * visible,
         opponent_cells=state.ownership[opponent_idx] * visible,
-        fog_cells=invisible & ~(state.mountains | state.cities),
-        structures_in_fog=invisible & (state.mountains | state.cities),
+        fog_cells=invisible & ~(state.mountains | state.castles),
+        structures_in_fog=invisible & (state.mountains | state.castles),
         owned_land_count=info.land[player_idx],
         owned_army_count=info.army[player_idx],
         opponent_land_count=info.land[opponent_idx],
@@ -408,7 +413,7 @@ def get_full_observation(state: GameState, player_idx: int) -> Observation:
     return Observation(
         armies=state.armies,
         generals=state.generals,
-        cities=state.cities,
+        castles=state.castles,
         mountains=state.mountains,
         neutral_cells=state.ownership_neutral,
         owned_cells=state.ownership[player_idx],

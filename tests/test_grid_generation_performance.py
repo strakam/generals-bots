@@ -93,7 +93,7 @@ def test_grid_properties():
     keys = jax.random.split(key, num_grids)
 
     mountain_counts = []
-    city_counts = []
+    castle_counts = []
 
     for k in keys:
         grid = generate_grid(k)
@@ -102,15 +102,15 @@ def test_grid_properties():
         num_mountains = int(jnp.sum(grid == -2))
         mountain_counts.append(num_mountains)
 
-        # Count cities (values 40-50)
-        num_cities = int(jnp.sum(grid > 2))
-        city_counts.append(num_cities)
+        # Count castles (values 40-50)
+        num_castles = int(jnp.sum(grid > 2))
+        castle_counts.append(num_castles)
 
     print(f"\nStatistics from {num_grids} grids:")
     print(f"  Mountains: mean={np.mean(mountain_counts):.1f}, range=[{np.min(mountain_counts)}, {np.max(mountain_counts)}]")
-    print(f"  Cities: mean={np.mean(city_counts):.1f}, range=[{np.min(city_counts)}, {np.max(city_counts)}]")
+    print(f"  Castles: mean={np.mean(castle_counts):.1f}, range=[{np.min(castle_counts)}, {np.max(castle_counts)}]")
 
-    assert np.mean(city_counts) >= 5, f"Too few cities: {np.mean(city_counts)}"
+    assert np.mean(castle_counts) >= 5, f"Too few castles: {np.mean(castle_counts)}"
 
 
 def test_jit_performance():
