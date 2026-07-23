@@ -148,8 +148,8 @@ def test_env_composition_build_next_to_general_is_not_a_touch():
     assert bool(ns.castles[0, 4])  # the build itself landed
 
 
-def test_competition_bc_preset_pins_the_format():
-    env = GeneralsEnv(mode="competition-bc")
+def test_competition_preset_pins_the_format():
+    env = GeneralsEnv(mode="competition")
     assert env.truncation == 1200
     assert env.build_castles is True
     assert env.deathtouch_turn == 800

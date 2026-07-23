@@ -57,7 +57,7 @@ class TimeStep(NamedTuple):
 _MODE_PRESETS = {
     # THE competition format: build-castles rules + deathtouch endgame.
     # One ruleset for both parts (Sprint checkpoint + Marathon finish).
-    "competition-bc": dict(
+    "competition": dict(
         grid_dims=(15, 15),
         truncation=1200,
         perfect_info=True,
