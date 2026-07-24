@@ -31,6 +31,26 @@ cd generals-bots
 pip install -e .
 ```
 
+## 🏆 Competition
+
+This engine powers the [Generals Competition](https://generals.bot). One preset
+pins the entire competition ruleset:
+
+```python
+env = GeneralsEnv(mode="competition")
+```
+
+Rectangular 18–21 maps, **no neutral castles — you build them** (action
+`[2, row, col, 0, 0]`), **Deathtouch** from turn 800 (a move that executes onto
+the enemy general's tile wins instantly), a 1200-turn cap, and **fog of war**
+(like the original generals.io — each bot sees only the cells next to tiles it
+owns). The stdio wire protocol and reference bots in Python/C++/Rust live in
+[`competition/`](competition/) — play a local match with:
+
+```bash
+python competition/matchup.py --mode competition
+```
+
 ## 🌱 Getting Started
 
 ### Basic Game Loop
@@ -102,25 +122,6 @@ timesteps, states = step_vmap(states, actions)
 ```
 
 See `examples/vectorized_example.py` for a complete example.
-
-## 🏆 Competition
-
-This engine powers the [Generals Competition](https://generals.bot). One preset
-pins the entire competition ruleset:
-
-```python
-env = GeneralsEnv(mode="competition")
-```
-
-Rectangular 18–21 maps, **no neutral castles — you build them** (action
-`[2, row, col, 0, 0]`), **Deathtouch** from turn 800 (a move that executes onto
-the enemy general's tile wins instantly), 1200-turn cap, perfect information.
-The stdio wire protocol and reference bots in Python/C++/Rust live in
-[`competition/`](competition/) — play a local match with:
-
-```bash
-python competition/matchup.py --mode competition
-```
 
 ## 🌍 Environment
 
