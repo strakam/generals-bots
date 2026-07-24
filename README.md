@@ -23,14 +23,6 @@ A high-performance JAX-based simulator for [generals.io](https://generals.io), d
 > This repository is based on the [generals.io](https://generals.io) game.
 > The goal is to provide a fast bot development platform for reinforcement learning research.
 
-## 📦 Installation
-
-```bash
-git clone https://github.com/strakam/generals-bots
-cd generals-bots
-pip install -e .
-```
-
 ## 🏆 Competition
 
 This engine powers the [Generals Competition](https://generals.bot). One preset
@@ -49,6 +41,15 @@ owns). The stdio wire protocol and reference bots in Python/C++/Rust live in
 
 ```bash
 python competition/matchup.py --mode competition
+```
+
+
+## 📦 Installation
+
+```bash
+git clone https://github.com/strakam/generals-bots
+cd generals-bots
+pip install -e .
 ```
 
 ## 🌱 Getting Started
