@@ -128,7 +128,7 @@ def main():
     parser.add_argument("--perfect-info", action="store_true",
                         help="disable fog of war; agents see the whole board")
     parser.add_argument("--mode", type=str, default=None,
-                        help="named ruleset preset (e.g. competition-r1); pins the full "
+                        help="named ruleset preset (e.g. competition); pins the full "
                              "ruleset and overrides --grid-size/--truncation/--perfect-info")
     args = parser.parse_args()
 
