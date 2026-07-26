@@ -71,7 +71,12 @@ _MODE_PRESETS = {
         perfect_info=False,             # fog of war, like the original generals.io
         mountain_density_range=(0.24, 0.26),
         num_castles_range=(9, 11),      # generated then stripped (build_castles)
-        min_generals_distance=14,       # pool-wide floor; the eval driver scales 0.8×min(h,w)
+        # Generals spawn at least this many STEPS apart, walking around the
+        # mountains (generals/core/grid.py measures it with a BFS dilation, not
+        # a straight line). One flat number for every board size — the old
+        # 0.8×min(h,w) scaling existed because a straight-line floor had to stay
+        # satisfiable on the narrowest board.
+        min_generals_distance=17,
         castle_val_range=(20, 26),      # irrelevant once neutral castles are stripped
         build_castles=True,
         deathtouch_turn=800,

@@ -118,10 +118,10 @@ def make_board(env, seed):
         kg, grid_dims=(h, w),
         mountain_density_range=env.mountain_density_range,
         num_castles_range=env.num_castles_range,
-        # the ruleset's pool-wide floor scaled to the drawn board, as the
-        # evaluator does; generate_grid pads bottom/right for pooling, so the
-        # slice below trims it back to the exact rectangle.
-        min_generals_distance=round(0.8 * min(h, w)),
+        # the ruleset's spawn floor, in walking steps around the mountains;
+        # generate_grid pads bottom/right for pooling, so the slice below trims
+        # it back to the exact rectangle.
+        min_generals_distance=env.min_generals_distance,
         castle_val_range=env.castle_val_range,
     )[:h, :w]
     if env.build_castles:
