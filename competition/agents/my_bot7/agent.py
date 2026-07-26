@@ -1,0 +1,532 @@
+"""
+Edit this file to implement your agent.
+
+`Agent.act(obs)` is called once per turn. The `obs` argument is built by
+`main.py` from the wire-protocol frame and has these fields:
+
+    obs.H, obs.W            board dimensions (constant for the whole game)
+    obs.turn                current turn number, increments each step
+    obs.my_land             total cells you own
+    obs.my_army             total armies summed over your cells
+    obs.opp_land            opponent's land count (visible at all times)
+    obs.opp_army            opponent's army total (visible at all times)
+    obs.type_grid[r][c]     0=fog, 1=plain, 2=mountain, 3=castle, 4=general, 5=structure-in-fog
+    obs.owner_grid[r][c]    0=neutral/unknown, 1=me, 2=opp  (perspective-relative)
+    obs.army_grid[r][c]     army count, 0 in fog or empty
+
+`act` must return a 5-tuple `(pass, row, col, direction, split)`:
+
+    pass:       0 to move, 1 to skip the turn, 2 to build a castle
+    row, col:   source cell of a move (must be owned by you and have
+                army > 1), or the cell to build a castle on
+    direction:  0=up, 1=down, 2=left, 3=right (ignored for pass/build)
+    split:      0=move all-but-one armies, 1=move half (floor division;
+                ignored for pass/build)
+
+To build a castle on one of your own plain cells, return (2, r, c, 0, 0) —
+the price is paid from the army standing on (r, c) (see the rules page).
+
+Invalid moves and builds are silently treated as a pass by the engine.
+"""
+
+from collections import deque
+
+# A no-op action — used when no valid move exists or as a safe default.
+PASS = (1, 0, 0, 0, 0)
+
+# (dr, dc) offsets for direction codes 0..3
+DIRECTIONS = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+# From this turn a move that executes onto the enemy general wins outright,
+# whatever the army counts (generals/modifiers/deathtouch.py). Reaching the
+# tile is the whole game after this point.
+DEATHTOUCH_TURN = 800
+
+# Attack once we out-army the opponent by this much. Below it we would just be
+# feeding units into their stacks.
+ATTACK_ARMY_RATIO = 1.5
+
+# The marching stack needs enough to survive the walk in and still take the
+# general: its army, plus a cushion for the cells captured on the way.
+ATTACK_MARGIN = 25
+
+# Castle pricing, mirrored from the engine (generals/modifiers/build_castles.py).
+# A cell costs BASE_COST, plus max(0, PENALTY - DECAY * d) for every structure
+# you already own at manhattan distance d — so crowding your own general or
+# castles gets expensive fast, and anything 5+ cells away is free.
+BASE_COST = 35
+PROXIMITY_PENALTY = 10
+PROXIMITY_DECAY = 2
+
+# Keep this much army on the new castle after paying for it. The price comes
+# out of the army standing on the cell, so building at exactly cost leaves it
+# at 0 — a single enemy unit takes it.
+BUILD_RESERVE = 8
+
+# Don't build within this manhattan distance of a visible enemy cell: near the
+# frontier that army is worth more as a fighting stack than as economy.
+BUILD_SAFE_DISTANCE = 3
+
+# A castle earns +1 army every even tick (0.5/turn); land earns +1 per cell only
+# every 50 ticks (0.02/turn). One castle is therefore worth ~25 land, and repays
+# its ~40 army in ~80 turns. In a 1200-turn match that stays profitable almost to
+# the end, so build until there is no time left to recoup the cost.
+LAST_BUILD_TURN = 1050
+
+# Once the enemy general is located, stop pouring turns into economy and start
+# massing for the strike. A castle bought at turn 700 repays ~250 army by the
+# end; the same turns spent merging stacks can end the game outright, and an
+# unfinished attack is worth nothing.
+GATHER_FROM_TURN = 500
+
+# Don't relocate dribs and drabs — moving a 3-stack costs a turn and gains
+# almost nothing.
+GATHER_MIN_ARMY = 6
+
+# No meaningful cap: with a 25:1 income edge over land, every castle we can
+# safely afford is worth building. The real limiters are the proximity
+# surcharge on the price and how much army we can spare.
+MAX_CASTLES = 99
+
+# Ceiling on how much we let the general hoard while saving. Above the dearest
+# a castle can cost (base + the full adjacency surcharge, plus the reserve and
+# the one army that stays behind), a general with no buildable neighbour is
+# never going to spend it — so hand the stack back to the expander.
+HOLD_CEILING = BASE_COST + PROXIMITY_PENALTY + BUILD_RESERVE + 1
+
+
+def _is_passable(t):
+    # Mountains (2) and fogged-structures (5) are impassable; everything else
+    # can be entered (including fog — you just don't know what's there).
+    return t != 2 and t != 5
+
+
+def _first_step(obs, src, targets):
+    """Direction of the first move on a shortest path from src to any target.
+
+    Plain BFS over passable cells — 484 cells on a competition board, so it is
+    cheap enough to run every turn. Returns None if nothing is reachable.
+    """
+    if not targets or src in targets:
+        return None
+
+    prev = {src: None}
+    queue = deque([src])
+    found = None
+    while queue:
+        cur = queue.popleft()
+        if cur in targets:
+            found = cur
+            break
+        r, c = cur
+        for dr, dc in DIRECTIONS:
+            nxt = (r + dr, c + dc)
+            if not (0 <= nxt[0] < obs.H and 0 <= nxt[1] < obs.W):
+                continue
+            if nxt in prev or not _is_passable(obs.type_grid[nxt[0]][nxt[1]]):
+                continue
+            prev[nxt] = cur
+            queue.append(nxt)
+
+    if found is None:
+        return None
+    # Walk the parent chain back to the cell adjacent to src.
+    node = found
+    while prev[node] != src:
+        node = prev[node]
+    return DIRECTIONS.index((node[0] - src[0], node[1] - src[1]))
+
+
+class Agent:
+    """Expander strategy, plus castle building.
+
+    Each turn, first consider building a castle: on an owned plain cell that
+    can pay the price and still keep BUILD_RESERVE army, well away from the
+    enemy, cheapest cell first. Castles are the only economy in the
+    build-castles ruleset — maps spawn with no neutral ones — so an idle stack
+    sitting on 40+ army is better spent on permanent income.
+
+    Otherwise fall back to the expander move: maximize
+        score = src_army * (10 if expansion else 1) * (2 if opponent else 1)
+    among captures (src_army > dest_army + 1). If no capture is possible
+    but some legal move exists, take the first one. Otherwise pass.
+    """
+
+    def __init__(self, player_id, H, W):
+        # We get the static game info once at startup. You don't have to
+        # store any of it on the agent if you don't want to.
+        self.player_id = player_id
+        self.H = H
+        self.W = W
+
+        # Fog hides the enemy general most of the game, but once we have seen
+        # it the position never changes — so remember it across turns. Same for
+        # the last enemy territory we saw: it points the way in.
+        self.enemy_general = None
+        self.seen_enemy = set()
+
+    def _build_cost(self, r, c, structures):
+        """Price of a castle at (r, c), matching the engine's cost grid."""
+        cost = BASE_COST
+        for sr, sc in structures:
+            surcharge = PROXIMITY_PENALTY - PROXIMITY_DECAY * (abs(sr - r) + abs(sc - c))
+            if surcharge > 0:
+                cost += surcharge
+        return cost
+
+    def _survey(self, obs):
+        """One pass over the board: our structures, enemies, generals, fog."""
+        structures = []
+        enemies = []
+        general = None
+        fog = set()
+        for r in range(obs.H):
+            for c in range(obs.W):
+                owner = obs.owner_grid[r][c]
+                t = obs.type_grid[r][c]
+                if owner == 1:
+                    if t == 4:
+                        general = (r, c)
+                        structures.append((r, c))
+                    elif t == 3:
+                        structures.append((r, c))
+                elif owner == 2:
+                    enemies.append((r, c))
+                    if t == 4:
+                        # Seen once is known forever — generals never move.
+                        self.enemy_general = (r, c)
+                elif t == 0:
+                    fog.add((r, c))
+                else:
+                    # Visible and not theirs any more — drop the stale memory.
+                    # Without this the attack marches at cells we already took,
+                    # arrives, and bounces back to the previous one forever.
+                    self.seen_enemy.discard((r, c))
+        self.seen_enemy.update(enemies)
+        return structures, enemies, general, fog
+
+    def _spearhead(self, obs, hold):
+        """Our biggest usable stack — the unit we march at the enemy.
+
+        Measured alternative: committing to one stack across turns (marching
+        the same unit until it dies) lost 3 of 4 wins against my_bot3 — a
+        depleted stack keeps its commitment and walks around achieving
+        nothing, while "always the biggest" self-corrects every turn.
+        """
+        best = None
+        best_army = 1
+        for r in range(obs.H):
+            for c in range(obs.W):
+                if obs.owner_grid[r][c] != 1 or (r, c) in hold:
+                    continue
+                army = obs.army_grid[r][c]
+                if army > best_army:
+                    best_army = army
+                    best = (r, c)
+        return best, best_army
+
+    def _defend(self, obs, general, enemies):
+        """Kill an attacker parked next to our general.
+
+        Past DEATHTOUCH_TURN any enemy move onto our general wins the game
+        outright, so an adjacent enemy is lethal. Moving onto their cell is a
+        "chase", which the engine resolves before their move — capture the
+        source and the touch never executes.
+        """
+        if general is None or obs.turn < DEATHTOUCH_TURN - 1:
+            return None
+        gr, gc = general
+        for dr, dc in DIRECTIONS:
+            ar, ac = gr + dr, gc + dc
+            if not (0 <= ar < obs.H and 0 <= ac < obs.W):
+                continue
+            if obs.owner_grid[ar][ac] != 2:
+                continue
+            # Anything of ours that can take that cell will do.
+            for d2, (dr2, dc2) in enumerate(DIRECTIONS):
+                sr, sc = ar + dr2, ac + dc2
+                if not (0 <= sr < obs.H and 0 <= sc < obs.W):
+                    continue
+                if obs.owner_grid[sr][sc] != 1:
+                    continue
+                if obs.army_grid[sr][sc] > obs.army_grid[ar][ac] + 1:
+                    back = DIRECTIONS.index((ar - sr, ac - sc))
+                    return (0, sr, sc, back, 0)
+        return None
+
+    def _attack_move(self, obs, hold, general):
+        """March a stack at the enemy general, or explore to find it.
+
+        Three regimes, in order of how decisive they are:
+          * past DEATHTOUCH_TURN with the general located, ANY stack that can
+            reach it wins on contact — army is irrelevant, so just walk in.
+          * before that, go only with a stack big enough to actually take it.
+          * general still unknown: push into the enemy's last-known territory,
+            else into the fog, which is what reveals it.
+        """
+        target = None
+        if self.enemy_general is not None:
+            deathtouch = obs.turn >= DEATHTOUCH_TURN
+            strong = obs.my_army > obs.opp_army * ATTACK_ARMY_RATIO
+            if deathtouch or strong:
+                target = {self.enemy_general}
+        if target is None:
+            target = self._scout_targets(obs, general)
+
+        src, army = self._spearhead(obs, hold)
+        if src is None:
+            return None
+
+        # Before deathtouch we need to survive the walk in; after it, one unit
+        # is enough because contact alone wins.
+        if self.enemy_general is not None and obs.turn < DEATHTOUCH_TURN:
+            needed = obs.army_grid[self.enemy_general[0]][self.enemy_general[1]] + ATTACK_MARGIN
+            if target == {self.enemy_general} and army < needed:
+                # Not strong enough to finish it. Earlier generations sat on the
+                # army and waited for turn 800; instead, spend the turn merging
+                # the next-biggest stack into this one so the strike gets mass.
+                return self._gather(obs, hold, src)
+
+        d = _first_step(obs, src, target)
+        if d is None:
+            return None
+        return (0, src[0], src[1], d, 0)
+
+    def _gather(self, obs, hold, rally):
+        """Walk our second-biggest stack toward the spearhead to merge with it.
+
+        The rally point is a cell, not a unit, so it does not run away from the
+        army being sent to it — that is what made committing to a *moving*
+        spearhead fail back in my_bot5. Repeated every turn, this funnels the
+        castle income that would otherwise idle into one usable fist.
+        """
+        best = None
+        best_army = GATHER_MIN_ARMY
+        for r in range(obs.H):
+            for c in range(obs.W):
+                if (r, c) == rally or obs.owner_grid[r][c] != 1 or (r, c) in hold:
+                    continue
+                if obs.army_grid[r][c] > best_army:
+                    best_army = obs.army_grid[r][c]
+                    best = (r, c)
+        if best is None:
+            return None
+        d = _first_step(obs, best, {rally})
+        if d is None:
+            return None
+        return (0, best[0], best[1], d, 0)
+
+    def _scout_targets(self, obs, general):
+        """Where to push when the enemy general is still hidden.
+
+        Targeting the *nearest* enemy cell (what earlier generations did) just
+        nibbles the shared border: we take a frontier cell, the next nearest
+        enemy cell is one step away, and the attack never penetrates far enough
+        to reveal anything. Their general sits behind their territory, so aim
+        at the fog on the far side of it instead — the unseen cells adjacent to
+        enemy land. That pushes the search inwards where the general actually is.
+        """
+        fog_behind = set()
+        for (er, ec) in self.seen_enemy:
+            for dr, dc in DIRECTIONS:
+                nr, nc = er + dr, ec + dc
+                if not (0 <= nr < obs.H and 0 <= nc < obs.W):
+                    continue
+                if obs.type_grid[nr][nc] == 0:
+                    fog_behind.add((nr, nc))
+        if fog_behind:
+            return fog_behind
+        # No enemy contact yet: sweep the far half of the board, where the
+        # 14-cell minimum separation says their general has to be.
+        return self._fog_targets(obs, general)
+
+    def _fog_targets(self, obs, general):
+        """Fog cells to explore, biased away from our own general.
+
+        The rules put the two generals at least 14 cells apart, so the far side
+        of the board is where theirs is — scouting our own doorstep is wasted.
+        """
+        fog = [(r, c) for r in range(obs.H) for c in range(obs.W)
+               if obs.type_grid[r][c] == 0]
+        if not fog or general is None:
+            return set(fog)
+        far = max(abs(r - general[0]) + abs(c - general[1]) for r, c in fog)
+        cutoff = max(1, int(far * 0.6))
+        return {(r, c) for r, c in fog
+                if abs(r - general[0]) + abs(c - general[1]) >= cutoff}
+
+    def _is_safe(self, r, c, enemies):
+        return not any(abs(er - r) + abs(ec - c) <= BUILD_SAFE_DISTANCE
+                       for er, ec in enemies)
+
+    def _find_build(self, obs, structures, enemies):
+        """Cheapest affordable, safe castle site, or None.
+
+        Only cells we own and that are plain (type 1) are buildable — the
+        engine rejects builds on our general or an existing castle.
+        """
+        best = None
+        best_cost = None
+        for r in range(obs.H):
+            for c in range(obs.W):
+                if obs.owner_grid[r][c] != 1 or obs.type_grid[r][c] != 1:
+                    continue
+                army = obs.army_grid[r][c]
+                # Cheap reject before the per-structure cost loop.
+                if army < BASE_COST + BUILD_RESERVE:
+                    continue
+                if not self._is_safe(r, c, enemies):
+                    continue
+                cost = self._build_cost(r, c, structures)
+                if army < cost + BUILD_RESERVE:
+                    continue
+                if best_cost is None or cost < best_cost:
+                    best_cost = cost
+                    best = (2, r, c, 0, 0)
+        return best
+
+    def _stage_from_structures(self, obs, structures, enemies):
+        """Step a structure's savings onto an adjacent cell we can build on.
+
+        Structures can't be built on, so their savings have to walk one cell
+        out first; `_find_build` cashes them in on the following turn. Every
+        structure saves, not just the general — a castle earns at the same
+        +1-per-even-tick rate, so each one we own becomes another builder and
+        the economy compounds instead of being throttled by a single tile.
+        """
+        best = None
+        best_cost = None
+        for sr, sc in structures:
+            army = obs.army_grid[sr][sc]
+            if army - 1 < BASE_COST + BUILD_RESERVE:
+                continue
+            for d, (dr, dc) in enumerate(DIRECTIONS):
+                nr, nc = sr + dr, sc + dc
+                if not (0 <= nr < obs.H and 0 <= nc < obs.W):
+                    continue
+                # Must already be ours and plain, so the whole stack arrives intact.
+                if obs.owner_grid[nr][nc] != 1 or obs.type_grid[nr][nc] != 1:
+                    continue
+                if not self._is_safe(nr, nc, enemies):
+                    continue
+                cost = self._build_cost(nr, nc, structures)
+                # -1 for the army that stays on the source.
+                if army - 1 < cost + BUILD_RESERVE:
+                    continue
+                if best_cost is None or cost < best_cost:
+                    best_cost = cost
+                    best = (0, sr, sc, d, 0)
+        return best
+
+    def act(self, obs):
+        structures, enemies, general, fog = self._survey(obs)
+        castles = len(structures) - (1 if general is not None else 0)
+        # Once we know where to hit and the clock is past the halfway mark,
+        # economy stops earning its keep — every turn should go into the strike.
+        massing = self.enemy_general is not None and obs.turn >= GATHER_FROM_TURN
+        building = (obs.turn < LAST_BUILD_TURN and castles < MAX_CASTLES
+                    and not massing)
+
+        # Nothing else matters if we are about to lose the general.
+        block = self._defend(obs, general, enemies)
+        if block is not None:
+            return block
+
+        if building:
+            # A stack is already sitting on a buildable cell — cash it in.
+            build = self._find_build(obs, structures, enemies)
+            if build is not None:
+                return build
+            # Otherwise walk a structure's savings out to a cell we can build on.
+            stage = self._stage_from_structures(obs, structures, enemies)
+            if stage is not None:
+                return stage
+
+        # While saving up, keep the expander's hands off every structure so the
+        # savings actually accumulate. A structure is released once it holds
+        # more than any castle could cost, so one with no buildable neighbour
+        # doesn't hoard forever.
+        hold = set()
+        if building:
+            hold = {(r, c) for (r, c) in structures
+                    if obs.army_grid[r][c] <= HOLD_CEILING}
+
+        # Builds and staging are occasional events; every other turn goes to
+        # the attack rather than to more aimless expansion. Piles of army only
+        # matter if something walks them onto the enemy general.
+        attack = self._attack_move(obs, hold, general)
+        if attack is not None:
+            return attack
+
+        move = self._expander_move(obs, hold)
+        if move is PASS and hold:
+            # Holding everything left us with nothing to do — spend instead.
+            move = self._expander_move(obs, set())
+        return move
+
+    def _expander_move(self, obs, hold):
+        """The original expander policy. `hold` is a set of cells to leave alone."""
+        best_score = -1.0
+        best_move = None
+        first_valid = None
+
+        # Scan every cell on the board. The expander only ever moves armies
+        # *out* of cells it already owns, so we can skip everything else.
+        for r in range(obs.H):
+            for c in range(obs.W):
+                if obs.owner_grid[r][c] != 1:
+                    continue
+                if (r, c) in hold:
+                    continue
+                src_army = obs.army_grid[r][c]
+                # Need at least 2 armies: one always stays behind on the source.
+                if src_army <= 1:
+                    continue
+
+                # Try each of the four neighbor cells.
+                for d, (dr, dc) in enumerate(DIRECTIONS):
+                    nr, nc = r + dr, c + dc
+                    if not (0 <= nr < obs.H and 0 <= nc < obs.W):
+                        continue
+                    if not _is_passable(obs.type_grid[nr][nc]):
+                        continue
+
+                    move = (0, r, c, d, 0)
+                    # Remember any legal move as a fallback (used when no
+                    # cell has enough army to actually capture anything).
+                    if first_valid is None:
+                        first_valid = move
+
+                    dest_owner = obs.owner_grid[nr][nc]
+                    dest_army = obs.army_grid[nr][nc]
+                    # To capture, we need strictly more army than what's there
+                    # (since one must stay on the source).
+                    if src_army <= dest_army + 1:
+                        continue
+
+                    # Expansion = claiming new visible territory (vs reinforcing
+                    # one of our own cells).
+                    is_opp = dest_owner == 2
+                    dest_type = obs.type_grid[nr][nc]
+                    is_visible_neutral = (dest_owner == 0) and dest_type not in (0, 5)
+                    is_expansion = is_opp or is_visible_neutral
+
+                    # Bigger army = stronger move. Expansion is much more
+                    # valuable than reinforcing; capturing the opponent
+                    # specifically is worth double again.
+                    score = float(src_army)
+                    if is_expansion:
+                        score *= 10.0
+                    if is_opp:
+                        score *= 2.0
+
+                    if score > best_score:
+                        best_score = score
+                        best_move = move
+
+        # Prefer the best capture; else any legal move; else pass.
+        if best_move is not None:
+            return best_move
+        if first_valid is not None:
+            return first_valid
+        return PASS
