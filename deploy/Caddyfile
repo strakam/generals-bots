@@ -1,0 +1,30 @@
+# Caddy in front of matchup3: automatic Let's Encrypt TLS + reverse proxy.
+#
+#   sudo apt install caddy
+#   sudo cp deploy/Caddyfile /etc/caddy/Caddyfile     # edit the domain first
+#   sudo systemctl reload caddy
+#
+# Point an A record at the VPS before reloading — Caddy provisions the
+# certificate on first request and needs the name to resolve.
+#
+# HTTPS matters even for a personal tool: if you ever host the frontend
+# elsewhere (Vercel), a page on https:// cannot call a plain http:// backend —
+# browsers block it as mixed content.
+
+generals.example.com {
+	encode zstd gzip
+
+	# matchup3 serves both the page and /api/* from the same origin, so a
+	# single proxy covers everything and no CORS config is needed.
+	reverse_proxy 127.0.0.1:8080 {
+		# The client polls ~10x/second; keep buffering out of the way.
+		flush_interval -1
+	}
+}
+
+# If you serve the frontend from Vercel instead, expose only the API here and
+# start matchup3 with --cors https://yourapp.vercel.app :
+#
+# api.generals.example.com {
+# 	reverse_proxy 127.0.0.1:8080
+# }

@@ -1,0 +1,38 @@
+# systemd unit for the human-vs-bot server.
+#
+#   sudo cp deploy/matchup3.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now matchup3
+#   journalctl -u matchup3 -f
+#
+# Edit User/WorkingDirectory/ExecStart to match where you cloned the repo.
+# Bind to 127.0.0.1 when Caddy terminates TLS in front (recommended); use
+# 0.0.0.0 only if you are exposing the port directly.
+
+[Unit]
+Description=generals matchup3 (human vs bot)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/generals-bots
+Environment=PYTHONUNBUFFERED=1
+# JAX spawns a thread pool per process; this is a single low-traffic game loop,
+# so cap it to keep a small VPS responsive.
+Environment=XLA_FLAGS=--xla_force_host_platform_device_count=1
+ExecStart=/home/ubuntu/generals-bots/.venv/bin/python competition/matchup3.py \
+          --host 127.0.0.1 --port 8080
+Restart=on-failure
+RestartSec=3
+
+# The bot agents are subprocesses this service spawns, so it needs to be able
+# to fork; everything else can be locked down.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+
+[Install]
+WantedBy=multi-user.target
