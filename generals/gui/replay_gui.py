@@ -36,6 +36,7 @@ class ReplayGUI:
         show_tile_types: bool = False,
         mode: GuiMode = GuiMode.TRAIN,
         start_paused: bool = False,
+        cell_size: int | None = None,
     ):
         """
         Initialize the GUI.
@@ -49,6 +50,8 @@ class ReplayGUI:
             mode: GuiMode.TRAIN for live stepping; GuiMode.REPLAY for an interactive
                 scrubable replay (pause, frame stepping — see `tick`).
             start_paused: Start paused (useful in REPLAY mode).
+            cell_size: Pixels per board cell. Default None auto-fits the board
+                to the desktop (never larger than the standard 50px cell).
         """
         self.agent_ids = agent_ids or ["Player 0", "Player 1"]
         # The rendering adapters key every per-player dict (ownership, generals,
@@ -66,8 +69,14 @@ class ReplayGUI:
             self.agent_ids[0]: {"color": colors[0]},
             self.agent_ids[1]: {"color": colors[1]},
         }
-        self._gui = FullGUI(self._adapter, agent_data, mode=mode, show_tile_types=show_tile_types)
+        self._gui = FullGUI(self._adapter, agent_data, mode=mode,
+                            show_tile_types=show_tile_types, cell_size=cell_size)
         self._gui.properties.paused = start_paused
+
+    @property
+    def cell_size(self) -> int:
+        """Pixels per board cell actually in use (after any auto-fit)."""
+        return self._gui.properties.square_size
 
     @property
     def paused(self) -> bool:

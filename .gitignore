@@ -176,3 +176,7 @@ competition/agents/*/target/
 # local research artifacts
 figures/
 uv.lock
+
+# Match recordings and bulk-run output (regenerate with arena.py --save-dir)
+replays/
+*.rpl

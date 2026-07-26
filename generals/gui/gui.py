@@ -21,6 +21,7 @@ class GUI:
         mode: GuiMode = GuiMode.TRAIN,
         speed_multiplier: float = 1.0,
         show_tile_types: bool = False,
+        cell_size: int | None = None,
     ):
         pygame.init()
         pygame.display.set_caption("Generals")
@@ -28,7 +29,8 @@ class GUI:
         # OS key-repeat off; the replay loop polls held keys for hold-to-run.
         pygame.key.set_repeat()
 
-        self.properties = Properties(game, agent_data, mode, speed_multiplier)
+        self.properties = Properties(game, agent_data, mode, speed_multiplier,
+                                     cell_size=cell_size)
         self.properties.show_tile_types = show_tile_types
         self.__renderer = Renderer(self.properties)
         self.__event_handler = EventHandler.from_mode(self.properties.mode, self.properties)

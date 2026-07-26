@@ -49,6 +49,12 @@ class Renderer:
         self.display_grid_height = self.properties.display_grid_height
         self.right_panel_width = self.properties.right_panel_width
 
+        # Board cells may be shrunk to fit the screen; everything drawn inside a
+        # cell (icons, army counts) scales with them. The right panel keeps its
+        # own fixed sizing so the scoreboard stays readable.
+        self.square_size = self.properties.square_size
+        tile_scale = self.square_size / Dimension.SQUARE_SIZE.value
+
         ############
         # Surfaces #
         ############
@@ -60,6 +66,9 @@ class Renderer:
         self._font = pygame.font.Font(Path.FONT_PATH, self.properties.font_size)
         self._debug_font = pygame.font.Font(Path.FONT_PATH, 10)  # Smaller font for debug
         self._controls_font = pygame.font.Font(Path.FONT_PATH, 14)  # replay control legend
+        # Army counts live inside a cell, so they follow the cell size.
+        self._tile_font = pygame.font.Font(
+            Path.FONT_PATH, max(7, round(self.properties.font_size * tile_scale)))
 
         # Size the Player (name) column to the widest agent name so names never
         # overflow the cell; Army/Land follow at the standard cell width. The
@@ -89,14 +98,22 @@ class Renderer:
         # Game area and tiles
         self.game_area = pygame.Surface((self.display_grid_width, self.display_grid_height))
         self.tiles = [
-            [pygame.Surface((Dimension.SQUARE_SIZE.value, Dimension.SQUARE_SIZE.value)) for _ in range(self.grid_width)]
+            [pygame.Surface((self.square_size, self.square_size)) for _ in range(self.grid_width)]
             for _ in range(self.grid_height)
         ]
 
         # Load pre-scaled images (crownie, citie, mountainie are already the right size)
-        self._mountain_img = pygame.image.load(str(Path.MOUNTAIN_PATH), "png").convert_alpha()
-        self._general_img = pygame.image.load(str(Path.GENERAL_PATH), "png").convert_alpha()
-        self._castle_img = pygame.image.load(Path.CASTLE_PATH, "png").convert_alpha()
+        def _fit(img: pygame.Surface) -> pygame.Surface:
+            """Shrink a cell icon along with the cell it is drawn in."""
+            if tile_scale >= 1.0:
+                return img
+            w, h = img.get_size()
+            return pygame.transform.smoothscale(
+                img, (max(1, round(w * tile_scale)), max(1, round(h * tile_scale))))
+
+        self._mountain_img = _fit(pygame.image.load(str(Path.MOUNTAIN_PATH), "png").convert_alpha())
+        self._general_img = _fit(pygame.image.load(str(Path.GENERAL_PATH), "png").convert_alpha())
+        self._castle_img = _fit(pygame.image.load(Path.CASTLE_PATH, "png").convert_alpha())
         # Dimmed mountain for terrain that is only remembered under fog of war
         self._fog_mountain_img = self._mountain_img.copy()
         self._fog_mountain_img.set_alpha(110)
@@ -115,6 +132,7 @@ class Renderer:
         fg_color: Color = BLACK,
         bg_color: Color = WHITE,
         shadow: bool = False,
+        font: pygame.font.Font | None = None,
     ):
         """
         Draw a text in the middle of the cell with given foreground and background colors
@@ -126,14 +144,17 @@ class Renderer:
             bg_color: background color of the cell
             shadow: draw a 1px black drop shadow under the text (keeps light
                 text readable on light tiles)
+            font: override font; board cells pass the cell-scaled font so army
+                counts shrink with the tiles
         """
         center = (cell.get_width() // 2, cell.get_height() // 2)
+        font = font or self._font
 
-        text_surface = self._font.render(text, True, fg_color)
+        text_surface = font.render(text, True, fg_color)
         if bg_color:
             cell.fill(bg_color)
         if shadow:
-            shadow_surface = self._font.render(text, True, BLACK)
+            shadow_surface = font.render(text, True, BLACK)
             cell.blit(shadow_surface, shadow_surface.get_rect(center=(center[0] + 1, center[1] + 1)))
         cell.blit(text_surface, text_surface.get_rect(center=center))
 
@@ -317,6 +338,7 @@ class Renderer:
                 fg_color=WHITE,
                 bg_color=None,  # Transparent background
                 shadow=True,
+                font=self._tile_font,
             )
 
         # Draw tile type debug labels if enabled
@@ -324,7 +346,7 @@ class Renderer:
             self.draw_tile_types()
 
         # Blit tiles to the self.game_area
-        square_size = Dimension.SQUARE_SIZE.value
+        square_size = self.square_size
         for i, j in np.ndindex(self.grid_height, self.grid_width):
             self.game_area.blit(self.tiles[i][j], (j * square_size, i * square_size))
         self.screen.blit(self.game_area, (0, 0))
@@ -339,7 +361,7 @@ class Renderer:
         """
         Draw background and borders (left and top) for grid tiles of a given channel
         """
-        square_size = Dimension.SQUARE_SIZE.value
+        square_size = self.square_size
         # Grid lines in a darker shade of the fill, softer than pure black
         border = shade(color, GRID_LINE_SHADE)
         for i, j in self.channel_to_indices(channel):
@@ -351,7 +373,7 @@ class Renderer:
         """
         Draw images on grid tiles of a given channel
         """
-        square_size = Dimension.SQUARE_SIZE.value
+        square_size = self.square_size
         # Center the image in the cell
         img_width, img_height = image.get_size()
         x_offset = (square_size - img_width) // 2
@@ -364,7 +386,7 @@ class Renderer:
         Draw tile type labels in the upper-right corner of each tile.
         Types: 0=empty, -2=mountain, 1=general0, 2=general1, 40-50=castle
         """
-        square_size = Dimension.SQUARE_SIZE.value
+        square_size = self.square_size
         channels = self.game.channels
         agents = self.game.agents
 
