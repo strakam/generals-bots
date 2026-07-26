@@ -5,9 +5,9 @@ Rules:
     The pass field value 2 keeps the (2, 5) action shape, so existing agents,
     replays and the stdio protocol are unaffected (they never emit 2).
   - Cost: 35 + sum over your existing structures (your general + every castle
-    you own) of max(0, 16 - 2 * manhattan_distance(cell, structure)). Building
+    you own) of max(0, 14 - 2 * manhattan_distance(cell, structure)). Building
     in fresh territory costs 35; crowding your own structures gets expensive
-    (adjacent to your general: 49). Structures 8+ cells away add nothing.
+    (adjacent to your general: 47). Structures 7+ cells away add nothing.
     Enemy structures never affect your price; a captured castle counts as
     yours from then on. Prices are dynamic — every castle you gain raises
     them nearby — so costs are computed from the live state each step.
@@ -32,8 +32,8 @@ from generals.core import game
 
 BUILD = 2            # action pass-field value meaning "build at (row, col)"
 BASE_COST = 35
-PROXIMITY_PENALTY = 16   # surcharge at distance 0, fading by...
-PROXIMITY_DECAY = 2      # ...this much per manhattan step (zero from d=8)
+PROXIMITY_PENALTY = 14   # surcharge at distance 0, fading by...
+PROXIMITY_DECAY = 2      # ...this much per manhattan step (zero from d=7)
 _RADIUS = (PROXIMITY_PENALTY - 1) // PROXIMITY_DECAY  # farthest d with a surcharge
 
 
@@ -45,9 +45,9 @@ def strip_neutral_castles(grid: jnp.ndarray) -> jnp.ndarray:
 def build_cost_grid(state: game.GameState, player_idx: int) -> jnp.ndarray:
     """(H, W) castle price per cell for `player_idx`, from the live state.
 
-    35 everywhere, plus max(0, 16 - 2d) for each own structure at manhattan
+    35 everywhere, plus max(0, 14 - 2d) for each own structure at manhattan
     distance d. Computed as a sum of shifted copies of the structure mask —
-    the surcharge kernel only spans d <= _RADIUS, so this is ~110 cheap adds.
+    the surcharge kernel only spans d <= _RADIUS, so this is ~85 cheap adds.
     """
     H, W = state.armies.shape
     own = state.ownership[player_idx]

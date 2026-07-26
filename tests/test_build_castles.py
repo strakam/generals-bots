@@ -45,17 +45,17 @@ def actions_of(a0, a1=PASS):
 
 
 def test_cost_grid_base_and_general_proximity():
-    # Only structure: P0 general at (0,0). cost = 35 + max(0, 16 - 2d).
+    # Only structure: P0 general at (0,0). cost = 35 + max(0, 14 - 2d).
     state = game.create_initial_state(make_grid(10))
     costs = bc.build_cost_grid(state, 0)
-    assert int(costs[0, 1]) == 49  # d=1
-    assert int(costs[1, 1]) == 47  # d=2
-    assert int(costs[0, 3]) == 45  # d=3
-    assert int(costs[2, 2]) == 43  # d=4
-    assert int(costs[0, 5]) == 41  # d=5
-    assert int(costs[3, 3]) == 39  # d=6
-    assert int(costs[0, 7]) == 37  # d=7: the last distance that costs extra
-    assert int(costs[4, 4]) == 35  # d=8: surcharge gone
+    assert int(costs[0, 1]) == 47  # d=1
+    assert int(costs[1, 1]) == 45  # d=2
+    assert int(costs[0, 3]) == 43  # d=3
+    assert int(costs[2, 2]) == 41  # d=4
+    assert int(costs[0, 5]) == 39  # d=5
+    assert int(costs[3, 3]) == 37  # d=6: the last distance that costs extra
+    assert int(costs[0, 7]) == 35  # d=7: surcharge gone
+    assert int(costs[4, 4]) == 35  # d=8
     assert int(costs[9, 9]) == 35  # far away
 
 
@@ -64,10 +64,10 @@ def test_cost_grid_sums_over_own_structures():
     state = give_castle(state, 0, (0, 4))
     state = give_castle(state, 0, (4, 0))
     costs = bc.build_cost_grid(state, 0)
-    # (0,2): general d=2 (+12), castle(0,4) d=2 (+12), castle(4,0) d=6 (+4).
-    assert int(costs[0, 2]) == 35 + 12 + 12 + 4
-    # (2,2): general d=4 (+8), both castles d=4 (+8 each).
-    assert int(costs[2, 2]) == 35 + 8 + 8 + 8
+    # (0,2): general d=2 (+10), castle(0,4) d=2 (+10), castle(4,0) d=6 (+2).
+    assert int(costs[0, 2]) == 35 + 10 + 10 + 2
+    # (2,2): general d=4 (+6), both castles d=4 (+6 each).
+    assert int(costs[2, 2]) == 35 + 6 + 6 + 6
     # (9,9): everything is far.
     assert int(costs[9, 9]) == 35
 
@@ -91,7 +91,7 @@ def test_captured_castle_raises_your_prices():
         ownership=state.ownership.at[1, 4, 4].set(False).at[0, 4, 4].set(True))
     after = int(bc.build_cost_grid(state, 0)[4, 5])
     assert before == 35
-    assert after == 49  # d=1 from the newly owned castle
+    assert after == 47  # d=1 from the newly owned castle
 
 
 # ------------------------------------------------------------------- builds
@@ -102,13 +102,13 @@ def test_build_pays_cost_and_keeps_remainder():
     new_state, info = bc.step(state, actions_of(build_action(0, 1)))
 
     assert bool(new_state.castles[0, 1])
-    assert int(new_state.armies[0, 1]) == 60 - 49  # next to the general
+    assert int(new_state.armies[0, 1]) == 60 - 47  # next to the general
     assert bool(new_state.ownership[0, 0, 1])
     assert int(new_state.winner) == -1
 
 
 def test_build_with_exact_cost_leaves_zero_army_snipeable():
-    state = give_cell(game.create_initial_state(make_grid(8)), 0, (0, 1), 49)
+    state = give_cell(game.create_initial_state(make_grid(8)), 0, (0, 1), 47)
     state = give_cell(state, 1, (0, 2), 2)
 
     state, _ = bc.step(state, actions_of(build_action(0, 1)))
@@ -124,15 +124,14 @@ def test_build_with_exact_cost_leaves_zero_army_snipeable():
 
 
 def test_build_rejected_when_army_insufficient():
-    state = give_cell(game.create_initial_state(make_grid(8)), 0, (0, 1), 48)
+    state = give_cell(game.create_initial_state(make_grid(8)), 0, (0, 1), 46)
     new_state, _ = bc.step(state, actions_of(build_action(0, 1)))
     assert not bool(new_state.castles[0, 1])
-    assert int(new_state.armies[0, 1]) == 48
+    assert int(new_state.armies[0, 1]) == 46
 
 
 def test_build_costs_base_price_away_from_structures():
-    # (4,4) is d=8 from the general — the first distance with no surcharge at
-    # all, so exactly 35.
+    # (4,4) is d=8 from the general, past the d>=7 free distance, so exactly 35.
     state = give_cell(game.create_initial_state(make_grid(8)), 0, (4, 4), 35)
     new_state, _ = bc.step(state, actions_of(build_action(4, 4)))
     assert bool(new_state.castles[4, 4])
@@ -140,20 +139,20 @@ def test_build_costs_base_price_away_from_structures():
 
 
 def test_prices_rise_as_you_build():
-    # First castle at (0,1) makes (0,3) pricier: 35 + general d=3 (+10) + castle d=2 (+12).
+    # First castle at (0,1) makes (0,3) pricier: 35 + general d=3 (+8) + castle d=2 (+10).
     state = game.create_initial_state(make_grid(8))
-    state = give_cell(state, 0, (0, 1), 49)
-    state = give_cell(state, 0, (0, 3), 56)
+    state = give_cell(state, 0, (0, 1), 47)
+    state = give_cell(state, 0, (0, 3), 52)
     state, _ = bc.step(state, actions_of(build_action(0, 1)))
     assert bool(state.castles[0, 1])
 
     short_state, _ = bc.step(state, actions_of(build_action(0, 3)))
-    assert not bool(short_state.castles[0, 3])  # 56 < 57 now
+    assert not bool(short_state.castles[0, 3])  # 52 < 53 now
 
-    state = state._replace(armies=state.armies.at[0, 3].set(57))
+    state = state._replace(armies=state.armies.at[0, 3].set(53))
     state, _ = bc.step(state, actions_of(build_action(0, 3)))
     assert bool(state.castles[0, 3])
-    # Paid 57 exactly, then time hit 2 (even tick) and the new castle produced.
+    # Paid 53 exactly, then time hit 2 (even tick) and the new castle produced.
     assert int(state.armies[0, 3]) == 1
 
 
@@ -207,8 +206,8 @@ def test_both_players_build_same_turn():
     new_state, _ = bc.step(state, actions_of(build_action(0, 1), build_action(7, 6)))
     assert bool(new_state.castles[0, 1])
     assert bool(new_state.castles[7, 6])
-    assert int(new_state.armies[0, 1]) == 60 - 49
-    assert int(new_state.armies[7, 6]) == 60 - 49
+    assert int(new_state.armies[0, 1]) == 60 - 47
+    assert int(new_state.armies[7, 6]) == 60 - 47
 
 
 # ------------------------------------------- interaction with the base game
@@ -229,15 +228,15 @@ def test_non_build_actions_match_base_step_exactly():
 def test_built_castle_produces_like_a_castle():
     state = give_cell(game.create_initial_state(make_grid(8)), 0, (0, 1), 60)
     state, _ = bc.step(state, actions_of(build_action(0, 1)))  # time 0 -> 1
-    assert int(state.armies[0, 1]) == 11
+    assert int(state.armies[0, 1]) == 13
 
     passes = actions_of(PASS)
     state, _ = bc.step(state, passes)  # time -> 2 (even: +1)
-    assert int(state.armies[0, 1]) == 12
+    assert int(state.armies[0, 1]) == 14
     state, _ = bc.step(state, passes)  # time -> 3 (odd: nothing)
-    assert int(state.armies[0, 1]) == 12
+    assert int(state.armies[0, 1]) == 14
     state, _ = bc.step(state, passes)  # time -> 4 (even: +1)
-    assert int(state.armies[0, 1]) == 13
+    assert int(state.armies[0, 1]) == 15
 
 
 # --------------------------------------------------------------- env wiring
@@ -262,7 +261,7 @@ def test_env_step_applies_build():
     pool, state = env.reset(key)
 
     gi, gj = (int(x) for x in state.general_positions[0])
-    # Give P0 a buildable cell next to its general (cost 49 there).
+    # Give P0 a buildable cell next to its general (cost 47 there).
     ti, tj = (gi + 1) % 8, gj
     state = give_cell(state, 0, (ti, tj), 80)
 
@@ -278,10 +277,10 @@ def test_full_game_with_builder_policy_runs():
     built = False
 
     for _ in range(200):
-        if not built and int(state.armies[0, 0]) > 56:
+        if not built and int(state.armies[0, 0]) > 54:
             a0 = jnp.array([0, 0, 0, 3, 0], dtype=jnp.int32)  # move the stack RIGHT onto (0,1)
         elif (not built and bool(state.ownership[0][build_site])
-              and int(state.armies[build_site]) >= 49):
+              and int(state.armies[build_site]) >= 47):
             a0 = build_action(*build_site)
         else:
             a0 = PASS
