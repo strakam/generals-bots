@@ -43,7 +43,7 @@ def give(state, player, ij, army):
 def test_competition_mode_builds_castles():
     """A funded build under --mode competition must actually build."""
     transition = matchup.make_transition(GeneralsEnv(mode="competition"))
-    # (5,5) is 10 steps from P0's general, past the d>=5 proximity surcharge,
+    # (5,5) is 10 steps from P0's general, past the d>=8 proximity surcharge,
     # so the price is the base 35.
     state = give(open_board(), 0, (5, 5), 60)
 
