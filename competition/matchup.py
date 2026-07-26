@@ -5,7 +5,8 @@ For each turn the runner:
   1. computes both observations from the env
   2. writes each observation frame to the corresponding subprocess's stdin
   3. reads one action line back from each subprocess's stdout
-  4. steps the env with both actions
+  4. steps the game with both actions, through whatever modifiers the ruleset
+     switches on (see make_transition)
 
 Each agent is a `run.sh` script (or compiled equivalent) speaking the
 protocol in `competition/protocol.py`. The convention is to keep agents
@@ -28,6 +29,10 @@ import jax.random as jrandom
 
 from generals import GeneralsEnv
 from generals.core import game
+from generals.core.game import create_initial_state
+from generals.core.grid import generate_grid
+from generals.modifiers import build_castles as _bc
+from generals.modifiers import deathtouch as _dt
 from protocol import (
     decode_action,
     encode_handshake,
@@ -93,6 +98,58 @@ def close_agent(proc: subprocess.Popen) -> None:
         proc.wait()
 
 
+def make_board(env, seed):
+    """Build ONE starting board for `env` from `seed`.
+
+    env.reset() would generate a 10k-state training pool, and env.init_state()
+    always hands back a square max_grid_size board padded to pad_to — for the
+    "competition" ruleset that is a 22x22 shape the evaluator never plays. Under
+    a variable-size ruleset, draw each side independently, as the evaluator does.
+    """
+    key = jrandom.PRNGKey(seed)
+    if env._fixed_dims is not None:
+        return env.init_state(key)
+
+    kd, kg = jrandom.split(key)
+    lo, hi = env.min_grid_size, env.max_grid_size
+    h = int(jrandom.randint(kd, (), lo, hi + 1))
+    w = int(jrandom.randint(jrandom.fold_in(kd, 1), (), lo, hi + 1))
+    grid = generate_grid(
+        kg, grid_dims=(h, w),
+        mountain_density_range=env.mountain_density_range,
+        num_castles_range=env.num_castles_range,
+        # the ruleset's pool-wide floor scaled to the drawn board, as the
+        # evaluator does; generate_grid pads bottom/right for pooling, so the
+        # slice below trims it back to the exact rectangle.
+        min_generals_distance=round(0.8 * min(h, w)),
+        castle_val_range=env.castle_val_range,
+    )[:h, :w]
+    if env.build_castles:
+        # nothing neutral to capture — every castle in the game gets built
+        grid = _bc.strip_neutral_castles(grid)
+    return create_initial_state(grid.astype(jnp.int32))
+
+
+def make_transition(env):
+    """Return the env's per-turn transition: ruleset modifiers + the base step.
+
+    `game.step` is only the base game. The modifiers a ruleset switches on are
+    applied *around* it, and skipping them silently changes the rules rather
+    than erroring: `game.step` tests `pass == 1`, so a build action
+    ([2, row, col, ...]) falls through to a plain move and marches the army out
+    of the cell instead of building, and no deathtouch ever fires. This is the
+    same composition env.step() performs, minus its vectorised-training pool.
+    """
+    def transition(state, actions):
+        if env.build_castles:
+            # builds resolve first and come back rewritten as passes
+            state, actions = _bc.apply_build_actions(state, actions)
+        if env.deathtouch_turn is not None:
+            return _dt.step(state, actions, env.deathtouch_turn)
+        return game.step(state, actions)
+    return transition
+
+
 def replay(states_log, infos_log, agent_ids, fps):
     """Open an interactive replay of a recorded match.
 
@@ -154,13 +211,13 @@ def main():
     # Observation mode comes from the env so a --mode preset controls it.
     get_obs = game.get_full_observation if env.perfect_info else game.get_observation
 
-    # Drive the per-turn transition with the already-jitted game.step directly.
-    # env.step() wraps it with vectorised-training machinery (auto-reset from a
-    # 10k-state pool) that a single stdio match neither needs nor wants — and that
-    # eager pool indexing is what made the loop slow. init_state builds one board.
-    key = jrandom.PRNGKey(args.seed)
-    state = env.init_state(key)
-    H = W = env.pad_to
+    # One board, and a turn loop that drives the jitted transition directly.
+    # env.reset()/env.step() wrap it in vectorised-training machinery (auto-reset
+    # from a 10k-state pool) that a single stdio match neither needs nor wants —
+    # that eager pool indexing is what made the loop slow. What env.step() does
+    # that we must keep doing ourselves is apply the ruleset modifiers.
+    state = make_board(env, args.seed)
+    H, W = (int(d) for d in state.armies.shape)
 
     # With --gui we record every frame during a full-speed (headless) match,
     # then open an interactive replay afterwards. Recording the whole game first
@@ -169,11 +226,15 @@ def main():
     states_log = [state] if record else None
     infos_log = [game.get_info(state)] if record else None
 
+    labels = [a0_path.parent.name, a1_path.parent.name]
     agents = [
-        spawn_agent(a0_path, 0, H, W, a0_path.parent.name),
-        spawn_agent(a1_path, 1, H, W, a1_path.parent.name),
+        spawn_agent(a0_path, 0, H, W, labels[0]),
+        spawn_agent(a1_path, 1, H, W, labels[1]),
     ]
 
+    transition = make_transition(env)
+    built = [0, 0]
+    prev_castles = state.castles
     winner = -1
     turn = 0
     try:
@@ -185,8 +246,22 @@ def main():
             a_1 = ask_agent(agents[1], obs_1)
 
             actions = jnp.stack([a_0, a_1])
-            state, info = game.step(state, actions)
+            state, info = transition(state, actions)
             turn += 1
+
+            # Castles only exist mid-game under build-castles, and a build that
+            # was priced out is consumed as a pass — so report the ones that
+            # land, or a bot saving up for a castle has no way to tell whether
+            # its build was accepted.
+            if env.build_castles:
+                born = state.castles & ~prev_castles
+                if bool(born.any()):
+                    for pid in (0, 1):
+                        for r, c in zip(*jnp.where(born & state.ownership[pid])):
+                            built[pid] += 1
+                            print(f"[matchup] turn {turn}: player {pid} ({labels[pid]}) "
+                                  f"built a castle at ({int(r)}, {int(c)})", file=sys.stderr)
+                    prev_castles = state.castles
 
             if record:
                 states_log.append(state)
@@ -203,10 +278,12 @@ def main():
         print(f"[matchup] turn {turn}: player {winner} captured the enemy general")
     else:
         print(f"[matchup] turn {turn}: truncated at {env.truncation} turns (draw)")
+    if env.build_castles:
+        print(f"[matchup] castles built: {built[0]} ({labels[0]}) "
+              f"vs {built[1]} ({labels[1]})")
 
     if record:
-        replay(states_log, infos_log,
-               agent_ids=[a0_path.parent.name, a1_path.parent.name], fps=args.fps)
+        replay(states_log, infos_log, agent_ids=labels, fps=args.fps)
 
 
 if __name__ == "__main__":
