@@ -156,4 +156,4 @@ def test_competition_preset_pins_the_format():
     assert env.perfect_info is False  # fog of war, like the original generals.io
     # rectangular maps: sides drawn in [18, 21], pool padded to 22
     assert env._fixed_dims is None
-    assert (env.min_grid_size, env.max_grid_size, env.pad_to) == (18, 21, 22)
+    assert (env.min_grid_size, env.max_grid_size, env.pad_to) == (18, 21, 21)

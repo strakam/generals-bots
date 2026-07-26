@@ -63,7 +63,10 @@ _MODE_PRESETS = {
         # generates every combo padded to pad_to.)
         min_grid_size=18,
         max_grid_size=21,
-        pad_to=22,
+        # 21, not 22: the evaluator plays exact 18-21 rectangles, so a policy
+        # trained on the pool should never see a row/column that no graded
+        # board can have. Smaller boards are still mountain-padded up to 21.
+        pad_to=21,
         truncation=1200,
         perfect_info=False,             # fog of war, like the original generals.io
         mountain_density_range=(0.24, 0.26),
