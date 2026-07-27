@@ -289,7 +289,7 @@ def global_update(state: GameState) -> GameState:
 
 
 def _determine_move_order(state: GameState, actions: jnp.ndarray) -> int:
-    """Determine which player moves first (chasing > reinforcing > bigger army)."""
+    """Determine which player moves first (chasing > reinforcing > smaller army)."""
     pass_0, row_0, col_0, dir_0, _ = actions[0]
     pass_1, row_1, col_1, dir_1, _ = actions[1]
 
@@ -314,7 +314,11 @@ def _determine_move_order(state: GameState, actions: jnp.ndarray) -> int:
     tie_on_chase = p0_chasing == p1_chasing
     p1_wins_by_reinforce = tie_on_chase & p1_reinforcing & ~p0_reinforcing
     tie_on_reinforce = p0_reinforcing == p1_reinforcing
-    p1_wins_by_army = tie_on_chase & tie_on_reinforce & (army_1 > army_0)
+    # Smaller army first: on a contested cell the bigger force resolves last and
+    # ends up holding it (larger-first let the smaller force snipe a neutral
+    # castle the bigger one had just paid for), and a deathtouch head-on clash
+    # goes to the attacker, keeping the endgame a forced finish.
+    p1_wins_by_army = tie_on_chase & tie_on_reinforce & (army_1 < army_0)
 
     p1_goes_first = p1_wins_by_chase | p1_wins_by_reinforce | p1_wins_by_army | only_p0_passes
 

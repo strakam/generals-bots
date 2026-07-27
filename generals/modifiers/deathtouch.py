@@ -5,14 +5,19 @@ The touch condition deliberately reuses the base engine's own semantics
 instead of inventing new ones:
 
   - Moves resolve one after the other in game.step's order (chasing >
-    reinforcing > larger army — see game._determine_move_order). A "touch" is
+    reinforcing > smaller army — see game._determine_move_order). A "touch" is
     a move that is VALID at its own slot in that order (same validity test as
     game._execute_move) and whose destination is the opponent's general tile.
-  - That gives the defense its teeth: a counter-move onto the attacker's
-    SOURCE tile is a chase, so it goes first. Capture the source outright and
-    the touch never executes (its source is no longer the attacker's).
-    Leave the source with 2+ army — at least one unit still moves — and the
-    touch executes anyway: attacker wins.
+  - That gives the defense its teeth: a counter-move from a THIRD tile onto
+    the attacker's SOURCE is a pure chase, so it goes first. Capture the
+    source outright and the touch never executes (its source is no longer the
+    attacker's). Leave the source with 2+ army — at least one unit still
+    moves — and the touch executes anyway: attacker wins.
+  - The general launching its OWN army at the attacker's source is no
+    defense: that head-on is a mutual chase, so the tie falls to the smaller
+    army — and either the attacker moves first and touches, or the general's
+    counter moves first but is too small to strip the source. Only an exactly
+    equal army (seat-order tie) can survive that way.
   - Both players touching on the same turn is a DRAW: reported like a
     truncation draw (info.is_done with winner -1).
   - A normal general capture at/after the threshold is itself a touch, so the
