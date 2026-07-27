@@ -43,6 +43,11 @@ owns). The stdio wire protocol and reference bots in Python/C++/Rust live in
 python competition/matchup.py --mode competition
 ```
 
+The competition sandbox's exact Python library versions are pinned in
+[`competition/requirements.txt`](competition/requirements.txt) — install them
+to make your local environment match the one your submitted bot runs in
+([full environment docs](https://generals.bot/docs#environment)).
+
 
 ## 📦 Installation
 

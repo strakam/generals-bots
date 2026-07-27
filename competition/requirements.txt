@@ -1,0 +1,22 @@
+# Exact Python library versions of the competition sandbox (CPython 3.12),
+# verified against the live evaluation image on 2026-07-27.
+# Full environment docs: https://generals.bot/docs#environment
+#
+# Make your local environment match what your submitted bot runs against:
+#
+#     pip install -r competition/requirements.txt
+#
+# The sandbox runs the CPU build of torch (matches have no GPU). To match it
+# bit-for-bit on Linux, install torch separately from the CPU index first:
+#
+#     pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
+numpy==2.4.6
+scipy==1.18.0
+pandas==3.0.5
+scikit-learn==1.9.0
+torch==2.13.0
+jax==0.11.0
+numba==0.66.0
+networkx==3.6.1
+safetensors==0.8.0
+gymnasium==1.3.0
