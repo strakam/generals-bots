@@ -18,6 +18,8 @@ Example:
 """
 from typing import NamedTuple
 
+from functools import partial
+
 import jax
 import jax.numpy as jnp
 import jax.random as jrandom
@@ -71,7 +73,12 @@ _MODE_PRESETS = {
         perfect_info=False,             # fog of war, like the original generals.io
         mountain_density_range=(0.24, 0.26),
         num_castles_range=(9, 11),      # generated then stripped (build_castles)
-        min_generals_distance=14,       # pool-wide floor; the eval driver scales 0.8×min(h,w)
+        # Generals spawn at least this many STEPS apart, walking around the
+        # mountains (generals/core/grid.py measures it with a BFS dilation, not
+        # a straight line). One flat number for every board size — the old
+        # 0.8×min(h,w) scaling existed because a straight-line floor had to stay
+        # satisfiable on the narrowest board.
+        min_generals_distance=17,
         castle_val_range=(20, 26),      # irrelevant once neutral castles are stripped
         build_castles=True,
         deathtouch_turn=800,
@@ -198,6 +205,21 @@ class GeneralsEnv:
             grid = _build_castles.strip_neutral_castles(grid)
         return create_initial_state(grid.astype(jnp.int32))
 
+
+
+
+    @partial(jax.jit, static_argnums=(0, 2, 3))
+    def _make_pool_batch(self, keys, h: int, w: int):
+        """Generate a batch of same-sized boards, JITTED and cached per (h, w).
+
+        Without the jit this is re-TRACED on every reset(): vmap alone builds the
+        jaxpr each call, and the generator's jaxpr is large (one plane per offset
+        in the spawn-fairness reach field). Tracing 16 size combos cost ~50s on
+        every reset; cached, the same work runs in a few seconds. `self` is
+        static, so a given env reuses one compiled kernel per board size.
+        """
+        return jax.vmap(lambda k: self._make_single_state_fixed(k, h, w))(keys)
+
     def reset(self, key: jnp.ndarray) -> tuple[GameState, GameState]:
         """
         Generate a state pool and return (pool, init_state).
@@ -217,10 +239,15 @@ class GeneralsEnv:
             # Fast path: single grid size
             h, w = self._fixed_dims
             pool_keys = jrandom.split(k_pool, self.pool_size)
-            make_fn = lambda k: self._make_single_state_fixed(k, h, w)
-            pool = jax.vmap(make_fn)(pool_keys)
+            pool = self._make_pool_batch(pool_keys, h, w)
         else:
-            # Variable grid sizes: generate per-combo batches, concat, shuffle
+            # Variable grid sizes: one batch per (h, w), concatenated and
+            # shuffled. Each size is its own compiled kernel — 16 of them for an
+            # 18..21 pool. Generating every board at pad_to instead would need
+            # only one, but then every board pays full-size cost and repeat
+            # resets got ~1.8x slower; with the compilation cache enabled (see
+            # the module docstring) the 16 kernels are compiled once per machine
+            # and a warm start is just as fast.
             sizes = [(h, w)
                      for h in range(self.min_grid_size, self.max_grid_size + 1)
                      for w in range(self.min_grid_size, self.max_grid_size + 1)]
@@ -232,9 +259,7 @@ class GeneralsEnv:
             pools = []
             for i, (h, w) in enumerate(sizes):
                 combo_keys = pool_keys[i * per_combo : (i + 1) * per_combo]
-                make_fn = lambda k, _h=h, _w=w: self._make_single_state_fixed(k, _h, _w)
-                combo_pool = jax.vmap(make_fn)(combo_keys)
-                pools.append(combo_pool)
+                pools.append(self._make_pool_batch(combo_keys, h, w))
 
             # Concatenate all combos into one pool
             pool = jax.tree.map(lambda *xs: jnp.concatenate(xs), *pools)

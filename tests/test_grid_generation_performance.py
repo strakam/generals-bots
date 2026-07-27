@@ -6,7 +6,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from generals.core.grid import generate_grid, manhattan_distance_from
+from generals.core.grid import bfs_distance_field, generate_grid, manhattan_distance_from
 
 
 def test_grid_generation_no_crash():
@@ -56,7 +56,13 @@ def test_100_percent_validity():
 
 
 def test_generals_distance():
-    """Test that generals are appropriately spaced."""
+    """Generals are spaced by WALKING distance, which is what the rule promises.
+
+    The straight-line gap is deliberately NOT bounded: a pair separated by a
+    ridge is far apart to play even when it looks close on the map, and the
+    generator now admits exactly those boards. Manhattan is printed alongside so
+    the gap between the two measures stays visible.
+    """
     print("\n=== Testing Generals Distance ===")
 
     num_grids = 100
@@ -64,7 +70,7 @@ def test_generals_distance():
     keys = jax.random.split(key, num_grids)
 
     min_generals_distance = 17
-    distances = []
+    walking, straight = [], []
 
     for k in keys:
         grid = generate_grid(k)
@@ -72,16 +78,19 @@ def test_generals_distance():
         # Find general positions (in the unpadded portion)
         g1_pos = jnp.argwhere(grid == 1, size=1)[0]
         g2_pos = jnp.argwhere(grid == 2, size=1)[0]
+        a = (int(g1_pos[0]), int(g1_pos[1]))
+        b = (int(g2_pos[0]), int(g2_pos[1]))
 
-        distance = abs(int(g1_pos[0]) - int(g2_pos[0])) + abs(int(g1_pos[1]) - int(g2_pos[1]))
-        distances.append(distance)
+        # only mountains block — the same rule game.create_initial_state uses
+        walking.append(int(bfs_distance_field(grid != -2, a)[b]))
+        straight.append(abs(a[0] - b[0]) + abs(a[1] - b[1]))
 
     print(f"\nGeneral distance statistics from {num_grids} grids:")
-    print(f"  Mean: {np.mean(distances):.1f}")
-    print(f"  Min: {np.min(distances)}")
-    print(f"  Max: {np.max(distances)}")
+    print(f"  Walking  — mean {np.mean(walking):.1f}, min {np.min(walking)}, max {np.max(walking)}")
+    print(f"  Straight — mean {np.mean(straight):.1f}, min {np.min(straight)}, max {np.max(straight)}")
 
-    assert np.min(distances) >= min_generals_distance, f"Min distance {np.min(distances)} < {min_generals_distance}"
+    assert np.min(walking) >= min_generals_distance, \
+        f"Min walking distance {np.min(walking)} < {min_generals_distance}"
 
 
 def test_grid_properties():

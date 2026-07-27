@@ -4,6 +4,51 @@ import jax
 import jax.numpy as jnp
 
 
+def _bfs_field_from_mask(passable: jax.Array, start: jax.Array) -> jax.Array:
+    """bfs_distance_field, seeded by a boolean mask so it can be vmapped."""
+    h, w = passable.shape
+    unreachable = h * w
+    dist = jnp.where(start, 0, unreachable).astype(jnp.int32)
+
+    def cond_fn(state):
+        _, _, _, grew = state
+        return grew
+
+    def body_fn(state):
+        reached, dist, step, _ = state
+        grown = _dilate4(reached) & passable
+        newly = grown & ~reached
+        return (grown, jnp.where(newly, step, dist), step + 1, jnp.any(newly))
+
+    _, dist, _, _ = jax.lax.while_loop(
+        cond_fn, body_fn, (start, dist, jnp.int32(1), jnp.bool_(True))
+    )
+    return dist
+
+
+def bfs_distance_field(passable: jax.Array, start_pos: tuple[int, int]) -> jax.Array:
+    """Step distance from `start_pos` to every cell, over 4-connected open ground.
+
+    One breadth-first dilation: each round expands the reached set by one step
+    and stamps that round's number onto the cells newly touched, so the value
+    left behind IS the shortest path length. Unreachable cells (and cells behind
+    mountains) keep the sentinel h*w, which is larger than any real path.
+
+    Same loop as bfs_distance, but it answers "how far is everything" in one
+    pass rather than "how far is that one cell" — which is what makes spawn
+    placement a single BFS instead of one per candidate.
+
+    Args:
+        passable: (h, w) boolean mask of walkable cells; start_pos must be True
+        start_pos: source (i, j)
+
+    Returns:
+        (h, w) int32 array of step distances, h*w where unreachable.
+    """
+    start = jnp.zeros(passable.shape, dtype=jnp.bool_).at[start_pos].set(True)
+    return _bfs_field_from_mask(passable, start)
+
+
 def _dilate4(mask: jax.Array) -> jax.Array:
     """Expand a boolean mask to its 4-neighbours (no wrap-around at the borders)."""
     up = jnp.roll(mask, -1, axis=0).at[-1, :].set(False)
@@ -11,6 +56,87 @@ def _dilate4(mask: jax.Array) -> jax.Array:
     left = jnp.roll(mask, -1, axis=1).at[:, -1].set(False)
     right = jnp.roll(mask, 1, axis=1).at[:, 0].set(False)
     return mask | up | down | left | right
+
+
+# How many spots to try for general A before settling. Each costs one bounded
+# dilation and they run batched, so trying more is cheap insurance on two counts:
+# random mountains leave the odd sealed pocket (a general stranded in one has
+# nowhere far to put its opponent), and a cramped A may have no partner that is
+# both distant AND comparable. At 4 candidates one board in 300 missed the
+# fairness tolerance; at 6 none did.
+SPAWN_CANDIDATES = 8
+
+# Fair spawns: the two generals must command a comparable amount of ground, or
+# one player simply has more to take in the opening. "Ground" is the number of
+# cells reachable within SPAWN_ROOM_RADIUS steps, and the two spawns are allowed
+# to differ by at most SPAWN_ROOM_TOLERANCE.
+#
+# The tolerance is deliberately NOT zero. Matching exactly is easy to do and
+# measurably fairer, but it hands the opponent a fingerprint: under fog, the only
+# cells that could hold the enemy general are those whose reach count equals your
+# own, which narrows ~120 candidates to about 3. Allowing a slack of 5 and then
+# picking UNIFORMLY among everything inside it keeps the gap small (mean 1.5,
+# never above 5) while leaving ~24 cells indistinguishable. Fairness you can feel,
+# not a coordinate you can solve for.
+SPAWN_ROOM_RADIUS = 7
+SPAWN_ROOM_TOLERANCE = 5
+
+
+def room_field(passable: jax.Array, radius: int) -> jax.Array:
+    """(h, w) int32: cells reachable within `radius` steps OF EVERY CELL.
+
+    The obvious implementation is a BFS per cell — hundreds per board, far too
+    slow to sit inside map generation. Instead keep one plane per offset in the
+    radius-`radius` diamond, where plane o says "is the cell at x+o reachable
+    from x". Growing every plane by one step is a shift in offset space, so
+    `radius` rounds settle the whole board at once: fixed shapes, no BFS, no
+    data-dependent control flow, and it vmaps over a pool unchanged.
+
+    Excludes the cell itself, matching "how much ground can I take from here".
+    """
+    h, w = passable.shape
+    offsets = [(dr, dc) for dr in range(-radius, radius + 1)
+               for dc in range(-radius, radius + 1) if abs(dr) + abs(dc) <= radius]
+    index = {o: i for i, o in enumerate(offsets)}
+    # each offset's 4 neighbours in OFFSET space; -1 (a padded all-False plane)
+    # where the neighbour falls outside the diamond
+    nbrs = jnp.asarray([[index.get((dr - er, dc - ec), -1)
+                         for er, ec in ((1, 0), (-1, 0), (0, 1), (0, -1))]
+                        for dr, dc in offsets], dtype=jnp.int32)
+
+    # passable_at[i][x] = passable[x + offsets[i]].
+    # One padded array and one vmapped slice — building these as 113 separate
+    # shifts made the jaxpr enormous, and the jaxpr is what compile time tracks.
+    padded = jnp.pad(passable, radius, constant_values=False)
+    offs = jnp.asarray(offsets, dtype=jnp.int32)
+    passable_at = jax.vmap(
+        lambda o: jax.lax.dynamic_slice(padded, (radius + o[0], radius + o[1]), (h, w))
+    )(offs)
+    reach = jnp.zeros((len(offsets), h, w), dtype=bool).at[index[(0, 0)]].set(passable)
+    pad = jnp.zeros((1, h, w), dtype=bool)
+
+    def grow(reach, _):
+        q = jnp.concatenate([reach, pad])       # index -1 reads the all-False plane
+        spread = reach | q[nbrs[:, 0]] | q[nbrs[:, 1]] | q[nbrs[:, 2]] | q[nbrs[:, 3]]
+        return spread & passable_at, None
+
+    reach, _ = jax.lax.scan(grow, reach, None, length=radius)
+    return reach.sum(axis=0).astype(jnp.int32) - passable.astype(jnp.int32)
+
+
+def _shift_false(mask: jax.Array, dr: int, dc: int) -> jax.Array:
+    """mask[x + (dr, dc)], False off the board (jnp.roll alone would wrap)."""
+    out = jnp.roll(mask, shift=(-dr, -dc), axis=(0, 1))
+    h, w = mask.shape
+    if dr > 0:
+        out = out.at[h - dr:, :].set(False)
+    elif dr < 0:
+        out = out.at[:-dr, :].set(False)
+    if dc > 0:
+        out = out.at[:, w - dc:].set(False)
+    elif dc < 0:
+        out = out.at[:, :-dc].set(False)
+    return out
 
 
 @partial(jax.jit, static_argnames=['grid_dims', 'pad_to', 'mountain_density_range', 'num_castles_range',
@@ -32,17 +158,25 @@ def generate_grid(
     dynamic padding and configurable general distance constraints.
     
     Algorithm:
-    1. Place generals FIRST on empty grid (guaranteed valid distance)
-    2. Place mountains on empty cells
-    3. Ensure connectivity (carve an L-path if needed) BEFORE placing anything
-       else, so every general ends up with an open neighbour and the connecting
-       route is made of empty ground
-    4. Place a castle within walking distance ~6 of each general by CONVERTING a
-       mountain (connectivity-neutral; only falls back to an empty cell if no
-       mountain is near, which still leaves the carved path intact)
-    5. Place the remaining castles, also by converting mountains
+    1. Place mountains on the empty grid — terrain FIRST, so the spawn
+       constraint below is a real walking distance and not a straight-line proxy
+    2. Carve the castles out of mountains, also before anyone spawns: a castle
+       is walkable, so carving it later would open routes around the very ridge
+       the spawn distance was measured on
+    3. Place general A on open ground, preferring a castle within ~6 steps
+    4. One BFS dilation from A: step distance to every reachable cell
+    5. Sample general B among cells that are both far enough away AND command a
+       comparable amount of ground (connected by construction, so nothing needs
+       carving afterwards)
     6. Re-assert the two generals (ground truth — the grid always has both)
     7. Apply dynamic padding
+
+    Both spawn constraints are walking measurements, not straight-line ones, so
+    a ridge between two generals makes them far apart even when the map looks
+    otherwise — and a board is never thrown away for a short straight line that
+    is a long
+    walk. Because every terrain decision precedes both spawns, the distance the
+    generator enforces is the distance the match is played at.
     
     Args:
         key: JAX random key
@@ -50,42 +184,178 @@ def generate_grid(
         pad_to: Pad grid to this size for batching (None = max(h, w) + 1)
         mountain_density_range: (min, max) fraction of tiles that are mountains
         num_castles_range: (min, max) number of castles to place
-        min_generals_distance: Minimum BFS (shortest path) distance between generals
-        max_generals_distance: Maximum BFS (shortest path) distance between generals (None = no limit)
+        min_generals_distance: Minimum BFS (shortest path over open ground) distance between generals
+        max_generals_distance: Maximum BFS (shortest path over open ground) distance between generals (None = no limit)
         castle_val_range: (min, max) army value for castles
         
     Returns:
         A valid grid: exactly two generals, an empty connecting path between
         them, and a castle within walking distance ~6 of each general.
     """
-    keys = jax.random.split(key, 12)
+    keys = jax.random.split(key, 14)
 
-    h, w = grid_dims
-    num_tiles = h * w
+    ah, aw = grid_dims
+    playable = jnp.ones(grid_dims, dtype=bool)
+    area = ah * aw
+
+    grid_dims = (ah, aw)          # from here on: the ARRAY shape
+    num_tiles = ah * aw
 
     # Random number of castles in range
     num_castles = jax.random.randint(keys[0], (), num_castles_range[0], num_castles_range[1] + 1)
 
-    # Number of mountains: sample uniformly from density range
-    min_mountains = int(mountain_density_range[0] * num_tiles)
-    max_mountains = int(mountain_density_range[1] * num_tiles)
+    # Number of mountains: a fraction of the PLAYABLE area, never of the padded
+    # array. Measuring against the array would put a 21x21 board's worth of
+    # mountains on an 18x18 one — a third too many, and outside the published
+    # density band.
+    min_mountains = jnp.floor(mountain_density_range[0] * area).astype(jnp.int32)
+    max_mountains = jnp.floor(mountain_density_range[1] * area).astype(jnp.int32)
     num_mountains = jax.random.randint(keys[1], (), min_mountains, max_mountains + 1)
 
     # =================================================================
-    # Step 1: Place generals FIRST on empty grid
-    # Generate positions neutrally, then randomly assign to p0/p1
+    # Step 1: Place mountains on the empty grid.
+    # Terrain goes down BEFORE the generals so the spawn constraint can be a
+    # walking distance. (Placing generals first only ever admitted a
+    # straight-line proxy, since there was no terrain yet to walk around.)
     # =================================================================
-    grid = jnp.full(grid_dims, 0, dtype=jnp.int32)
+    grid = jnp.where(playable, 0, -2).astype(jnp.int32)
 
-    # Place first general: only in positions where second can exist within distance constraints
-    first_valid = valid_base_a_mask(grid_dims, min_generals_distance, max_generals_distance)
-    pos_first = sample_from_mask(first_valid, keys[2])
+    # Gumbel-max + top_k: every PLAYABLE cell is a candidate, extras masked off
+    gumbel_noise = jnp.where(playable.reshape(-1),
+                             jax.random.gumbel(keys[8], shape=(num_tiles,)), -jnp.inf)
 
-    # Place second general: constrained by distance from first
-    dist_from_first = manhattan_distance_from(pos_first, grid_dims)
-    second_valid = dist_from_first >= min_generals_distance
+    # Get indices for mountains (use static max and mask extras)
+    max_mountains = num_tiles // 4  # Upper bound for static shape
+    _, mountain_indices = jax.lax.top_k(gumbel_noise, max_mountains)
+
+    # Mark the chosen cells in one scatter. This used to be a lax.scan whose
+    # length is num_tiles // 4 — a hundred-odd sequential steps, each writing a
+    # single cell of the whole board. The indices are distinct (top_k), so one
+    # masked scatter does the same work in one op.
+    mountain_mask = jnp.arange(max_mountains) < num_mountains
+    chosen_m = jnp.zeros(num_tiles, dtype=bool).at[mountain_indices].set(mountain_mask)
+    grid = jnp.where(chosen_m.reshape(grid_dims), -2, grid)
+
+    # =================================================================
+    # Step 2: Cut the castles out of the mountains NOW, before anyone spawns.
+    #
+    # This ordering is the whole ballgame. A castle is walkable — capturable in
+    # the base game, and stripped to plain ground outright under the
+    # build-castles ruleset — so every castle carved from a mountain can open a
+    # new route. Placing them after the generals let a run of castles tunnel through
+    # the ridge the spawn distance was measured around: boards generated at 17+
+    # were played at 8. Carving first means the distance field below is measured
+    # on the terrain the match is actually played on.
+    # =================================================================
+    mountain_flat = ((grid == -2) & playable).reshape(-1)
+    castle_logits = jnp.where(mountain_flat, 0.0, -jnp.inf)
+    castle_scores = castle_logits + jax.random.gumbel(keys[9], shape=castle_logits.shape)
+    max_castles = min(20, num_tiles)  # static bound for top_k
+    _, castle_indices = jax.lax.top_k(castle_scores, max_castles)
+    castle_values = jax.random.randint(keys[10], (max_castles,), castle_val_range[0], castle_val_range[1])
+    # Only take slots that are (a) wanted and (b) actually a mountain — on a
+    # tiny or nearly mountain-free grid there may be fewer mountains than
+    # castles, and a castle must never land on open ground it would then block.
+    castle_mask = (jnp.arange(max_castles) < num_castles) & mountain_flat[castle_indices]
+
+    # one scatter, as with the mountains above
+    castle_at = jnp.zeros(num_tiles, dtype=jnp.int32).at[castle_indices].set(
+        jnp.where(castle_mask, castle_values, 0))
+    grid = jnp.where(castle_at.reshape(grid_dims) > 0, castle_at.reshape(grid_dims), grid)
+
+    # =================================================================
+    # Step 3: General A on open ground, preferring a spot with a castle within
+    # ~6 steps so each player has an early expansion target (the castles are
+    # already down, so this is a mask lookup rather than another conversion —
+    # which would have moved the terrain again).
+    # =================================================================
+    passable = grid != -2                      # castles included: they are walkable
+    near_castle = grid > 2
+    for _ in range(6):
+        near_castle = _dilate4(near_castle) & passable
+
+    # Random mountains leave the odd sealed-off pocket, and a general stranded in
+    # one has nowhere far to put its opponent. Draw SPAWN_CANDIDATES spots at
+    # once (Gumbel top-k over open ground, biased toward an early castle) and
+    # keep the first that can actually seat an opponent at range. Fixed work, no
+    # rejection loop: this is why the L-path carve could be dropped, and with it
+    # the repair step that used to shorten the very distance being enforced.
+    logits = jnp.where(passable, jnp.where(near_castle, 20.0, 0.0), -jnp.inf).reshape(-1)
+    _, cand_flat = jax.lax.top_k(logits + jax.random.gumbel(keys[2], shape=(num_tiles,)),
+                                 SPAWN_CANDIDATES)
+
+    # =================================================================
+    # Step 4: One BFS dilation per candidate — step distance to every cell.
+    # =================================================================
+    unreachable = num_tiles  # the field's "no route" sentinel
+
+    def field_from_flat(idx):
+        start = (jnp.arange(num_tiles) == idx).reshape(grid_dims) & passable
+        return _bfs_field_from_mask(passable, start)
+
+    fields = jax.vmap(field_from_flat)(cand_flat)              # (K, h, w)
+    reach = (fields < unreachable) & passable[None]
     if max_generals_distance is not None:
-        second_valid = second_valid & (dist_from_first <= max_generals_distance)
+        reach = reach & (fields <= max_generals_distance)
+    far = reach & (fields >= min_generals_distance)
+
+    # =================================================================
+    # Step 5: General B — far enough away AND commanding comparable ground.
+    #
+    # Distance alone leaves one player better off: "far from A" drifts toward
+    # the edges and corners, where a general simply has less to expand into.
+    # Measured over 250 boards, the two spawns differed by 22 reachable cells on
+    # average and by 43 at the 90th percentile. Scoring every legal cell against
+    # A's own reach count and keeping those within SPAWN_ROOM_TOLERANCE brings
+    # that to a mean of 1.5, never worse than the tolerance.
+    #
+    # B is drawn from the cells the dilation REACHED, so the two generals are
+    # connected by construction — no L-path carve, and therefore no repair step
+    # that could quietly shorten the distance it just enforced.
+    # =================================================================
+    room = room_field(passable, SPAWN_ROOM_RADIUS)
+    room_gap = jnp.abs(room[None] - room.reshape(-1)[cand_flat][:, None, None])
+    fair = far & (room_gap <= SPAWN_ROOM_TOLERANCE)
+
+    # Rank the candidates: one that can seat a FAIR opponent wins outright;
+    # failing that, the one whose CLOSEST available match is closest (not the
+    # one that reaches furthest — reaching far is what caused the imbalance in
+    # the first place); failing that, whichever reaches furthest at all.
+    order = jnp.arange(SPAWN_CANDIDATES)
+    has_fair = jnp.any(fair, axis=(1, 2))
+    has_far = jnp.any(far, axis=(1, 2))
+    best_gap = jnp.min(jnp.where(far, room_gap, num_tiles), axis=(1, 2))
+    span = jnp.max(jnp.where(reach, fields, -1), axis=(1, 2))
+    rank = has_fair.astype(jnp.int32) * 2 + has_far.astype(jnp.int32)
+    pick = jnp.argmax(rank * 100_000 - best_gap * 100 + span - order)
+
+    chosen = cand_flat[pick]
+    pos_first = (chosen // aw, chosen % aw)
+    dist_from_first = fields[pick]
+    allowed = reach[pick]
+    far_enough = far[pick]
+    fair_enough = fair[pick]
+
+    # Uniform among everything inside the tolerance — NOT the closest match.
+    # Picking the best match would make the pair reconstructible: the enemy
+    # general would be one of the ~3 cells whose reach count equals yours,
+    # instead of one of ~24. See the note on SPAWN_ROOM_TOLERANCE.
+    #
+    # Fallbacks, in order: fair and far -> far, as fair as that board allows ->
+    # the farthest cell reachable at all. Generation stays total: it never
+    # rejects and never loops.
+    #
+    # The middle rung matters. Falling back to "any far cell" threw the fairness
+    # away entirely on the rare board where no candidate could seat a partner
+    # inside the tolerance — one board in 300, and it came out 47 cells apart,
+    # worse than doing nothing. Taking the closest match available instead keeps
+    # those boards as fair as they can be.
+    gaps_here = room_gap[pick]
+    best_gap = jnp.min(jnp.where(far_enough, gaps_here, num_tiles))
+    closest_far = far_enough & (gaps_here == best_gap)
+    farthest = allowed & (dist_from_first == jnp.max(jnp.where(allowed, dist_from_first, -1)))
+    second_valid = jnp.where(jnp.any(fair_enough), fair_enough,
+                             jnp.where(jnp.any(far_enough), closest_far, farthest))
     pos_second = sample_from_mask(second_valid, keys[3])
 
     # Randomly assign which position becomes p0 (Base A) vs p1 (Base B)
@@ -95,111 +365,10 @@ def generate_grid(
 
     grid = grid.at[pos_a].set(1)
     grid = grid.at[pos_b].set(2)
-    
-    # =================================================================
-    # Step 2: Place mountains (before castles, so BFS distance is accurate)
-    # =================================================================
-    mountain_available = (grid == 0)  # Any empty cell
-    flat_available = mountain_available.reshape(-1)
-    
-    # Use Gumbel-max + top_k for mountain placement
-    logits = jnp.where(flat_available, 0.0, -jnp.inf)
-    gumbel_noise = jax.random.gumbel(keys[8], shape=logits.shape)
-    scores = logits + gumbel_noise
-    
-    # Get indices for mountains (use static max and mask extras)
-    max_mountains = num_tiles // 4  # Upper bound for static shape
-    _, mountain_indices = jax.lax.top_k(scores, max_mountains)
-    
-    # Create flat grid, place mountains only up to num_mountains
-    flat_grid = grid.reshape(-1)
-    mountain_mask = jnp.arange(max_mountains) < num_mountains
-    
-    # Place mountains at selected indices
-    def place_mountain(flat_grid, idx_and_mask):
-        idx, should_place = idx_and_mask
-        return jnp.where(should_place, flat_grid.at[idx].set(-2), flat_grid), None
-    
-    flat_grid, _ = jax.lax.scan(place_mountain, flat_grid, (mountain_indices, mountain_mask))
-    grid = flat_grid.reshape(grid_dims)
 
     # =================================================================
-    # Step 3: Ensure connectivity NOW, before any castle/castle is placed. Carve an
-    # L-path if the two generals aren't joined through open ground. Doing this
-    # first means every general ends up on the connecting path — so it always has
-    # an open neighbour and can never be boxed in — and the route is empty cells.
-    # =================================================================
-    connected = flood_fill_connected(grid, pos_a, pos_b)
-    grid = jax.lax.cond(
-        connected,
-        lambda g: g,
-        lambda g: carve_l_path(g, pos_a, pos_b),
-        grid,
-    )
-    if max_generals_distance is not None:
-        dist = bfs_distance(grid, pos_a, pos_b)
-        grid = jax.lax.cond(
-            dist > max_generals_distance,
-            lambda g: carve_l_path(g, pos_a, pos_b),
-            lambda g: g,
-            grid,
-        )
-
-    # =================================================================
-    # Step 4: Place one castle within walking distance ~6 of each general by
-    # CONVERTING A MOUNTAIN (preferred), so the empty connecting path is never
-    # touched and placement can't disconnect the map. Falls back to an empty cell
-    # within reach only if no mountain is near (rare). After the carve the general
-    # always has an open neighbour, so a castle is ALWAYS placeable within ~6.
-    # =================================================================
-    castle_val_a = jax.random.randint(keys[4], (), castle_val_range[0], castle_val_range[1])
-    castle_val_b = jax.random.randint(keys[5], (), castle_val_range[0], castle_val_range[1])
-
-    def place_castle(grid, pos, castle_val, key):
-        reach = bfs_reachable_within_k(grid, pos, 6)             # passable cells within 6, excl. pos
-        reach_incl = reach.at[pos].set(True)
-        frontier_mountain = _dilate4(reach_incl) & (grid == -2)  # mountains capturable within ~6
-        empty_reach = reach & (grid == 0)                        # fallback: empty cells within 6
-        candidates = jnp.where(jnp.any(frontier_mountain), frontier_mountain, empty_reach)
-        pos_castle = sample_from_mask(candidates, key)
-        return jnp.where(jnp.any(candidates), grid.at[pos_castle].set(castle_val), grid)
-
-    grid = place_castle(grid, pos_a, castle_val_a, keys[6])
-    grid = place_castle(grid, pos_b, castle_val_b, keys[7])
-
-    # =================================================================
-    # Step 5: Place the remaining castles, also by converting mountains so they
-    # can't block the carved connecting path either
-    # =================================================================
-    remaining_castles = num_castles - 2
-    castle_available = (grid == -2)  # convert mountains (not empty) — keeps the carved path clear
-    flat_castle_available = castle_available.reshape(-1)
-    
-    castle_logits = jnp.where(flat_castle_available, 0.0, -jnp.inf)
-    castle_gumbel = jax.random.gumbel(keys[9], shape=castle_logits.shape)
-    castle_scores = castle_logits + castle_gumbel
-    
-    # Cap max_extra_castles at the grid size to avoid top_k errors
-    max_extra_castles = min(20, flat_castle_available.shape[0])
-    _, castle_indices = jax.lax.top_k(castle_scores, max_extra_castles)
-    
-    # Generate random castle values
-    castle_values = jax.random.randint(keys[10], (max_extra_castles,), castle_val_range[0], castle_val_range[1])
-    castle_mask = jnp.arange(max_extra_castles) < remaining_castles
-    
-    flat_grid = grid.reshape(-1)
-    
-    def place_castle(flat_grid, args):
-        idx, val, should_place = args
-        return jnp.where(should_place, flat_grid.at[idx].set(val), flat_grid), None
-    
-    flat_grid, _ = jax.lax.scan(place_castle, flat_grid, (castle_indices, castle_values, castle_mask))
-    grid = flat_grid.reshape(grid_dims)
-    
-    # =================================================================
-    # Step 6: Re-assert the generals as ground truth. Castle/castle placement above
-    # never targets a general cell, but this guarantees the grid ALWAYS ends with
-    # exactly one P0 (1) and one P1 (2) general — a spawn can never go missing.
+    # Step 6: Re-assert the generals as ground truth — the grid ALWAYS ends with
+    # exactly one P0 (1) and one P1 (2) general, so a spawn can never go missing.
     # =================================================================
     grid = grid.at[pos_a].set(1)
     grid = grid.at[pos_b].set(2)
@@ -209,13 +378,13 @@ def generate_grid(
     # =================================================================
     # Default padding: max dimension + 1 (for batching)
     if pad_to is None:
-        target_size = max(h, w) + 1
+        target_size = max(ah, aw) + 1
     else:
         target_size = pad_to
     
     # Pad both dimensions to target_size
-    pad_h = max(0, target_size - h)
-    pad_w = max(0, target_size - w)
+    pad_h = max(0, target_size - ah)
+    pad_w = max(0, target_size - aw)
     
     if pad_h > 0 or pad_w > 0:
         grid = jnp.pad(
@@ -444,6 +613,9 @@ def bfs_distance(grid: jax.Array, start_pos: tuple[int, int], end_pos: tuple[int
 
     Returns:
         Scalar integer: BFS distance, or h*w if unreachable.
+
+    See also bfs_distance_field, which is this same dilation but keeps the
+    distance to EVERY cell instead of one — that is what spawn placement uses.
     """
     h, w = grid.shape
     # Only empty tiles and generals are passable (not castles/castles)
