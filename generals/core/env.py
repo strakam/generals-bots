@@ -206,6 +206,8 @@ class GeneralsEnv:
         return create_initial_state(grid.astype(jnp.int32))
 
 
+
+
     @partial(jax.jit, static_argnums=(0, 2, 3))
     def _make_pool_batch(self, keys, h: int, w: int):
         """Generate a batch of same-sized boards, JITTED and cached per (h, w).
@@ -239,7 +241,13 @@ class GeneralsEnv:
             pool_keys = jrandom.split(k_pool, self.pool_size)
             pool = self._make_pool_batch(pool_keys, h, w)
         else:
-            # Variable grid sizes: generate per-combo batches, concat, shuffle
+            # Variable grid sizes: one batch per (h, w), concatenated and
+            # shuffled. Each size is its own compiled kernel — 16 of them for an
+            # 18..21 pool. Generating every board at pad_to instead would need
+            # only one, but then every board pays full-size cost and repeat
+            # resets got ~1.8x slower; with the compilation cache enabled (see
+            # the module docstring) the 16 kernels are compiled once per machine
+            # and a warm start is just as fast.
             sizes = [(h, w)
                      for h in range(self.min_grid_size, self.max_grid_size + 1)
                      for w in range(self.min_grid_size, self.max_grid_size + 1)]
@@ -251,8 +259,7 @@ class GeneralsEnv:
             pools = []
             for i, (h, w) in enumerate(sizes):
                 combo_keys = pool_keys[i * per_combo : (i + 1) * per_combo]
-                combo_pool = self._make_pool_batch(combo_keys, h, w)
-                pools.append(combo_pool)
+                pools.append(self._make_pool_batch(combo_keys, h, w))
 
             # Concatenate all combos into one pool
             pool = jax.tree.map(lambda *xs: jnp.concatenate(xs), *pools)

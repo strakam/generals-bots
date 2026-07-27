@@ -64,7 +64,7 @@ def _dilate4(mask: jax.Array) -> jax.Array:
 # nowhere far to put its opponent), and a cramped A may have no partner that is
 # both distant AND comparable. At 4 candidates one board in 300 missed the
 # fairness tolerance; at 6 none did.
-SPAWN_CANDIDATES = 6
+SPAWN_CANDIDATES = 8
 
 # Fair spawns: the two generals must command a comparable amount of ground, or
 # one player simply has more to take in the opening. "Ground" is the number of
@@ -104,8 +104,14 @@ def room_field(passable: jax.Array, radius: int) -> jax.Array:
                          for er, ec in ((1, 0), (-1, 0), (0, 1), (0, -1))]
                         for dr, dc in offsets], dtype=jnp.int32)
 
-    # passable_at[i][x] = passable[x + offsets[i]]
-    passable_at = jnp.stack([_shift_false(passable, dr, dc) for dr, dc in offsets])
+    # passable_at[i][x] = passable[x + offsets[i]].
+    # One padded array and one vmapped slice — building these as 113 separate
+    # shifts made the jaxpr enormous, and the jaxpr is what compile time tracks.
+    padded = jnp.pad(passable, radius, constant_values=False)
+    offs = jnp.asarray(offsets, dtype=jnp.int32)
+    passable_at = jax.vmap(
+        lambda o: jax.lax.dynamic_slice(padded, (radius + o[0], radius + o[1]), (h, w))
+    )(offs)
     reach = jnp.zeros((len(offsets), h, w), dtype=bool).at[index[(0, 0)]].set(passable)
     pad = jnp.zeros((1, h, w), dtype=bool)
 
@@ -186,17 +192,24 @@ def generate_grid(
         A valid grid: exactly two generals, an empty connecting path between
         them, and a castle within walking distance ~6 of each general.
     """
-    keys = jax.random.split(key, 12)
+    keys = jax.random.split(key, 14)
 
-    h, w = grid_dims
-    num_tiles = h * w
+    ah, aw = grid_dims
+    playable = jnp.ones(grid_dims, dtype=bool)
+    area = ah * aw
+
+    grid_dims = (ah, aw)          # from here on: the ARRAY shape
+    num_tiles = ah * aw
 
     # Random number of castles in range
     num_castles = jax.random.randint(keys[0], (), num_castles_range[0], num_castles_range[1] + 1)
 
-    # Number of mountains: sample uniformly from density range
-    min_mountains = int(mountain_density_range[0] * num_tiles)
-    max_mountains = int(mountain_density_range[1] * num_tiles)
+    # Number of mountains: a fraction of the PLAYABLE area, never of the padded
+    # array. Measuring against the array would put a 21x21 board's worth of
+    # mountains on an 18x18 one — a third too many, and outside the published
+    # density band.
+    min_mountains = jnp.floor(mountain_density_range[0] * area).astype(jnp.int32)
+    max_mountains = jnp.floor(mountain_density_range[1] * area).astype(jnp.int32)
     num_mountains = jax.random.randint(keys[1], (), min_mountains, max_mountains + 1)
 
     # =================================================================
@@ -205,26 +218,23 @@ def generate_grid(
     # walking distance. (Placing generals first only ever admitted a
     # straight-line proxy, since there was no terrain yet to walk around.)
     # =================================================================
-    grid = jnp.full(grid_dims, 0, dtype=jnp.int32)
+    grid = jnp.where(playable, 0, -2).astype(jnp.int32)
 
-    # Gumbel-max + top_k: every cell is a candidate, extras masked off
-    gumbel_noise = jax.random.gumbel(keys[8], shape=(num_tiles,))
+    # Gumbel-max + top_k: every PLAYABLE cell is a candidate, extras masked off
+    gumbel_noise = jnp.where(playable.reshape(-1),
+                             jax.random.gumbel(keys[8], shape=(num_tiles,)), -jnp.inf)
 
     # Get indices for mountains (use static max and mask extras)
     max_mountains = num_tiles // 4  # Upper bound for static shape
     _, mountain_indices = jax.lax.top_k(gumbel_noise, max_mountains)
 
-    # Create flat grid, place mountains only up to num_mountains
-    flat_grid = grid.reshape(-1)
+    # Mark the chosen cells in one scatter. This used to be a lax.scan whose
+    # length is num_tiles // 4 — a hundred-odd sequential steps, each writing a
+    # single cell of the whole board. The indices are distinct (top_k), so one
+    # masked scatter does the same work in one op.
     mountain_mask = jnp.arange(max_mountains) < num_mountains
-
-    # Place mountains at selected indices
-    def place_mountain(flat_grid, idx_and_mask):
-        idx, should_place = idx_and_mask
-        return jnp.where(should_place, flat_grid.at[idx].set(-2), flat_grid), None
-
-    flat_grid, _ = jax.lax.scan(place_mountain, flat_grid, (mountain_indices, mountain_mask))
-    grid = flat_grid.reshape(grid_dims)
+    chosen_m = jnp.zeros(num_tiles, dtype=bool).at[mountain_indices].set(mountain_mask)
+    grid = jnp.where(chosen_m.reshape(grid_dims), -2, grid)
 
     # =================================================================
     # Step 2: Cut the castles out of the mountains NOW, before anyone spawns.
@@ -237,7 +247,7 @@ def generate_grid(
     # were played at 8. Carving first means the distance field below is measured
     # on the terrain the match is actually played on.
     # =================================================================
-    mountain_flat = (grid == -2).reshape(-1)
+    mountain_flat = ((grid == -2) & playable).reshape(-1)
     castle_logits = jnp.where(mountain_flat, 0.0, -jnp.inf)
     castle_scores = castle_logits + jax.random.gumbel(keys[9], shape=castle_logits.shape)
     max_castles = min(20, num_tiles)  # static bound for top_k
@@ -248,13 +258,10 @@ def generate_grid(
     # castles, and a castle must never land on open ground it would then block.
     castle_mask = (jnp.arange(max_castles) < num_castles) & mountain_flat[castle_indices]
 
-    def place_castle_cell(flat_grid, args):
-        idx, val, should_place = args
-        return jnp.where(should_place, flat_grid.at[idx].set(val), flat_grid), None
-
-    flat_grid, _ = jax.lax.scan(place_castle_cell, grid.reshape(-1),
-                                (castle_indices, castle_values, castle_mask))
-    grid = flat_grid.reshape(grid_dims)
+    # one scatter, as with the mountains above
+    castle_at = jnp.zeros(num_tiles, dtype=jnp.int32).at[castle_indices].set(
+        jnp.where(castle_mask, castle_values, 0))
+    grid = jnp.where(castle_at.reshape(grid_dims) > 0, castle_at.reshape(grid_dims), grid)
 
     # =================================================================
     # Step 3: General A on open ground, preferring a spot with a castle within
@@ -323,7 +330,7 @@ def generate_grid(
     pick = jnp.argmax(rank * 100_000 - best_gap * 100 + span - order)
 
     chosen = cand_flat[pick]
-    pos_first = (chosen // w, chosen % w)
+    pos_first = (chosen // aw, chosen % aw)
     dist_from_first = fields[pick]
     allowed = reach[pick]
     far_enough = far[pick]
@@ -371,13 +378,13 @@ def generate_grid(
     # =================================================================
     # Default padding: max dimension + 1 (for batching)
     if pad_to is None:
-        target_size = max(h, w) + 1
+        target_size = max(ah, aw) + 1
     else:
         target_size = pad_to
     
     # Pad both dimensions to target_size
-    pad_h = max(0, target_size - h)
-    pad_w = max(0, target_size - w)
+    pad_h = max(0, target_size - ah)
+    pad_w = max(0, target_size - aw)
     
     if pad_h > 0 or pad_w > 0:
         grid = jnp.pad(
