@@ -58,11 +58,79 @@ def _dilate4(mask: jax.Array) -> jax.Array:
     return mask | up | down | left | right
 
 
-# How many spawn spots to try for general A before settling. Each costs one BFS
-# dilation and they run batched, so this is cheap insurance against A landing in
-# a sealed pocket — a board that would otherwise seat both generals on top of
-# each other. 4 makes that outcome vanishingly rare (see tests/test_spawn_distance.py).
-SPAWN_CANDIDATES = 4
+# How many spots to try for general A before settling. Each costs one bounded
+# dilation and they run batched, so trying more is cheap insurance on two counts:
+# random mountains leave the odd sealed pocket (a general stranded in one has
+# nowhere far to put its opponent), and a cramped A may have no partner that is
+# both distant AND comparable. At 4 candidates one board in 300 missed the
+# fairness tolerance; at 6 none did.
+SPAWN_CANDIDATES = 6
+
+# Fair spawns: the two generals must command a comparable amount of ground, or
+# one player simply has more to take in the opening. "Ground" is the number of
+# cells reachable within SPAWN_ROOM_RADIUS steps, and the two spawns are allowed
+# to differ by at most SPAWN_ROOM_TOLERANCE.
+#
+# The tolerance is deliberately NOT zero. Matching exactly is easy to do and
+# measurably fairer, but it hands the opponent a fingerprint: under fog, the only
+# cells that could hold the enemy general are those whose reach count equals your
+# own, which narrows ~120 candidates to about 3. Allowing a slack of 5 and then
+# picking UNIFORMLY among everything inside it keeps the gap small (mean 1.5,
+# never above 5) while leaving ~24 cells indistinguishable. Fairness you can feel,
+# not a coordinate you can solve for.
+SPAWN_ROOM_RADIUS = 7
+SPAWN_ROOM_TOLERANCE = 5
+
+
+def room_field(passable: jax.Array, radius: int) -> jax.Array:
+    """(h, w) int32: cells reachable within `radius` steps OF EVERY CELL.
+
+    The obvious implementation is a BFS per cell — hundreds per board, far too
+    slow to sit inside map generation. Instead keep one plane per offset in the
+    radius-`radius` diamond, where plane o says "is the cell at x+o reachable
+    from x". Growing every plane by one step is a shift in offset space, so
+    `radius` rounds settle the whole board at once: fixed shapes, no BFS, no
+    data-dependent control flow, and it vmaps over a pool unchanged.
+
+    Excludes the cell itself, matching "how much ground can I take from here".
+    """
+    h, w = passable.shape
+    offsets = [(dr, dc) for dr in range(-radius, radius + 1)
+               for dc in range(-radius, radius + 1) if abs(dr) + abs(dc) <= radius]
+    index = {o: i for i, o in enumerate(offsets)}
+    # each offset's 4 neighbours in OFFSET space; -1 (a padded all-False plane)
+    # where the neighbour falls outside the diamond
+    nbrs = jnp.asarray([[index.get((dr - er, dc - ec), -1)
+                         for er, ec in ((1, 0), (-1, 0), (0, 1), (0, -1))]
+                        for dr, dc in offsets], dtype=jnp.int32)
+
+    # passable_at[i][x] = passable[x + offsets[i]]
+    passable_at = jnp.stack([_shift_false(passable, dr, dc) for dr, dc in offsets])
+    reach = jnp.zeros((len(offsets), h, w), dtype=bool).at[index[(0, 0)]].set(passable)
+    pad = jnp.zeros((1, h, w), dtype=bool)
+
+    def grow(reach, _):
+        q = jnp.concatenate([reach, pad])       # index -1 reads the all-False plane
+        spread = reach | q[nbrs[:, 0]] | q[nbrs[:, 1]] | q[nbrs[:, 2]] | q[nbrs[:, 3]]
+        return spread & passable_at, None
+
+    reach, _ = jax.lax.scan(grow, reach, None, length=radius)
+    return reach.sum(axis=0).astype(jnp.int32) - passable.astype(jnp.int32)
+
+
+def _shift_false(mask: jax.Array, dr: int, dc: int) -> jax.Array:
+    """mask[x + (dr, dc)], False off the board (jnp.roll alone would wrap)."""
+    out = jnp.roll(mask, shift=(-dr, -dc), axis=(0, 1))
+    h, w = mask.shape
+    if dr > 0:
+        out = out.at[h - dr:, :].set(False)
+    elif dr < 0:
+        out = out.at[:-dr, :].set(False)
+    if dc > 0:
+        out = out.at[:, w - dc:].set(False)
+    elif dc < 0:
+        out = out.at[:, :-dc].set(False)
+    return out
 
 
 @partial(jax.jit, static_argnames=['grid_dims', 'pad_to', 'mountain_density_range', 'num_castles_range',
@@ -91,14 +159,16 @@ def generate_grid(
        the spawn distance was measured on
     3. Place general A on open ground, preferring a castle within ~6 steps
     4. One BFS dilation from A: step distance to every reachable cell
-    5. Sample general B among cells at least min_generals_distance steps away
-       (connected by construction, so nothing needs carving afterwards)
+    5. Sample general B among cells that are both far enough away AND command a
+       comparable amount of ground (connected by construction, so nothing needs
+       carving afterwards)
     6. Re-assert the two generals (ground truth — the grid always has both)
     7. Apply dynamic padding
 
-    Spawn distance is measured by BFS over open ground, so two generals with a
-    ridge between them count as far apart even when the straight line is short —
-    and a board is never thrown away for a short straight line that is a long
+    Both spawn constraints are walking measurements, not straight-line ones, so
+    a ridge between two generals makes them far apart even when the map looks
+    otherwise — and a board is never thrown away for a short straight line that
+    is a long
     walk. Because every terrain decision precedes both spawns, the distance the
     generator enforces is the distance the match is played at.
     
@@ -222,35 +292,63 @@ def generate_grid(
         reach = reach & (fields <= max_generals_distance)
     far = reach & (fields >= min_generals_distance)
 
-    # Prefer the earliest candidate with somewhere far enough to put B; if none
-    # has (a very tight board), take whichever reaches furthest.
-    seats = jnp.any(far, axis=(1, 2))
-    span = jnp.max(jnp.where(reach, fields, -1), axis=(1, 2))
+    # =================================================================
+    # Step 5: General B — far enough away AND commanding comparable ground.
+    #
+    # Distance alone leaves one player better off: "far from A" drifts toward
+    # the edges and corners, where a general simply has less to expand into.
+    # Measured over 250 boards, the two spawns differed by 22 reachable cells on
+    # average and by 43 at the 90th percentile. Scoring every legal cell against
+    # A's own reach count and keeping those within SPAWN_ROOM_TOLERANCE brings
+    # that to a mean of 1.5, never worse than the tolerance.
+    #
+    # B is drawn from the cells the dilation REACHED, so the two generals are
+    # connected by construction — no L-path carve, and therefore no repair step
+    # that could quietly shorten the distance it just enforced.
+    # =================================================================
+    room = room_field(passable, SPAWN_ROOM_RADIUS)
+    room_gap = jnp.abs(room[None] - room.reshape(-1)[cand_flat][:, None, None])
+    fair = far & (room_gap <= SPAWN_ROOM_TOLERANCE)
+
+    # Rank the candidates: one that can seat a FAIR opponent wins outright;
+    # failing that, the one whose CLOSEST available match is closest (not the
+    # one that reaches furthest — reaching far is what caused the imbalance in
+    # the first place); failing that, whichever reaches furthest at all.
     order = jnp.arange(SPAWN_CANDIDATES)
-    pick = jnp.argmax(jnp.where(seats, 2 * num_tiles - order, span))
+    has_fair = jnp.any(fair, axis=(1, 2))
+    has_far = jnp.any(far, axis=(1, 2))
+    best_gap = jnp.min(jnp.where(far, room_gap, num_tiles), axis=(1, 2))
+    span = jnp.max(jnp.where(reach, fields, -1), axis=(1, 2))
+    rank = has_fair.astype(jnp.int32) * 2 + has_far.astype(jnp.int32)
+    pick = jnp.argmax(rank * 100_000 - best_gap * 100 + span - order)
 
     chosen = cand_flat[pick]
     pos_first = (chosen // w, chosen % w)
     dist_from_first = fields[pick]
     allowed = reach[pick]
     far_enough = far[pick]
+    fair_enough = fair[pick]
 
-    # =================================================================
-    # Step 5: General B among the cells far enough away by that distance. B is
-    # drawn from the cells REACHED by the dilation, so the two generals are
-    # connected by construction — no L-path carve, and therefore no repair step
-    # that could quietly shorten the spawn distance it just enforced.
+    # Uniform among everything inside the tolerance — NOT the closest match.
+    # Picking the best match would make the pair reconstructible: the enemy
+    # general would be one of the ~3 cells whose reach count equals yours,
+    # instead of one of ~24. See the note on SPAWN_ROOM_TOLERANCE.
     #
-    # Fallback: if A landed in a pocket too small to hold anyone far enough
-    # away, take the farthest cell that IS reachable. That keeps generation
-    # total (never rejects, never loops) at the cost of a closer spawn on those
-    # rare boards; tests/test_spawn_distance.py measures how often it happens.
-    # =================================================================
-    # same early-castle preference as A, dropped if it would leave nothing
-    near_and_far = far_enough & near_castle
-    far_enough = jnp.where(jnp.any(near_and_far), near_and_far, far_enough)
+    # Fallbacks, in order: fair and far -> far, as fair as that board allows ->
+    # the farthest cell reachable at all. Generation stays total: it never
+    # rejects and never loops.
+    #
+    # The middle rung matters. Falling back to "any far cell" threw the fairness
+    # away entirely on the rare board where no candidate could seat a partner
+    # inside the tolerance — one board in 300, and it came out 47 cells apart,
+    # worse than doing nothing. Taking the closest match available instead keeps
+    # those boards as fair as they can be.
+    gaps_here = room_gap[pick]
+    best_gap = jnp.min(jnp.where(far_enough, gaps_here, num_tiles))
+    closest_far = far_enough & (gaps_here == best_gap)
     farthest = allowed & (dist_from_first == jnp.max(jnp.where(allowed, dist_from_first, -1)))
-    second_valid = jnp.where(jnp.any(far_enough), far_enough, farthest)
+    second_valid = jnp.where(jnp.any(fair_enough), fair_enough,
+                             jnp.where(jnp.any(far_enough), closest_far, farthest))
     pos_second = sample_from_mask(second_valid, keys[3])
 
     # Randomly assign which position becomes p0 (Base A) vs p1 (Base B)

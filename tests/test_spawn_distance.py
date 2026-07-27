@@ -18,6 +18,7 @@ import numpy as np
 import pytest
 
 from generals.core.env import GeneralsEnv
+from generals.core import grid
 from generals.core.grid import bfs_distance_field, generate_grid
 from generals.modifiers import build_castles as bc
 
@@ -192,3 +193,65 @@ def test_tight_board_falls_back_instead_of_failing():
     g = np.asarray(grid)
     assert int((g == 1).sum()) == 1 and int((g == 2).sum()) == 1
     assert walk_distance(grid) is not None
+
+
+# ------------------------------------------------------------- fair spawns
+
+
+def room(passable, start, radius):
+    """Cells reachable within `radius` steps, excluding the start."""
+    d = ref_bfs(passable, start)
+    return sum(1 for cell, dist in d.items() if 0 < dist <= radius)
+
+
+def test_room_field_matches_a_plain_bfs():
+    """The vectorised whole-board reach count is exact, not an approximation."""
+    from generals.core.grid import room_field
+    for seed in range(4):
+        rng = np.random.default_rng(seed)
+        passable = rng.random((14, 16)) > 0.25
+        got = np.asarray(room_field(jnp.array(passable), grid.SPAWN_ROOM_RADIUS))
+        for r in range(passable.shape[0]):
+            for c in range(passable.shape[1]):
+                if passable[r, c]:
+                    want = room(passable, (r, c), grid.SPAWN_ROOM_RADIUS)
+                    assert got[r, c] == want, f"seed {seed} cell {(r, c)}"
+
+
+def test_spawns_command_comparable_ground():
+    """Neither general may start with meaningfully more room than the other.
+
+    Distance alone leaves one player better off — "far from A" drifts to the
+    edges, where there is less to expand into. Measured before this constraint
+    existed: a mean gap of 22 reachable cells, 43 at the 90th percentile.
+    """
+    env = GeneralsEnv(mode="competition")
+    gaps = []
+    for seed in range(120):
+        g = competition_board(env, seed, COMPETITION_MIN_DISTANCE)
+        passable = np.asarray(g) != -2
+        a, b = generals_of(g)
+        gaps.append(abs(room(passable, a, grid.SPAWN_ROOM_RADIUS)
+                        - room(passable, b, grid.SPAWN_ROOM_RADIUS)))
+    over = [x for x in gaps if x > grid.SPAWN_ROOM_TOLERANCE]
+    assert not over, f"{len(over)} boards outside the tolerance, worst {max(gaps)}"
+    assert np.mean(gaps) < grid.SPAWN_ROOM_TOLERANCE
+
+
+def test_spawn_pairing_is_not_reconstructible():
+    """The gap must VARY, or the pairing itself leaks the enemy's position.
+
+    Matching exactly is fairer still, but under fog it would mean the only cells
+    that could hold the enemy general are those whose reach count equals your
+    own — about three of them. A spread of gaps keeps that set wide.
+    """
+    env = GeneralsEnv(mode="competition")
+    gaps = []
+    for seed in range(120):
+        g = competition_board(env, seed, COMPETITION_MIN_DISTANCE)
+        passable = np.asarray(g) != -2
+        a, b = generals_of(g)
+        gaps.append(abs(room(passable, a, grid.SPAWN_ROOM_RADIUS)
+                        - room(passable, b, grid.SPAWN_ROOM_RADIUS)))
+    assert len(set(gaps)) >= 4, f"gap barely varies: {sorted(set(gaps))}"
+    assert sum(1 for x in gaps if x == 0) < len(gaps) // 2, "usually an exact match"

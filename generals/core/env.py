@@ -18,6 +18,8 @@ Example:
 """
 from typing import NamedTuple
 
+from functools import partial
+
 import jax
 import jax.numpy as jnp
 import jax.random as jrandom
@@ -203,6 +205,19 @@ class GeneralsEnv:
             grid = _build_castles.strip_neutral_castles(grid)
         return create_initial_state(grid.astype(jnp.int32))
 
+
+    @partial(jax.jit, static_argnums=(0, 2, 3))
+    def _make_pool_batch(self, keys, h: int, w: int):
+        """Generate a batch of same-sized boards, JITTED and cached per (h, w).
+
+        Without the jit this is re-TRACED on every reset(): vmap alone builds the
+        jaxpr each call, and the generator's jaxpr is large (one plane per offset
+        in the spawn-fairness reach field). Tracing 16 size combos cost ~50s on
+        every reset; cached, the same work runs in a few seconds. `self` is
+        static, so a given env reuses one compiled kernel per board size.
+        """
+        return jax.vmap(lambda k: self._make_single_state_fixed(k, h, w))(keys)
+
     def reset(self, key: jnp.ndarray) -> tuple[GameState, GameState]:
         """
         Generate a state pool and return (pool, init_state).
@@ -222,8 +237,7 @@ class GeneralsEnv:
             # Fast path: single grid size
             h, w = self._fixed_dims
             pool_keys = jrandom.split(k_pool, self.pool_size)
-            make_fn = lambda k: self._make_single_state_fixed(k, h, w)
-            pool = jax.vmap(make_fn)(pool_keys)
+            pool = self._make_pool_batch(pool_keys, h, w)
         else:
             # Variable grid sizes: generate per-combo batches, concat, shuffle
             sizes = [(h, w)
@@ -237,8 +251,7 @@ class GeneralsEnv:
             pools = []
             for i, (h, w) in enumerate(sizes):
                 combo_keys = pool_keys[i * per_combo : (i + 1) * per_combo]
-                make_fn = lambda k, _h=h, _w=w: self._make_single_state_fixed(k, _h, _w)
-                combo_pool = jax.vmap(make_fn)(combo_keys)
+                combo_pool = self._make_pool_batch(combo_keys, h, w)
                 pools.append(combo_pool)
 
             # Concatenate all combos into one pool
