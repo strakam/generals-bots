@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>generals — human vs bot</title>
+<style>
+  :root {
+    --bg: #16181d; --panel: #1e2128; --line: #2c313b; --text: #e6e8ec;
+    --dim: #98a0ae; --me: #dc4646; --opp: #4664dc; --accent: #f0c040;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+  /* Centre the board+panel as one unit and keep each column inside the
+     viewport, so the page itself never scrolls — only the panel does, and only
+     when it has to. */
+  .wrap { display: flex; gap: 16px; padding: 12px; align-items: center;
+          justify-content: center; flex-wrap: wrap; min-height: 100vh; }
+  /* The board is hidden until a match exists. A fixed-size canvas sitting there
+     empty pushes the panel below the fold on anything under ~1240px, which just
+     looks like a blank page. */
+  canvas { background: #0f1115; border-radius: 6px; touch-action: none;
+           display: none; order: 1; max-width: 100%; }
+  .side { width: 270px; flex: none; display: flex; flex-direction: column;
+          gap: 10px; max-height: calc(100vh - 24px); overflow-y: auto;
+          scrollbar-width: thin; }
+  .side.left { order: 1; }
+  canvas, .placeholder { order: 2; }
+  .side.right { order: 3; }
+  @media (max-width: 1240px) {
+    .side.left { order: 1; } .side.right { order: 2; }
+    canvas, .placeholder { order: 3; }
+  }
+  .seg { display: flex; gap: 4px; }
+  .seg button { flex: 1; font-size: 12px; padding: 5px 4px; background: #2a2f38;
+                color: var(--text); font-weight: 500; }
+  .seg button.sel { background: var(--accent); color: #1a1a1a; font-weight: 600; }
+  .card { padding: 10px 12px; }
+  .keys div { font-size: 12px; padding: 1px 0; }
+  h1 { margin: 0 0 8px; }
+  label { margin: 6px 0 2px; }
+  select, input, button { padding: 6px 9px; }
+  /* Too narrow for board + panel side by side: panel first, so the controls are
+     never the thing that scrolls off screen. */
+  @media (max-width: 1240px) {
+    canvas { order: 2; }
+    .side { order: 1; }
+  }
+  .placeholder { order: 1; flex: 1 1 320px; min-height: 220px; display: flex;
+                 align-items: center; justify-content: center; text-align: center;
+                 color: var(--dim); }
+  .card { background: var(--panel); border: 1px solid var(--line);
+          border-radius: 8px; padding: 12px; }
+  h1 { font-size: 15px; margin: 0 0 10px; letter-spacing: .02em; }
+  label { display: block; font-size: 12px; color: var(--dim); margin: 8px 0 3px; }
+  select, input, button {
+    width: 100%; padding: 7px 9px; border-radius: 6px; border: 1px solid var(--line);
+    background: #12151a; color: var(--text); font: inherit;
+  }
+  button { background: var(--accent); color: #1a1a1a; border: none; font-weight: 600;
+           cursor: pointer; }
+  button:hover { filter: brightness(1.08); }
+  button.ghost { background: #2a2f38; color: var(--text); font-weight: 500; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 3px 4px; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { color: var(--dim); font-weight: 500; font-size: 12px; }
+  .me td:first-child { color: var(--me); font-weight: 600; }
+  .opp td:first-child { color: var(--opp); font-weight: 600; }
+  kbd { background: #2a2f38; border-radius: 4px; padding: 1px 6px;
+        font: 12px ui-monospace, monospace; color: var(--accent); }
+  .keys div { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0;
+              color: var(--dim); font-size: 13px; }
+  .banner { padding: 10px; border-radius: 6px; text-align: center; font-weight: 600; }
+  .ok { background: #1c3524; color: #7ee08a; }
+  .bad { background: #3a1f22; color: #ef8a8a; }
+  .msg { min-height: 18px; font-size: 12px; color: var(--accent); }
+  .muted { color: var(--dim); font-size: 12px; }
+  .pill { float: right; font-size: 11px; font-weight: 600; padding: 1px 8px;
+          border-radius: 999px; letter-spacing: .02em; }
+  .pill.on  { background: #1c3524; color: #7ee08a; }
+  .pill.off { background: #3a1f22; color: #ef8a8a; }
+  button:disabled { background: #3a3f48; color: #7c848f; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <canvas id="board" width="900" height="700"></canvas>
+  <div id="idle" class="card placeholder">
+    <div>
+      <div style="font-size:15px;color:var(--text);font-weight:600">No match running</div>
+      <div style="margin-top:6px">Pick a bot and press Start.<br>
+        The board appears here.</div>
+    </div>
+  </div>
+
+  <div class="side left">
+    <div class="card">
+      <h1>New match <span id="live" class="pill off">checking…</span></h1>
+      <label for="bot">Bot</label>
+      <select id="bot"></select>
+      <label for="seat">You play as</label>
+      <select id="seat">
+        <option value="0">Player 0 (red)</option>
+        <option value="1">Player 1 (red)</option>
+      </select>
+      <label for="seed">Seed</label>
+      <input id="seed" type="number" value="0">
+      <label for="speed">Speed</label>
+      <select id="speed">
+        <option value="500">Slow — 2 ticks/s</option>
+        <option value="250" selected>Normal — 4 ticks/s</option>
+        <option value="125">Fast — 8 ticks/s</option>
+        <option value="1000">Very slow — 1 tick/s</option>
+      </select>
+      <div style="height:10px"></div>
+      <button id="start">Start</button>
+    </div>
+
+    <div class="card">
+      <h1>Autopilot <span id="autostate" class="pill off">manual</span></h1>
+      <div class="muted">Let a bot play your seat. Toggle any time — you take
+        over exactly where it left off.</div>
+      <label for="autobot">Bot to play as you</label>
+      <select id="autobot"></select>
+      <div style="height:8px"></div>
+      <button class="ghost" id="autotoggle">Hand over to bot</button>
+    </div>
+
+  </div>
+
+  <div class="side right">
+    <div class="card">
+      <h1>Score</h1>
+      <table>
+        <thead><tr><th>Player</th><th>Army</th><th>Land</th></tr></thead>
+        <tbody>
+          <tr class="me"><td id="n-me">you</td><td id="a-me">—</td><td id="l-me">—</td></tr>
+          <tr class="opp"><td id="n-opp">bot</td><td id="a-opp">—</td><td id="l-opp">—</td></tr>
+        </tbody>
+      </table>
+      <div class="muted" id="clock" style="margin-top:8px">turn — / —</div>
+      <div class="muted" id="dt"></div>
+      <div class="muted" id="qinfo"></div>
+      <div class="msg" id="msg"></div>
+      <div id="banner"></div>
+    </div>
+
+    <div class="card" id="replaybar" style="display:none">
+      <h1>Replay <span id="rframe" class="muted" style="float:right"></span></h1>
+      <label for="rpick">Stored matches</label>
+      <select id="rpick"></select>
+      <div style="height:8px"></div>
+      <input id="rslider" type="range" min="0" max="0" value="0" style="padding:0">
+      <div style="display:flex; gap:8px; margin-top:8px">
+        <button class="ghost" id="rplay">▶ Play</button>
+        <button class="ghost" id="rlive">Back to live</button>
+      </div>
+      <div style="height:8px"></div>
+      <button class="ghost" id="rexport">⭳ Download .rpl</button>
+      <label>Perspective</label>
+      <div class="seg">
+        <button id="p-me" class="sel">You</button>
+        <button id="p-bot">Bot</button>
+        <button id="p-full">No fog</button>
+      </div>
+      <div class="muted" id="pnote" style="margin-top:6px"></div>
+    </div>
+
+    <div class="card keys">
+      <h1>Controls</h1>
+      <div><span>select tile</span><span><kbd>click</kbd></span></div>
+      <div><span>select, half army</span><span><kbd>double-click</kbd></span></div>
+      <div><span>build castle</span><span><kbd>right-click</kbd></span></div>
+      <div><span>queue a move</span><span><kbd>↑↓←→</kbd> / <kbd>WASD</kbd></span></div>
+      <div><span>clear queue</span><span><kbd>Q</kbd></span></div>
+      <div><span>toggle half army</span><span><kbd>Z</kbd></span></div>
+      <div><span>deselect</span><span><kbd>Esc</kbd></span></div>
+      <div style="height:6px"></div>
+      <button class="ghost" id="replay">Show replay</button>
+      <div style="height:6px"></div>
+      <button class="ghost" id="resign">Resign / reset</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// API base: same origin when matchup3 serves this file; override with
+// ?api=https://your-vps  when the page is hosted elsewhere (e.g. Vercel).
+const API = new URLSearchParams(location.search).get("api")
+         || window.API_BASE || "";
+
+const DIRS = [[-1,0],[1,0],[0,-1],[0,1]];   // 0=up 1=down 2=left 3=right
+
+// Palette copied from generals/gui/rendering.py so the web board and the
+// pygame board are the same board.
+const FOG = [70,73,76], VISIBLE_MOUNTAIN = [187,187,187],
+      NEUTRAL_CASTLE = [128,128,128], WHITE = [230,230,230],
+      ME = [220,70,70], OPP = [70,100,220];
+const GENERAL_SHADE = 0.65, CASTLE_SHADE = 0.8, GRID_LINE_SHADE = 0.72;
+const rgb = c => `rgb(${c[0]},${c[1]},${c[2]})`;
+const shade = (c, f) => [c[0]*f|0, c[1]*f|0, c[2]*f|0];
+
+const IMG = { crown: new Image(), castle: new Image(), mountain: new Image() };
+IMG.crown.src = (new URLSearchParams(location.search).get("api")
+                 || window.API_BASE || "") + "/assets/crownie.png";
+IMG.castle.src = (new URLSearchParams(location.search).get("api")
+                  || window.API_BASE || "") + "/assets/citie.png";
+IMG.mountain.src = (new URLSearchParams(location.search).get("api")
+                    || window.API_BASE || "") + "/assets/mountainie.png";
+for (const k in IMG) IMG[k].onload = () => draw();
+const cv = document.getElementById("board"), ctx = cv.getContext("2d");
+const $ = id => document.getElementById(id);
+
+let S = null;          // latest snapshot
+let version = -1;
+let cursor = null;     // {r,c} virtual cursor: where the queue currently ends
+let sel = null;        // {r,c} highlighted origin
+let planned = [];      // local mirror of queued moves, for drawing the path
+let half = false;      // next queued move sends half instead of all-but-one
+let cell = 28;
+
+async function api(path, body) {
+  const opt = body ? {method:"POST", headers:{"Content-Type":"application/json"},
+                      body: JSON.stringify(body)} : {};
+  const res = await fetch(API + path, opt);
+  if (res.status === 204) return null;
+  return res.json().catch(() => null);
+}
+
+// ---------- lobby ----------
+// Bots only exist while the owner's worker machine is connected to the relay,
+// so the roster is refreshed continuously rather than fetched once.
+let live = null;
+async function loadBots() {
+  let d = null;
+  try { d = await api("/api/bots"); } catch (e) { /* relay down */ }
+  const nowLive = !!(d && d.live !== false && (d.bots || []).length);
+  if (nowLive !== live) {
+    live = nowLive;
+    $("live").className = "pill " + (live ? "on" : "off");
+    $("live").textContent = live ? "bots live" : "no bots live";
+    $("start").disabled = !live;
+    $("start").textContent = live ? "Start" : "No bots live";
+    const cur = $("bot").value;
+    const opts = (d?.bots || []).map(b =>
+      `<option${b === (cur || "my_bot6") ? " selected" : ""}>${b}</option>`).join("");
+    $("bot").innerHTML = opts;
+    $("autobot").innerHTML = opts;
+    if (!live) {
+      $("msg").textContent = "the bot host is offline — try again later";
+    } else {
+      $("msg").textContent = "";
+    }
+  }
+  setTimeout(loadBots, 3000);
+}
+$("start").onclick = async () => {
+  const d = await api("/api/new", {
+    bot: $("bot").value, seed: +$("seed").value,
+    seat: +$("seat").value, tick_ms: +$("speed").value,
+  });
+  if (d?.error) { $("msg").textContent = d.error; return; }
+  version = -1; planned = []; cursor = null; sel = null;
+  $("banner").innerHTML = "";
+};
+$("autotoggle").onclick = async () => {
+  if (!S) { $("msg").textContent = "start a match first"; return; }
+  const on = !!S.autopilot;
+  const d = await api("/api/autopilot", { bot: on ? null : $("autobot").value });
+  $("msg").textContent = d?.message || (on ? "autopilot off" : "autopilot on");
+};
+$("resign").onclick = async () => {
+  await api("/api/resign", {}); S = null; version = -1;
+  $("banner").innerHTML = ""; draw();
+};
+
+// ---------- polling ----------
+let frames = [];        // every distinct turn we have observed, for replay
+let replayAt = null;    // frame index while scrubbing; null = watching live
+let replayTimer = null;
+
+async function poll() {
+  try {
+    const d = await api("/api/state?v=" + version);
+    if (d && !d.idle) {
+      if (d.version !== version) {
+        if (d.turn <= 1) frames = [];      // a new match resets the recording
+        frames.push(d);
+      }
+      S = d; version = d.version;
+      sync();
+      if (replayAt === null) draw();       // scrubbing? leave the view alone
+    }
+  } catch (e) { /* server restart or network blip; keep polling */ }
+  setTimeout(poll, 70);
+}
+
+// ---------- replay ----------
+// `full` is the server's full-information recording (fetched once, after the
+// match ends). With it we can re-derive any perspective in the browser; without
+// it we can only replay the fogged frames we watched live.
+let full = null, persp = "me";
+
+async function fetchReplays() {
+  try {
+    const d = await api("/api/replays");
+    return d?.replays || [];
+  } catch (e) { return []; }
+}
+
+async function fetchReplay(id) {
+  try {
+    const res = await fetch(API + "/api/replay" + (id ? "?id=" + id : ""));
+    if (!res.ok) return null;
+    const { gzip_b64 } = await res.json();
+    const bytes = Uint8Array.from(atob(gzip_b64), c => c.charCodeAt(0));
+    const stream = new Blob([bytes]).stream().pipeThrough(
+      new DecompressionStream("gzip"));
+    return JSON.parse(await new Response(stream).text());
+  } catch (e) { return null; }
+}
+
+// Fog of war is a 3x3 dilation of the cells a player owns
+// (generals/core/game.py::get_visibility) — reproduced here so one recording
+// can be shown from either seat.
+function visibility(owner, code, H, W) {
+  const vis = new Uint8Array(H * W);
+  for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) {
+    if (owner[r * W + c] !== code) continue;
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+      const nr = r + dr, nc = c + dc;
+      if (nr >= 0 && nr < H && nc >= 0 && nc < W) vis[nr * W + nc] = 1;
+    }
+  }
+  return vis;
+}
+
+// Turn one full-information frame into the {type,owner,army} a viewer sees.
+function view(idx) {
+  const H = full.H, W = full.W, f = full.frames[idx];
+  const seeAll = persp === "full";
+  const vis = seeAll ? null : visibility(f.o, persp === "me" ? 1 : 2, H, W);
+  const type = [], owner = [], army = [];
+  for (let r = 0; r < H; r++) {
+    const tr = [], or_ = [], ar = [];
+    for (let c = 0; c < W; c++) {
+      const i = r * W + c, t = f.t[i], o = f.o[i];
+      if (seeAll || vis[i]) { tr.push(t); or_.push(o); ar.push(f.a[i]); }
+      else { tr.push(t === 2 || t === 3 ? 5 : 0); or_.push(0); ar.push(0); }
+    }
+    type.push(tr); owner.push(or_); army.push(ar);
+  }
+  const mine = persp === "bot" ? 2 : 1;
+  let land = 0, arm = 0, oland = 0, oarm = 0;
+  for (let i = 0; i < f.o.length; i++) {
+    if (f.o[i] === mine) { land++; arm += f.a[i]; }
+    else if (f.o[i] !== 0) { oland++; oarm += f.a[i]; }
+  }
+  return { H, W, turn: idx, type, owner, army, build_cost: null,
+           my_land: land, my_army: arm, opp_land: oland, opp_army: oarm,
+           queued: 0, result: full.result, bot: full.bot, board: `${H}x${W}`,
+           truncation: 1200, deathtouch_turn: 800, live: true };
+}
+
+function frameCount() { return full ? full.frames.length : frames.length; }
+
+function showFrame(i) {
+  const n = frameCount();
+  replayAt = Math.max(0, Math.min(n - 1, i));
+  const f = full ? view(replayAt) : frames[replayAt];
+  $("rslider").value = replayAt;
+  $("rframe").textContent = `turn ${f.turn} (${replayAt + 1}/${n})`;
+  const live = S; S = f; draw(); S = live;    // draw the frame, keep live state
+}
+
+function setPersp(p) {
+  if (!full) {
+    $("pnote").textContent = "only your view was recorded live";
+    return;
+  }
+  persp = p;
+  for (const k of ["me", "bot", "full"])
+    $("p-" + k).className = k === p ? "sel" : "";
+  showFrame(replayAt || 0);
+}
+$("p-me").onclick = () => setPersp("me");
+$("p-bot").onclick = () => setPersp("bot");
+$("p-full").onclick = () => setPersp("full");
+
+async function loadReplay(id) {
+  full = await fetchReplay(id);             // full recordings exist once a match ends
+  if (!full && !frames.length) { $("msg").textContent = "nothing recorded yet"; return; }
+  $("replaybar").style.display = "block";
+  $("pnote").textContent = full
+    ? "" : "match still running — only your view is available until it ends";
+  $("rslider").max = frameCount() - 1;
+  showFrame(0);
+}
+
+// "last match", "2nd last", "3rd last"… — the archive is newest-first, so the
+// index is the label. The full detail is in the header line once loaded, so the
+// dropdown itself stays scannable.
+function ordinal(i) {
+  if (i === 0) return "last match";
+  const n = i + 1;
+  const suffix = n % 10 === 1 && n % 100 !== 11 ? "st"
+               : n % 10 === 2 && n % 100 !== 12 ? "nd"
+               : n % 10 === 3 && n % 100 !== 13 ? "rd" : "th";
+  return `${n}${suffix} last`;
+}
+
+$("replay").onclick = async () => {
+  const list = await fetchReplays();
+  $("rpick").innerHTML = list.length
+    ? list.map((r, i) => `<option value="${r.id}">${ordinal(i)}</option>`).join("")
+    : `<option value="">(live match only)</option>`;
+  await loadReplay(list.length ? list[0].id : null);
+};
+$("rpick").onchange = ev => { stopPlay(); loadReplay(ev.target.value || null); };
+
+$("rexport").onclick = () => {
+  const id = $("rpick").value;
+  if (!id) { $("msg").textContent = "no stored match selected"; return; }
+  // Content-Disposition on the response makes the browser save it.
+  window.location.href = API + "/api/export?id=" + encodeURIComponent(id);
+};
+$("rslider").oninput = ev => { stopPlay(); showFrame(+ev.target.value); };
+function stopPlay() {
+  clearInterval(replayTimer); replayTimer = null; $("rplay").textContent = "▶ Play";
+}
+$("rplay").onclick = () => {
+  if (replayTimer) return stopPlay();
+  $("rplay").textContent = "⏸ Pause";
+  replayTimer = setInterval(() => {
+    if (replayAt >= frames.length - 1) return stopPlay();
+    showFrame(replayAt + 1);
+  }, 120);
+};
+$("rlive").onclick = () => {
+  stopPlay(); replayAt = null; $("replaybar").style.display = "none"; draw();
+};
+
+function sync() {
+  // The server is the source of truth for how much is still queued; when it
+  // has drained more than we think, trim the drawn path from the front.
+  // NB: do NOT clear `cursor` when the queue empties. Doing so wiped the
+  // selection on the very next poll (~90ms after a click), which left the
+  // arrow keys with nothing to move from — they looked completely dead.
+  while (planned.length > S.queued) planned.shift();
+
+  $("n-me").textContent = "you";
+  $("n-opp").textContent = S.bot;
+  $("a-me").textContent = S.my_army;  $("l-me").textContent = S.my_land;
+  $("a-opp").textContent = S.opp_army; $("l-opp").textContent = S.opp_land;
+  $("clock").textContent = `turn ${S.turn} / ${S.truncation}  ·  board ${S.board}`;
+  $("dt").textContent = S.deathtouch_turn
+    ? (S.turn >= S.deathtouch_turn
+        ? "⚡ deathtouch ACTIVE — touching a general wins"
+        : `deathtouch in ${S.deathtouch_turn - S.turn} turns`)
+    : "";
+  $("qinfo").textContent = `queued: ${S.queued}${half ? "  ·  next move = half" : ""}`;
+  const auto = S.autopilot;
+  $("autostate").className = "pill " + (auto ? "on" : "off");
+  $("autostate").textContent = auto ? auto : "manual";
+  $("autotoggle").textContent = auto ? "Take back control" : "Hand over to bot";
+  if (S.build_msg) $("msg").textContent = S.build_msg;
+  if (S.result) {
+    const win = S.result.startsWith("you win");
+    $("banner").innerHTML =
+      `<div class="banner ${win ? "ok" : "bad"}">${S.result}</div>`;
+  }
+}
+
+// ---------- rendering ----------
+function fit() {
+  if (!S) return;
+  // Two 270px columns flank the board (plus two 16px gaps and 12px page
+  // padding) = 596px reserved. Under-budgeting this makes the right column
+  // wrap onto a second row and disappear below the fold.
+  const stacked = window.innerWidth <= 1240;
+  const availW = stacked ? window.innerWidth - 28 : window.innerWidth - 600;
+  const availH = (stacked ? window.innerHeight * 0.72 : window.innerHeight) - 28;
+  cell = Math.max(12, Math.min(46, Math.floor(Math.min(availW / S.W, availH / S.H))));
+  cv.width = cell * S.W; cv.height = cell * S.H;
+}
+
+function draw() {
+  const running = !!S;
+  cv.style.display = running ? "block" : "none";
+  $("idle").style.display = running ? "none" : "flex";
+  if (!running) { ctx.clearRect(0, 0, cv.width, cv.height); return; }
+  fit();
+  const f = Math.max(9, Math.round(cell * 0.38));
+  ctx.font = `600 ${f}px ui-sans-serif, system-ui, sans-serif`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+
+  for (let r = 0; r < S.H; r++) for (let c = 0; c < S.W; c++) {
+    const t = S.type[r][c], o = S.owner[r][c], x = c * cell, y = r * cell;
+
+    // Background, mirroring generals/gui/rendering.py: owned tiles take the
+    // owner's colour, darkened for structures; everything else is terrain.
+    let bg;
+    if (t === 0 || t === 5) bg = FOG;                    // fog / remembered
+    else if (t === 2) bg = VISIBLE_MOUNTAIN;
+    else if (o === 1 || o === 2) {
+      const base = o === 1 ? ME : OPP;
+      bg = t === 4 ? shade(base, GENERAL_SHADE)
+         : t === 3 ? shade(base, CASTLE_SHADE) : base;
+    }
+    else if (t === 3) bg = NEUTRAL_CASTLE;               // unowned castle
+    else bg = WHITE;                                     // visible neutral land
+
+    ctx.fillStyle = rgb(bg); ctx.fillRect(x, y, cell, cell);
+    // Grid lines are a darker shade of the fill (left/top only), as in pygame.
+    ctx.strokeStyle = rgb(shade(bg, GRID_LINE_SHADE));
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + .5, y + cell); ctx.lineTo(x + .5, y + .5); ctx.lineTo(x + cell, y + .5);
+    ctx.stroke();
+
+    // Icons: the same PNGs the desktop GUI draws.
+    const icon = (img, alpha) => {
+      if (!img.complete || !img.naturalWidth) return;
+      const s = cell * 0.78, off = (cell - s) / 2;
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(img, x + off, y + off, s, s);
+      ctx.globalAlpha = 1;
+    };
+    if (t === 2) icon(IMG.mountain, 1);
+    // A structure under fog is terrain you remember, not terrain you can see —
+    // pygame dims it rather than hiding it, so a wall stays a wall.
+    else if (t === 5) icon(IMG.mountain, 0.43);
+    else if (t === 4) icon(IMG.crown, 1);
+    else if (t === 3) icon(IMG.castle, 1);
+
+    const a = S.army[r][c];
+    if (a) {
+      ctx.fillStyle = "rgba(0,0,0,.75)";
+      ctx.fillText(a, x + cell / 2 + 1, y + cell / 2 + 1);
+      ctx.fillStyle = "#e6e6e6";
+      ctx.fillText(a, x + cell / 2, y + cell / 2);
+    }
+  }
+
+  // queued path
+  ctx.strokeStyle = "#f0c040"; ctx.lineWidth = Math.max(2, cell * .09);
+  ctx.beginPath();
+  for (const m of planned) {
+    ctx.moveTo(m.from.c * cell + cell / 2, m.from.r * cell + cell / 2);
+    ctx.lineTo(m.to.c * cell + cell / 2, m.to.r * cell + cell / 2);
+  }
+  ctx.stroke();
+
+  const ring = (p, col) => {
+    if (!p) return;
+    ctx.strokeStyle = col; ctx.lineWidth = Math.max(2, cell * .1);
+    ctx.strokeRect(p.c * cell + 2, p.r * cell + 2, cell - 4, cell - 4);
+  };
+  ring(sel, "#ffffff");
+  ring(cursor, "#f0c040");
+}
+window.addEventListener("resize", draw);
+
+// ---------- input ----------
+function at(ev) {
+  const b = cv.getBoundingClientRect();
+  return { r: Math.floor((ev.clientY - b.top) / cell),
+           c: Math.floor((ev.clientX - b.left) / cell) };
+}
+
+// Left click selects; double-click selects and arms a half-army move, as in
+// generals.io. Building is on right-click — a distinct gesture, so it can never
+// be triggered by an impatient double-tap on a stack you meant to move.
+const CLICK_WINDOW = 250;
+let clickCount = 0, clickCell = null, clickTimer = null;
+
+function select(p, halfMode) {
+  sel = p; cursor = p; planned = []; half = halfMode;
+  api("/api/clear", {});
+  $("msg").textContent = halfMode ? "half-army: next move sends 50%" : "";
+  sync(); draw();
+}
+
+async function build(p) {
+  const d = await api("/api/build", { r: p.r, c: p.c });
+  $("msg").textContent = d?.ok ? `castle: ${d.message}`
+                               : `can't build: ${d?.message || "rejected"}`;
+}
+
+cv.addEventListener("click", ev => {
+  if (!S) return;
+  const p = at(ev);
+  if (p.r < 0 || p.r >= S.H || p.c < 0 || p.c >= S.W) return;
+
+  if (!clickCell || clickCell.r !== p.r || clickCell.c !== p.c) clickCount = 0;
+  clickCell = p;
+  clickCount++;
+  clearTimeout(clickTimer);
+
+  clickTimer = setTimeout(() => {
+    select(p, clickCount >= 2);
+    clickCount = 0;
+  }, CLICK_WINDOW);
+});
+
+cv.addEventListener("contextmenu", ev => {
+  ev.preventDefault();                    // no browser menu over the board
+  if (!S) return;
+  const p = at(ev);
+  if (p.r < 0 || p.r >= S.H || p.c < 0 || p.c >= S.W) return;
+  build(p);
+});
+
+// Suppress the native double-click so text selection doesn't fight the board.
+cv.addEventListener("dblclick", ev => ev.preventDefault());
+
+// Hover shows what a castle would cost here — the price rises near your own
+// structures, so it is worth seeing before committing 35+ army.
+cv.addEventListener("mousemove", ev => {
+  if (!S || S.result) return;
+  const p = at(ev);
+  if (p.r < 0 || p.r >= S.H || p.c < 0 || p.c >= S.W) return;
+  if (S.owner[p.r][p.c] === 1 && S.type[p.r][p.c] === 1) {
+    const cost = S.build_cost[p.r][p.c], have = S.army[p.r][p.c];
+    $("msg").textContent = `castle here: ${cost} army (cell has ${have})`;
+  } else $("msg").textContent = "";
+});
+
+const KEYS = { ArrowUp:0, ArrowDown:1, ArrowLeft:2, ArrowRight:3,
+               w:0, s:1, a:2, d:3, W:0, S:1, A:2, D:3 };
+
+window.addEventListener("keydown", ev => {
+  if (ev.target.tagName === "INPUT" || ev.target.tagName === "SELECT") return;
+  if (!S) return;
+
+  if (ev.key === "q" || ev.key === "Q") {
+    planned = []; cursor = sel; api("/api/clear", {}); draw(); return;
+  }
+  if (ev.key === "z" || ev.key === "Z") { half = !half; sync(); return; }
+  if (ev.key === "Escape") { sel = null; cursor = null; draw(); return; }
+
+  const dir = KEYS[ev.key];
+  if (dir === undefined || !cursor) return;
+  ev.preventDefault();
+
+  const to = { r: cursor.r + DIRS[dir][0], c: cursor.c + DIRS[dir][1] };
+  if (to.r < 0 || to.r >= S.H || to.c < 0 || to.c >= S.W) return;
+  if (S.type[to.r][to.c] === 2 || S.type[to.r][to.c] === 5) return;  // impassable
+
+  api("/api/queue", { moves: [[cursor.r, cursor.c, dir, half ? 1 : 0]] });
+  planned.push({ from: cursor, to });
+  // Advance the cursor so holding a direction chains a path, like generals.io.
+  cursor = to;
+  half = false;
+  draw();
+});
+
+loadBots(); poll();
+</script>
+</body>
+</html>

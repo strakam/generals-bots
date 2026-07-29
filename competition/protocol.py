@@ -81,9 +81,12 @@ def encode_observation(obs: Observation) -> str:
         f"{int(obs.timestep)} {int(obs.owned_land_count)} {int(obs.owned_army_count)} "
         f"{int(obs.opponent_land_count)} {int(obs.opponent_army_count)}"
     ]
+    # .tolist() once per row, then map(str) over Python ints: indexing numpy
+    # scalars one at a time and calling int() on each is ~4x slower for the
+    # same output, and this runs 3x H times every turn of every match.
     for grid in (type_grid, owner_grid, armies):
-        for r in range(H):
-            lines.append(" ".join(str(int(x)) for x in grid[r]))
+        for row in grid.tolist():
+            lines.append(" ".join(map(str, row)))
     return "\n".join(lines) + "\n"
 
 
