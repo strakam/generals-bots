@@ -372,7 +372,8 @@ def global_update(state: GameState) -> GameState:
     return state._replace(armies=armies)
 
 
-def _determine_move_order(state: GameState, actions: jnp.ndarray) -> jnp.ndarray:
+def _determine_move_order(state: GameState, actions: jnp.ndarray,
+                          legacy_move_priority: bool = False) -> jnp.ndarray:
     """Order in which this turn's moves resolve: an (N,) array of player indices.
 
     Priority is chasing > reinforcing > SMALLER army, ties by player index,
@@ -386,10 +387,22 @@ def _determine_move_order(state: GameState, actions: jnp.ndarray) -> jnp.ndarray
     For two players this is exactly the old first-mover rule; it is computed
     with pairwise comparisons rather than a sort, so it costs a few (N, N)
     boolean ops.
+
+    legacy_move_priority=True selects the rule generals.io used when the public
+    replay archive was recorded and this engine used before April 2025
+    (generals-bots commit e5676c3 introduced the rule above):
+    priority simply alternates every tick, independent of the moves. Player 0
+    resolves first on even ticks and last on odd ticks (for N players the
+    index order is reversed on odd ticks). It exists so archived replays
+    recorded under the old rule can be reproduced move-for-move; nothing in
+    the environment turns it on by default.
     """
     N = actions.shape[0]
     H, W = state.armies.shape
     idx = jnp.arange(N)
+
+    if legacy_move_priority:
+        return jnp.where(state.time % 2 == 0, idx, idx[::-1])
 
     passes = actions[:, 0] != 0
     si, sj, direction = actions[:, 1], actions[:, 2], actions[:, 3]
@@ -425,13 +438,18 @@ def _determine_move_order(state: GameState, actions: jnp.ndarray) -> jnp.ndarray
     return jnp.argmax(rank[None, :] == idx[:, None], axis=1)          # slot k -> player with rank k
 
 
-@jax.jit
-def step(state: GameState, actions: jnp.ndarray) -> tuple[GameState, GameInfo]:
+@partial(jax.jit, static_argnames=("legacy_move_priority",))
+def step(state: GameState, actions: jnp.ndarray,
+         legacy_move_priority: bool = False) -> tuple[GameState, GameInfo]:
     """Execute one game step with actions from all players.
 
     Args:
         state: Current game state.
         actions: (N, 5) array, one [pass, row, col, direction, split] per player.
+        legacy_move_priority: Resolve moves in the old alternating order
+            instead of the current chasing > reinforcing > smaller-army rule
+            (see _determine_move_order). Default False; the game is unchanged
+            unless it is passed explicitly.
 
     Moves resolve one after another in _determine_move_order's order, each on
     the board the previous one left — a capture confiscates the captured
@@ -443,7 +461,7 @@ def step(state: GameState, actions: jnp.ndarray) -> tuple[GameState, GameInfo]:
         raise ValueError(f"got actions for {N} players but the state has {state.ownership.shape[0]}")
     done_before = state.winner >= 0
 
-    order = _determine_move_order(state, actions)
+    order = _determine_move_order(state, actions, legacy_move_priority)
     for k in range(N):
         player = order[k]
         state = execute_action(state, player, actions[player])

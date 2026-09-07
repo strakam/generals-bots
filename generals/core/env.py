@@ -142,6 +142,10 @@ class GeneralsEnv:
         # Deathtouch: from this turn, a move that executes onto the enemy
         # general's tile wins instantly. None disables. See generals.modifiers.deathtouch.
         deathtouch_turn: int | None = None,
+        # Old move-resolution order (priority alternates each tick) instead
+        # of the current chasing > reinforcing > smaller-army rule. Only for
+        # reproducing archived generals.io replays; see game._determine_move_order.
+        legacy_move_priority: bool = False,
         # Named ruleset preset (e.g. "competition"); overrides the args above.
         mode: str | None = None,
         # Players. num_players=N is an N-way free-for-all; teams=(N,) team ids
@@ -205,6 +209,10 @@ class GeneralsEnv:
         self.perfect_info = perfect_info
         self.build_castles = build_castles
         self.deathtouch_turn = deathtouch_turn
+        if legacy_move_priority and (build_castles or deathtouch_turn is not None):
+            raise ValueError("legacy_move_priority is a plain-ruleset replay aid; "
+                             "it cannot be combined with build_castles or deathtouch_turn")
+        self.legacy_move_priority = legacy_move_priority
 
         if teams is None:
             num_players = 2 if num_players is None else int(num_players)
@@ -354,7 +362,7 @@ class GeneralsEnv:
         if self.deathtouch_turn is not None:
             new_state, info = _deathtouch.step(state, actions, self.deathtouch_turn)
         else:
-            new_state, info = game_step(state, actions)
+            new_state, info = game_step(state, actions, legacy_move_priority=self.legacy_move_priority)
 
         # Win/lose reward: +1 to every player on the winning team, -1 to the
         # rest, 0 while the game is on (and on a draw).
