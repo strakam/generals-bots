@@ -1,11 +1,12 @@
 """Simultaneous decapitation is a draw at every turn.
 
-The base game resolves the two moves in sequence and lets the second capture
-overwrite `winner`, so bare game.step awards a mutual decapitation to whoever
-moved second. Move order is choosable (game._determine_move_order), so that
-made "arrange to move second" a way to win a race the rules call a draw. The
-deathtouch modifier — the outermost transition in every competition match —
-reports the draw instead, on turn 5 exactly as on turn 900.
+The base game resolves the two moves in sequence, and the first capture
+confiscates the other side's army on the spot, so bare game.step awards a
+mutual decapitation to whoever moved first. Move order is choosable
+(game._determine_move_order), so that makes "arrange to move first" a way to
+win a race the rules call a draw. The deathtouch modifier — the outermost
+transition in every competition match — reports the draw instead, on turn 5
+exactly as on turn 900.
 """
 import jax.numpy as jnp
 import pytest
@@ -55,12 +56,15 @@ def test_mutual_capture_is_a_draw_at_every_turn(time):
     assert int(info.winner) == -1, f"turn {time}: expected a draw, got player {int(info.winner)}"
 
 
-def test_base_game_alone_still_picks_the_second_mover():
+def test_base_game_alone_picks_the_first_mover():
     """Pins the behaviour we are wrapping (and why the fix cannot live in the
-    modifier's threshold branch): bare game.step names a winner pre-threshold."""
+    modifier's threshold branch): bare game.step names a winner pre-threshold —
+    the first mover, whose capture strips the second strike of its army. Equal
+    stacks, no chase, no reinforcement: the tie goes to player 0."""
     s, actions = mutual(300)
-    _, info = game.step(s, actions)
-    assert int(info.winner) >= 0
+    ns, info = game.step(s, actions)
+    assert int(info.winner) == 0
+    assert ns.eliminated.tolist() == [False, True]
 
 
 @pytest.mark.parametrize("time", [300, 900])
