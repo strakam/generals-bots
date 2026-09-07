@@ -7,6 +7,11 @@ with JAX. It supports vectorized execution for running many games in parallel.
 The environment is stateless — reset() returns a pool of pre-generated states,
 and step() takes the pool as an explicit argument for cheap auto-resets.
 
+Players: the default is the classic 1v1. Pass num_players=N for an N-player
+free-for-all, or teams=[0, 0, 1, 1] for 2v2 (any team assignment works). The
+number of players is JIT-static; actions are (N, 5), observations and rewards
+are stacked (N, ...), and a game ends when one team is the last standing.
+
 Example:
     >>> import jax.random as jrandom
     >>> from generals import GeneralsEnv, get_observation
@@ -38,9 +43,10 @@ class TimeStep(NamedTuple):
     Result of a single environment step.
 
     Attributes:
-        observation: Observations for both players, stacked along first axis.
-        reward: Array of shape (2,) with rewards for each player.
-        terminated: Boolean scalar, True if game ended (general captured).
+        observation: Observations for all N players, stacked along first axis.
+        reward: Array of shape (N,) with rewards for each player: +1 for the
+            winning team's players, -1 for everyone else, 0 while ongoing.
+        terminated: Boolean scalar, True if game ended (last team standing).
         truncated: Boolean scalar, True if max timesteps reached.
         info: GameInfo with statistics (army counts, land counts, winner).
         last_state: GameState before auto-reset (needed for bootstrap values).
@@ -90,8 +96,10 @@ class GeneralsEnv:
     """
     JAX-based Generals.io environment (stateless).
 
-    This environment simulates the Generals.io game for two players. It supports
-    vectorized execution via JAX's vmap for running thousands of games in parallel.
+    This environment simulates the Generals.io game for two players by default,
+    or for N players in free-for-all / team modes (num_players=, teams=). It
+    supports vectorized execution via JAX's vmap for running thousands of games
+    in parallel.
 
     The env is a stateless config bag — reset() returns a pool of pre-generated
     GameStates, and step() takes the pool as an explicit argument. This avoids
@@ -101,6 +109,11 @@ class GeneralsEnv:
         1. Fixed size: GeneralsEnv(grid_dims=(10, 10)) — single grid size
         2. Variable sizes: GeneralsEnv(min_grid_size=8, max_grid_size=24, pad_to=24)
            — pool contains all HxW combos in [min, max], padded with mountains to pad_to
+
+    Players:
+        GeneralsEnv()                          # 1v1 (unchanged defaults)
+        GeneralsEnv(num_players=4)             # 4-player free-for-all
+        GeneralsEnv(teams=[0, 0, 1, 1])        # 2v2: players 0+1 vs 2+3
 
     Example:
         >>> env = GeneralsEnv(grid_dims=(10, 10), truncation=500)
@@ -131,6 +144,10 @@ class GeneralsEnv:
         deathtouch_turn: int | None = None,
         # Named ruleset preset (e.g. "competition"); overrides the args above.
         mode: str | None = None,
+        # Players. num_players=N is an N-way free-for-all; teams=(N,) team ids
+        # (e.g. [0, 0, 1, 1] for 2v2) sets N and the alliances.
+        num_players: int | None = None,
+        teams=None,
         # Deprecated alias for num_castles_range (castles were renamed from cities).
         num_cities_range: tuple[int, int] | None = None,
     ):
@@ -189,6 +206,20 @@ class GeneralsEnv:
         self.build_castles = build_castles
         self.deathtouch_turn = deathtouch_turn
 
+        if teams is None:
+            num_players = 2 if num_players is None else int(num_players)
+            teams = jnp.arange(num_players, dtype=jnp.int32)
+        else:
+            teams = jnp.asarray(teams, dtype=jnp.int32)
+            if teams.ndim != 1 or teams.shape[0] < 2:
+                raise ValueError("teams must be a 1-D array with one team id per player (at least 2)")
+            if num_players is not None and int(num_players) != teams.shape[0]:
+                raise ValueError(f"num_players={num_players} does not match teams of length {teams.shape[0]}")
+        self.teams = teams
+        self.num_players = int(teams.shape[0])
+        if self.deathtouch_turn is not None and self.num_players != 2:
+            raise NotImplementedError("the deathtouch modifier is defined for two players only")
+
     def _make_single_state_fixed(self, key: jnp.ndarray, h: int, w: int) -> GameState:
         """Generate a single GameState for a specific (h, w) grid size."""
         grid = generate_grid(
@@ -200,10 +231,11 @@ class GeneralsEnv:
             min_generals_distance=self.min_generals_distance,
             max_generals_distance=self.max_generals_distance,
             castle_val_range=self.castle_val_range,
+            num_players=self.num_players,
         )
         if self.build_castles:
-            grid = _build_castles.strip_neutral_castles(grid)
-        return create_initial_state(grid.astype(jnp.int32))
+            grid = _build_castles.strip_neutral_castles(grid, num_players=self.num_players)
+        return create_initial_state(grid.astype(jnp.int32), teams=self.teams)
 
 
 
@@ -304,8 +336,8 @@ class GeneralsEnv:
 
         Args:
             state: Current game state.
-            actions: Array of shape (2, 5) with actions for both players.
-                Each action is [pass, row, col, direction, split].
+            actions: Array of shape (N, 5) with one action per player (N=2 by
+                default). Each action is [pass, row, col, direction, split].
             pool: Batched GameState of shape (pool_size, ...) for auto-reset.
 
         Returns:
@@ -324,9 +356,10 @@ class GeneralsEnv:
         else:
             new_state, info = game_step(state, actions)
 
-        # Compute win/lose reward
-        reward_p0 = jnp.where(info.winner == 0, 1.0, jnp.where(info.winner == 1, -1.0, 0.0))
-        rewards = jnp.array([reward_p0, -reward_p0])
+        # Win/lose reward: +1 to every player on the winning team, -1 to the
+        # rest, 0 while the game is on (and on a draw).
+        on_winning_team = self.teams == info.winner
+        rewards = jnp.where(info.winner >= 0, jnp.where(on_winning_team, 1.0, -1.0), 0.0)
 
         # Terminated / truncated flags
         terminated = info.is_done
@@ -346,14 +379,10 @@ class GeneralsEnv:
             new_state,
         )
 
-        # Get observations (perfect-info skips fog-of-war masking)
+        # Get observations (perfect-info skips fog-of-war masking), one per player
         get_obs = game.get_full_observation if self.perfect_info else game.get_observation
-        obs_p0 = get_obs(final_state, 0)
-        obs_p1 = get_obs(final_state, 1)
-        observation = jax.tree.map(
-            lambda p0, p1: jnp.stack([p0, p1], axis=0),
-            obs_p0, obs_p1,
-        )
+        per_player = [get_obs(final_state, i) for i in range(self.num_players)]
+        observation = jax.tree.map(lambda *xs: jnp.stack(xs, axis=0), *per_player)
 
         timestep = TimeStep(
             observation=observation,
