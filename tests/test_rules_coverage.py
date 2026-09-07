@@ -355,13 +355,6 @@ def test_generated_grids_respect_density_and_have_connected_generals():
     assert per_board.min() < per_board.max()
 
 
-@pytest.mark.xfail(
-    reason="generate_grid places generals on any passable cell, and castles are passable "
-           "(the near-castle spawn bias even favours them), so a general can overwrite a "
-           "castle: ~7% of boards on this config end up with fewer castles than "
-           "num_castles_range[0]. Genuine generator bug, engine left unchanged.",
-    strict=False,
-)
 def test_generated_grids_respect_castle_count_range():
     """Every board carries a castle count inside num_castles_range, and
     mountains + castles equals the terrain count the generator drew, which is

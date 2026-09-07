@@ -284,6 +284,7 @@ def generate_grid(
     # which would have moved the terrain again).
     # =================================================================
     passable = grid != -2                      # castles included: they are walkable
+    spawnable = passable & (grid == 0)         # ...but a general is never seated on a castle
     near_castle = grid > 2
     for _ in range(6):
         near_castle = _dilate4(near_castle) & passable
@@ -294,7 +295,7 @@ def generate_grid(
     # keep the first that can actually seat an opponent at range. Fixed work, no
     # rejection loop: this is why the L-path carve could be dropped, and with it
     # the repair step that used to shorten the very distance being enforced.
-    logits = jnp.where(passable, jnp.where(near_castle, 20.0, 0.0), -jnp.inf).reshape(-1)
+    logits = jnp.where(spawnable, jnp.where(near_castle, 20.0, 0.0), -jnp.inf).reshape(-1)
     _, cand_flat = jax.lax.top_k(logits + jax.random.gumbel(keys[2], shape=(num_tiles,)),
                                  SPAWN_CANDIDATES)
 
@@ -311,7 +312,7 @@ def generate_grid(
     reach = (fields < unreachable) & passable[None]
     if max_generals_distance is not None:
         reach = reach & (fields <= max_generals_distance)
-    far = reach & (fields >= min_generals_distance)
+    far = reach & spawnable[None] & (fields >= min_generals_distance)
 
     # =================================================================
     # Step 5: General B — far enough away AND commanding comparable ground.
@@ -407,7 +408,7 @@ def generate_grid(
         extra_keys = jax.random.split(keys[4], num_players - 2)
 
         for k in range(num_players - 2):
-            open_ground = allowed & ~occupied
+            open_ground = allowed & spawnable & ~occupied
             far_k = open_ground & (nearest >= min_generals_distance)
             if max_generals_distance is not None:
                 far_k = far_k & (furthest <= max_generals_distance)
