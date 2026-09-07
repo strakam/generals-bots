@@ -37,9 +37,10 @@ PROXIMITY_DECAY = 2      # ...this much per manhattan step (zero from d=7)
 _RADIUS = (PROXIMITY_PENALTY - 1) // PROXIMITY_DECAY  # farthest d with a surcharge
 
 
-def strip_neutral_castles(grid: jnp.ndarray) -> jnp.ndarray:
-    """Remove neutral castles from a generated grid (values > 2 are castles)."""
-    return jnp.where(grid > 2, 0, grid)
+def strip_neutral_castles(grid: jnp.ndarray, num_players: int = 2) -> jnp.ndarray:
+    """Remove neutral castles from a generated grid (values above the general
+    range 1..num_players are castles)."""
+    return jnp.where(grid > num_players, 0, grid)
 
 
 def build_cost_grid(state: game.GameState, player_idx: int) -> jnp.ndarray:
@@ -88,16 +89,15 @@ def _apply_one(state: game.GameState, player_idx: int, action: jnp.ndarray) -> g
 @jax.jit
 def apply_build_actions(state: game.GameState,
                         actions: jnp.ndarray) -> tuple[game.GameState, jnp.ndarray]:
-    """Resolve both players' build actions; rewrite them to passes.
+    """Resolve every player's build action; rewrite them to passes.
 
     Builds target the builder's own cells and prices depend only on the
-    builder's own structures, so the two players can never interact and
-    resolution order doesn't matter. Every action with pass-field == BUILD
-    (valid or not) comes back as a plain pass, so the base game never sees
-    the value 2.
+    builder's own structures, so players can never interact and resolution
+    order doesn't matter. Every action with pass-field == BUILD (valid or
+    not) comes back as a plain pass, so the base game never sees the value 2.
     """
-    state = _apply_one(state, 0, actions[0])
-    state = _apply_one(state, 1, actions[1])
+    for player_idx in range(actions.shape[0]):
+        state = _apply_one(state, player_idx, actions[player_idx])
 
     pass_action = jnp.array([1, 0, 0, 0, 0], dtype=actions.dtype)
     is_build = (actions[:, 0] == BUILD)[:, None]

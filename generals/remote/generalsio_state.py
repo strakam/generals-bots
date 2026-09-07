@@ -80,4 +80,8 @@ class GeneralsIOstate:
             opponent_land_count=opponent_land_count,
             opponent_army_count=opponent_army_count,
             timestep=timestep,
+            # 1v1 only: no teammates
+            allied_cells=np.zeros((height, width), dtype=bool),
+            allied_land_count=0,
+            allied_army_count=0,
         )

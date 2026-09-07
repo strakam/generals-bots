@@ -44,20 +44,16 @@ class JaxChannelsAdapter:
 
     def get_visibility(self, agent_id: str) -> np.ndarray:
         """
-        Get visibility mask for an agent (3x3 around owned cells).
+        Get visibility mask for an agent (3x3 around the cells its team owns —
+        sight is shared within a team, as in the observation).
 
         Uses the JAX visibility function but returns numpy array.
         """
         from generals.core import game
 
-        # Find agent index
         agent_idx = self._agents.index(agent_id)
-
-        # Use JAX visibility function
-        visibility_jax = game.get_visibility(self._state.ownership[agent_idx])
-
-        # Convert to numpy
-        return np.array(visibility_jax)
+        own, allied, _ = game.team_cells(self._state, agent_idx)
+        return np.array(game.get_visibility(own | allied))
 
 
 class JaxGameAdapter:
@@ -106,23 +102,25 @@ class JaxGameAdapter:
             }
         """
         if self._info is None:
-            # Compute info if not provided
+            # Compute info if not provided (army/land only need armies + ownership)
             from generals.core import game
-            # Create GameState from self.channels
+            n = len(self.agents)
+            ownership = jnp.stack([jnp.array(self.channels.ownership[agent]) for agent in self.agents])
+            mountains = jnp.array(self.channels.mountains)
             state = GameState(
                 armies=jnp.array(self.channels.armies),
-                ownership=jnp.stack([jnp.array(self.channels.ownership[agent]) for agent in self.agents]),
-                ownership_neutral=jnp.array(np.logical_not(
-                    np.logical_or(self.channels.ownership[self.agents[0]],
-                                  self.channels.ownership[self.agents[1]])
-                )),
+                ownership=ownership,
+                ownership_neutral=~mountains & ~jnp.any(ownership, axis=0),
                 generals=jnp.array(self.channels.generals),
                 castles=jnp.array(self.channels.castles),
-                mountains=jnp.array(self.channels.mountains),
-                passable=jnp.array(np.logical_not(self.channels.mountains)),
+                mountains=mountains,
+                passable=~mountains,
                 general_positions=jnp.array([self.general_positions[agent] for agent in self.agents]),
+                teams=jnp.arange(n, dtype=jnp.int32),
+                eliminated=jnp.zeros(n, dtype=bool),
                 time=jnp.int32(self.time),
                 winner=jnp.int32(-1),
+                pool_idx=jnp.int32(0),
             )
             self._info = game.get_info(state)
 

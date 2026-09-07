@@ -23,15 +23,20 @@ instead of inventing new ones:
   - A normal general capture at/after the threshold is itself a touch, so the
     two win paths always agree.
   - Mutual capture is a draw at EVERY turn, not just past the threshold. The
-    base game resolves the two moves in sequence and lets the second one
-    overwrite `winner`, so bare game.step hands a simultaneous decapitation to
-    whoever happened to move second — and move order is choosable
-    (game._determine_move_order), making it a tactic rather than a coin flip.
-    Detected here so the rule reads the same on turn 5 and turn 900.
+    base game resolves the two moves in sequence; the first capture confiscates
+    the other player's whole army on the spot, so bare game.step hands a
+    simultaneous decapitation to whoever happened to move first — and move
+    order is choosable (game._determine_move_order), making it a tactic rather
+    than a coin flip. Detected here so the rule reads the same on turn 5 and
+    turn 900: the second move is judged on the board as the first move left
+    it, BEFORE the spoils (game.execute_action(..., spoils=False)).
 
 Composition: builds (generals.modifiers.build_castles) are rewritten to
 passes BEFORE the step, so a build next to the enemy general never counts as
 a touch — only pass-field 0 (a real move) can.
+
+Two players only: the touch target is "the enemy general". The env refuses to
+combine deathtouch_turn with num_players > 2.
 """
 import jax
 import jax.numpy as jnp
@@ -58,7 +63,8 @@ def _executes_onto_general(state: game.GameState, player_idx, action) -> jnp.nda
     source_army = state.armies[si, sj]
     army_to_move = lax.cond(split_army == 1, lambda a: a // 2, lambda a: a - 1, source_army)
     army_to_move = jnp.maximum(0, jnp.minimum(army_to_move, source_army - 1))
-    valid = in_bounds & dest_in_bounds & owns_source & (army_to_move > 0) & state.passable[di, dj]
+    valid = (in_bounds & dest_in_bounds & owns_source & (army_to_move > 0)
+             & state.passable[di, dj] & ~state.eliminated[player_idx])
 
     g = state.general_positions[1 - player_idx]
     return (pass_turn == 0) & valid & (di == g[0]) & (dj == g[1])
@@ -76,12 +82,20 @@ def step(state: game.GameState, actions: jnp.ndarray,
     deterministic order), and the outcome is overridden only when a touch
     actually happened.
     """
+    if actions.shape[0] != 2:
+        raise NotImplementedError("the deathtouch modifier is defined for two players only")
     active = (state.winner < 0) & (state.time >= turn)
 
-    first = game._determine_move_order(state, actions)
+    order = game._determine_move_order(state, actions)
+    first, second = order[0], order[1]
     t_first = _executes_onto_general(state, first, actions[first])
-    mid = game.execute_action(state, first, actions[first])
-    t_second = _executes_onto_general(mid, 1 - first, actions[1 - first])
+    # The first move WITHOUT its capture spoils: the second mover's touch (and
+    # capture) is judged on the board as that move left it, not after a capture
+    # confiscated the second mover's army. This is what keeps a mutual
+    # decapitation a draw even though the base game settles the first capture
+    # on the spot.
+    mid = game.execute_action(state, first, actions[first], spoils=False)
+    t_second = _executes_onto_general(mid, second, actions[second])
     # map (first, second) back to (player 0, player 1)
     touch = jnp.where(first == 0,
                       jnp.stack([t_first, t_second]),
@@ -89,13 +103,17 @@ def step(state: game.GameState, actions: jnp.ndarray,
 
     new_state, _ = game.step(state, actions)
 
-    # Mutual CAPTURE (army-based, so it needs no threshold): `mid` shows the
-    # first mover won, and the base step's final winner is somebody else — which
-    # only happens when the second mover captured a general too. _apply_move is
-    # the sole writer of `winner` and only fires on a capture, so this cannot be
-    # confused with any other outcome. Below the threshold `touch` is all-false,
-    # so this is the only thing that catches a simultaneous decapitation.
-    both_captured = (state.winner < 0) & (mid.winner >= 0) & (new_state.winner != mid.winner)
+    # Mutual CAPTURE (army-based, so it needs no threshold): a captured general
+    # leaves the `generals` mask (it becomes a castle), so compare the masks at
+    # the two home tiles across the two spoils-free moves. Below the threshold
+    # `touch` is all-false, so this is the only thing that catches a
+    # simultaneous decapitation.
+    after = game.execute_action(mid, second, actions[second], spoils=False)
+    home_second = state.general_positions[second]
+    home_first = state.general_positions[first]
+    first_captured = state.generals[home_second[0], home_second[1]] & ~mid.generals[home_second[0], home_second[1]]
+    second_captured = mid.generals[home_first[0], home_first[1]] & ~after.generals[home_first[0], home_first[1]]
+    both_captured = (state.winner < 0) & first_captured & second_captured
 
     both = (touch[0] & touch[1]) | both_captured
     one = (touch[0] ^ touch[1]) & ~both_captured
@@ -106,9 +124,11 @@ def step(state: game.GameState, actions: jnp.ndarray,
     # by the NON-toucher would require capturing a general, i.e. touching).
     winner = jnp.where(both, jnp.int32(-1), jnp.where(one, toucher, new_state.winner))
     new_state = new_state._replace(winner=winner)
-    # Forced win the base step didn't settle: apply the usual spoils.
+    # Forced win the base step didn't settle: apply the usual spoils
+    # (eliminate_player is idempotent, so a capture already settled is untouched).
     need_transfer = one & (winner >= 0) & (state.winner < 0)
-    new_state = lax.cond(need_transfer, game._transfer_loser_cells_to_winner,
+    new_state = lax.cond(need_transfer,
+                         lambda s: game.eliminate_player(s, 1 - toucher, toucher),
                          lambda s: s, new_state)
 
     info = game.get_info(new_state)

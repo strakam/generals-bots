@@ -140,7 +140,8 @@ def _shift_false(mask: jax.Array, dr: int, dc: int) -> jax.Array:
 
 
 @partial(jax.jit, static_argnames=['grid_dims', 'pad_to', 'mountain_density_range', 'num_castles_range',
-                                    'min_generals_distance', 'max_generals_distance', 'castle_val_range'])
+                                    'min_generals_distance', 'max_generals_distance', 'castle_val_range',
+                                    'num_players'])
 def generate_grid(
     key: jax.random.PRNGKey,
     grid_dims: tuple[int, int] = (23, 23),
@@ -150,12 +151,14 @@ def generate_grid(
     min_generals_distance: int = 17,
     max_generals_distance: int | None = None,
     castle_val_range: tuple[int, int] = (40, 51),
+    num_players: int = 2,
 ) -> jnp.ndarray:
     """
     Generate grid using JAX-optimal algorithm with guaranteed validity.
     
     Unified generator that supports both square and non-square grids with
-    dynamic padding and configurable general distance constraints.
+    dynamic padding and configurable general distance constraints, for two
+    players (the default, and the path every 1v1 pool takes) or N.
     
     Algorithm:
     1. Place mountains on the empty grid — terrain FIRST, so the spawn
@@ -169,6 +172,9 @@ def generate_grid(
        comparable amount of ground (connected by construction, so nothing needs
        carving afterwards)
     6. Re-assert the two generals (ground truth — the grid always has both)
+       For N > 2 players: generals 3..N are drawn one at a time with the same
+       rules, measured against EVERY general placed so far (one BFS each), and
+       the N spots are dealt to player indices in a random order.
     7. Apply dynamic padding
 
     Both spawn constraints are walking measurements, not straight-line ones, so
@@ -186,12 +192,20 @@ def generate_grid(
         num_castles_range: (min, max) number of castles to place
         min_generals_distance: Minimum BFS (shortest path over open ground) distance between generals
         max_generals_distance: Maximum BFS (shortest path over open ground) distance between generals (None = no limit)
-        castle_val_range: (min, max) army value for castles
-        
+        castle_val_range: (min, max) army value for castles; the minimum must
+            exceed num_players, since generals are encoded as 1..num_players
+        num_players: number of generals to place, encoded as 1..num_players
+
     Returns:
-        A valid grid: exactly two generals, an empty connecting path between
-        them, and a castle within walking distance ~6 of each general.
+        A valid grid: exactly num_players generals (values 1..num_players),
+        all mutually connected over open ground, and (for the first) a castle
+        within walking distance ~6.
     """
+    if num_players < 2:
+        raise ValueError("num_players must be at least 2")
+    if castle_val_range[0] <= num_players:
+        raise ValueError(f"castle values must exceed num_players={num_players} "
+                         f"(generals are encoded as 1..{num_players}); got {castle_val_range}")
     keys = jax.random.split(key, 14)
 
     ah, aw = grid_dims
@@ -358,20 +372,65 @@ def generate_grid(
                              jnp.where(jnp.any(far_enough), closest_far, farthest))
     pos_second = sample_from_mask(second_valid, keys[3])
 
-    # Randomly assign which position becomes p0 (Base A) vs p1 (Base B)
-    swap = jax.random.bernoulli(keys[11])
-    pos_a = jax.tree.map(lambda a, b: jnp.where(swap, b, a), pos_first, pos_second)
-    pos_b = jax.tree.map(lambda a, b: jnp.where(swap, a, b), pos_first, pos_second)
+    if num_players == 2:
+        # Randomly assign which position becomes p0 (Base A) vs p1 (Base B)
+        swap = jax.random.bernoulli(keys[11])
+        pos_a = jax.tree.map(lambda a, b: jnp.where(swap, b, a), pos_first, pos_second)
+        pos_b = jax.tree.map(lambda a, b: jnp.where(swap, a, b), pos_first, pos_second)
 
-    grid = grid.at[pos_a].set(1)
-    grid = grid.at[pos_b].set(2)
+        grid = grid.at[pos_a].set(1)
+        grid = grid.at[pos_b].set(2)
 
-    # =================================================================
-    # Step 6: Re-assert the generals as ground truth — the grid ALWAYS ends with
-    # exactly one P0 (1) and one P1 (2) general, so a spawn can never go missing.
-    # =================================================================
-    grid = grid.at[pos_a].set(1)
-    grid = grid.at[pos_b].set(2)
+        # =================================================================
+        # Step 6: Re-assert the generals as ground truth — the grid ALWAYS ends with
+        # exactly one P0 (1) and one P1 (2) general, so a spawn can never go missing.
+        # =================================================================
+        grid = grid.at[pos_a].set(1)
+        grid = grid.at[pos_b].set(2)
+    else:
+        # =================================================================
+        # Generals 3..N, one at a time. Each is judged against EVERY general
+        # placed so far: the walking distance to the nearest of them (the
+        # minimum over one BFS field per general) must clear the floor, and
+        # its room is matched against A's, with the same fallback ladder as
+        # general B. Drawing from A's reach keeps all N mutually connected.
+        # =================================================================
+        def onehot(pos):
+            return jnp.zeros(grid_dims, dtype=bool).at[pos].set(True)
+
+        positions = [pos_first, pos_second]
+        occupied = onehot(pos_first) | onehot(pos_second)
+        nearest = jnp.minimum(dist_from_first, _bfs_field_from_mask(passable, onehot(pos_second)))
+        if max_generals_distance is not None:
+            furthest = jnp.maximum(dist_from_first, _bfs_field_from_mask(passable, onehot(pos_second)))
+        room_first = room.reshape(-1)[chosen]
+        extra_keys = jax.random.split(keys[4], num_players - 2)
+
+        for k in range(num_players - 2):
+            open_ground = allowed & ~occupied
+            far_k = open_ground & (nearest >= min_generals_distance)
+            if max_generals_distance is not None:
+                far_k = far_k & (furthest <= max_generals_distance)
+            gap_k = jnp.abs(room - room_first)
+            fair_k = far_k & (gap_k <= SPAWN_ROOM_TOLERANCE)
+            best_gap_k = jnp.min(jnp.where(far_k, gap_k, num_tiles))
+            closest_far_k = far_k & (gap_k == best_gap_k)
+            farthest_k = open_ground & (nearest == jnp.max(jnp.where(open_ground, nearest, -1)))
+            valid_k = jnp.where(jnp.any(fair_k), fair_k,
+                                jnp.where(jnp.any(far_k), closest_far_k, farthest_k))
+            pos_k = sample_from_mask(valid_k, extra_keys[k])
+            positions.append(pos_k)
+            occupied = occupied | onehot(pos_k)
+            field_k = _bfs_field_from_mask(passable, onehot(pos_k))
+            nearest = jnp.minimum(nearest, field_k)
+            if max_generals_distance is not None:
+                furthest = jnp.maximum(furthest, field_k)
+
+        # Deal the spots to player indices in a random order, so no seat is
+        # systematically the one placed first (beside a castle) or last.
+        spots = jnp.stack([jnp.stack(pos) for pos in positions]).astype(jnp.int32)   # (N, 2)
+        seats = spots[jax.random.permutation(keys[5], num_players)]
+        grid = grid.at[seats[:, 0], seats[:, 1]].set(jnp.arange(1, num_players + 1, dtype=jnp.int32))
     
     # =================================================================
     # Step 7: Dynamic padding
