@@ -75,10 +75,12 @@ class Renderer:
         self.screen = pygame.display.set_mode((window_width, window_height), pygame.HWSURFACE | pygame.DOUBLEBUF)
         # Scoreboard
         self.right_panel = pygame.Surface((self.right_panel_width, window_height))
+        # header + one row per player (any number of players)
+        self.num_score_rows = 1 + len(self.agent_data)
         self.score_cols = {}
         for col in ["Player", "Army", "Land"]:
             size = (self.player_col_width, height) if col == "Player" else (width, height)
-            self.score_cols[col] = [pygame.Surface(size) for _ in range(3)]
+            self.score_cols[col] = [pygame.Surface(size) for _ in range(self.num_score_rows)]
 
         # Time box aligns under the (name) Player column; the speed/status box
         # fills the rest of the width (under Army + Land).
@@ -202,7 +204,7 @@ class Renderer:
             )
             pygame.draw.rect(self.info_panel[key], BLACK, rect_dim, 1)
 
-            self.right_panel.blit(self.info_panel[key], (info_x[key], 3 * gui_cell_height))
+            self.right_panel.blit(self.info_panel[key], (info_x[key], self.num_score_rows * gui_cell_height))
 
         if self.mode == GuiMode.REPLAY:
             self._render_controls()
@@ -217,7 +219,7 @@ class Renderer:
         RULE_COLOR = (88, 92, 98)      # subtle divider
 
         pad = 12
-        top = 4 * Dimension.GUI_CELL_HEIGHT.value + 8
+        top = (self.num_score_rows + 1) * Dimension.GUI_CELL_HEIGHT.value + 8
         rows = [
             ("Space", "play / pause"),
             ("Left / Right", "step a frame"),
@@ -362,7 +364,7 @@ class Renderer:
     def draw_tile_types(self):
         """
         Draw tile type labels in the upper-right corner of each tile.
-        Types: 0=empty, -2=mountain, 1=general0, 2=general1, 40-50=castle
+        Types: 0=empty, -2=mountain, k=player (k-1)'s general, C=castle
         """
         square_size = Dimension.SQUARE_SIZE.value
         channels = self.game.channels
@@ -374,10 +376,11 @@ class Renderer:
                 if channels.mountains[i, j]:
                     tile_type = "-2"
                 elif channels.generals[i, j]:
-                    if channels.ownership[agents[0]][i, j]:
-                        tile_type = "1"
-                    else:
-                        tile_type = "2"
+                    tile_type = "?"
+                    for k, agent in enumerate(agents):
+                        if channels.ownership[agent][i, j]:
+                            tile_type = str(k + 1)
+                            break
                 elif channels.castles[i, j]:
                     tile_type = "C"  # Castle
                 else:

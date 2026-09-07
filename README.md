@@ -129,6 +129,34 @@ timesteps, states = step_vmap(states, actions)
 
 See `examples/vectorized_example.py` for a complete example.
 
+### 👥 Teams and Free-For-All
+
+The same env plays 1v1 (the default), N-player free-for-all, and team games:
+
+```python
+env = GeneralsEnv(grid_dims=(15, 15))                   # 1v1
+env = GeneralsEnv(grid_dims=(15, 15), num_players=4)    # 4-player free-for-all
+env = GeneralsEnv(grid_dims=(15, 15), teams=[0, 0, 1, 1])   # 2v2: players 0+1 vs 2+3
+```
+
+With N players, actions are `(N, 5)`, `state.ownership` is `(N, H, W)`, and
+observations and rewards are stacked `(N, ...)`. Rules beyond 1v1:
+
+* Moving onto a **teammate's** cell pools the armies and hands the cell to the mover.
+* **Capturing a general** transfers all of the victim's cells to the capturer with
+  every army halved (rounded up); the general becomes a castle and the victim is
+  eliminated (their actions are ignored from then on). The game goes on while
+  another team is alive.
+* A team loses only when **every** one of its generals has fallen; the **last
+  team standing** wins. `info.winner` is the winning team id (the player index
+  in 1v1 / free-for-all), and every player on that team gets reward `+1`,
+  everyone else `-1`.
+* **Sight is shared** within a team. Observations carry `allied_cells`,
+  `allied_land_count` and `allied_army_count` (all zero when you have no
+  teammate); `opponent_*` covers every enemy team together.
+
+See `examples/multiplayer_example.py` for batched 2v2 / FFA / 1v1 games under `jax.jit`.
+
 ## 🌍 Environment
 
 ### Observation
@@ -151,6 +179,12 @@ Each player receives an `Observation` with these fields:
 | `opponent_land_count` | scalar | Opponent's cell count |
 | `opponent_army_count` | scalar | Opponent's army count |
 | `timestep` | scalar | Current game step |
+| `allied_cells` | `(H, W)` | Mask of teammates' visible cells (team games; all-False otherwise) |
+| `allied_land_count` | scalar | Teammates' cell count |
+| `allied_army_count` | scalar | Teammates' army count |
+
+`obs.as_tensor()` stacks the first 14 fields into a `(14, H, W)` tensor;
+`obs.as_tensor(include_allied=True)` appends the three allied channels.
 
 ### Action
 

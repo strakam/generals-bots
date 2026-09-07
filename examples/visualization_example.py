@@ -1,4 +1,12 @@
-"""Visualize a game between two agents using the pygame GUI."""
+"""Visualize a game between agents using the pygame GUI.
+
+Two players by default; set TEAMS for a team game or a free-for-all, e.g.
+TEAMS = [0, 0, 1, 1] (2v2) or TEAMS = [0, 1, 2, 3] (4-player FFA). One agent
+is created per player; sight is shared within a team, so in 2v2 each player's
+view (click a name in the scoreboard to toggle it) covers its teammate's land.
+"""
+import time
+
 import jax.numpy as jnp
 import jax.random as jrandom
 
@@ -10,32 +18,35 @@ from generals.gui import ReplayGUI
 GRID_DIMS = (10, 10)
 TRUNCATION = 500
 FPS = 10
+TEAMS = None            # None = classic 1v1; try [0, 0, 1, 1] or [0, 1, 2, 3]
 
-# Create environment and agents
+teams = [0, 1] if TEAMS is None else list(TEAMS)
+num_players = len(teams)
+
+# Create environment and agents (one per player)
 env = GeneralsEnv(
     grid_dims=GRID_DIMS,
     truncation=TRUNCATION,
-    max_generals_distance=4
+    teams=teams,
+    max_generals_distance=4 if num_players == 2 else None,
+    min_generals_distance=3,
 )
-agent_0 = RandomAgent(id="Random")
-agent_1 = ExpanderAgent(id="Expander")
+agents = [RandomAgent(id="Random") if i % 2 == 0 else ExpanderAgent(id="Expander") for i in range(num_players)]
+agent_ids = [f"{agent.id} P{i} (team {teams[i]})" for i, agent in enumerate(agents)]
 
 # Initialize game
 key = jrandom.PRNGKey(42)
 pool, state = env.reset(key)
 
 # Create GUI
-gui = ReplayGUI(state, agent_ids=[agent_0.id, agent_1.id])
+gui = ReplayGUI(state, agent_ids=agent_ids)
 
 terminated = truncated = False
 step_count = 0
 
 while not (terminated or truncated):
-    obs_0 = get_observation(state, 0)
-    obs_1 = get_observation(state, 1)
-
-    key, k1, k2 = jrandom.split(key, 3)
-    actions = jnp.stack([agent_0.act(obs_0, k1), agent_1.act(obs_1, k2)])
+    key, *subkeys = jrandom.split(key, num_players + 1)
+    actions = jnp.stack([agents[i].act(get_observation(state, i), subkeys[i]) for i in range(num_players)])
 
     timestep, state = env.step(state, actions, pool)
 
@@ -46,9 +57,12 @@ while not (terminated or truncated):
     truncated = bool(timestep.truncated)
     step_count += 1
 
-winner = [agent_0.id, agent_1.id][int(timestep.info.winner)] if timestep.info.winner >= 0 else "None"
-print(f"Game over after {step_count} steps! Winner: {winner}")
+winner_team = int(timestep.info.winner)
+if winner_team >= 0:
+    members = [agent_ids[i] for i in range(num_players) if teams[i] == winner_team]
+    print(f"Game over after {step_count} steps! Winner: team {winner_team} ({', '.join(members)})")
+else:
+    print(f"Game over after {step_count} steps! Winner: None (draw)")
 
-import time
 time.sleep(2)
 gui.close()

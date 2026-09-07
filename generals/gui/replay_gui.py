@@ -25,8 +25,23 @@ class ReplayGUI:
         >>>     gui.update(state)
         >>>     gui.tick(fps=10)
         >>> gui.close()
+
+    Works for any number of players: names and colors default per player index.
     """
-    
+
+    # Player colors, by player index. Dark enough that the white army counts
+    # drawn on top stay readable.
+    DEFAULT_COLORS = [
+        (220, 70, 70),     # red
+        (70, 100, 220),    # blue
+        (60, 150, 70),     # green
+        (150, 70, 190),    # purple
+        (220, 120, 40),    # orange
+        (40, 150, 150),    # teal
+        (160, 40, 100),    # wine
+        (110, 80, 40),     # brown
+    ]
+
     def __init__(
         self,
         initial_state: GameState,
@@ -41,31 +56,34 @@ class ReplayGUI:
         Initialize the GUI.
 
         Args:
-            initial_state: Initial game state to display.
-            agent_ids: Names for the two players. Default ["Player 0", "Player 1"].
-            colors: Colors for the two players. Default soft red and soft blue.
+            initial_state: Initial game state to display. The number of
+                players is read from its ownership planes.
+            agent_ids: Names for the players. Default ["Player 0", ..., "Player N-1"].
+            colors: Colors for the players. Default: DEFAULT_COLORS by index.
             fps: Default frames per second.
             show_tile_types: If True, show tile type labels (0, -2, C40, etc.) for debugging.
             mode: GuiMode.TRAIN for live stepping; GuiMode.REPLAY for an interactive
                 scrubable replay (pause, frame stepping — see `tick`).
             start_paused: Start paused (useful in REPLAY mode).
         """
-        self.agent_ids = agent_ids or ["Player 0", "Player 1"]
+        n_players = int(initial_state.ownership.shape[0])
+        self.agent_ids = list(agent_ids) if agent_ids else [f"Player {i}" for i in range(n_players)]
+        if len(self.agent_ids) != n_players:
+            raise ValueError(f"got {len(self.agent_ids)} agent_ids for a {n_players}-player state")
         # The rendering adapters key every per-player dict (ownership, generals,
-        # colors, fov, stats) by name, so two identically-named agents (e.g. a
-        # self-play match) would collapse both players onto one entry. Keep names
-        # distinct for display so each player keeps its own slot.
-        if self.agent_ids[0] == self.agent_ids[1]:
-            self.agent_ids = [f"{self.agent_ids[0]} (P0)", f"{self.agent_ids[1]} (P1)"]
-        colors = colors or [(220, 70, 70), (70, 100, 220)]
+        # colors, fov, stats) by name, so identically-named agents (e.g. a
+        # self-play match) would collapse onto one entry. Keep names distinct
+        # for display so each player keeps its own slot.
+        if len(set(self.agent_ids)) != n_players:
+            self.agent_ids = [f"{name} (P{i})" for i, name in enumerate(self.agent_ids)]
+        colors = list(colors) if colors else [self.DEFAULT_COLORS[i % len(self.DEFAULT_COLORS)] for i in range(n_players)]
+        if len(colors) != n_players:
+            raise ValueError(f"got {len(colors)} colors for a {n_players}-player state")
         self.fps = fps
 
         # Create adapter and full GUI
         self._adapter = JaxGameAdapter(initial_state, self.agent_ids, get_info(initial_state))
-        agent_data = {
-            self.agent_ids[0]: {"color": colors[0]},
-            self.agent_ids[1]: {"color": colors[1]},
-        }
+        agent_data = {name: {"color": colors[i]} for i, name in enumerate(self.agent_ids)}
         self._gui = FullGUI(self._adapter, agent_data, mode=mode, show_tile_types=show_tile_types)
         self._gui.properties.paused = start_paused
 
