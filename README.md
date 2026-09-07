@@ -165,21 +165,21 @@ Each player receives an `Observation` with these fields:
 
 | Field | Shape | Description |
 |-------|-------|-------------|
-| `armies` | `(H, W)` | Army counts in visible cells |
-| `generals` | `(H, W)` | Mask of visible generals |
-| `castles` | `(H, W)` | Mask of visible castles (formerly `cities` — a deprecated alias remains) |
-| `mountains` | `(H, W)` | Mask of visible mountains |
-| `owned_cells` | `(H, W)` | Mask of cells you own |
-| `opponent_cells` | `(H, W)` | Mask of opponent's visible cells |
-| `neutral_cells` | `(H, W)` | Mask of neutral visible cells |
-| `fog_cells` | `(H, W)` | Mask of fog (unexplored) cells |
-| `structures_in_fog` | `(H, W)` | Mask of castles/mountains in fog |
+| `armies` | `(H,W)` | Army counts in visible cells |
+| `generals` | `(H,W)` | Mask of visible generals |
+| `castles` | `(H,W)` | Mask of visible castles (formerly `cities` — a deprecated alias remains) |
+| `mountains` | `(H,W)` | Mask of visible mountains |
+| `owned_cells` | `(H,W)` | Mask of cells you own |
+| `opponent_cells` | `(H,W)` | Mask of opponent's visible cells |
+| `neutral_cells` | `(H,W)` | Mask of neutral visible cells |
+| `fog_cells` | `(H,W)` | Mask of fog (unexplored) cells |
+| `structures_in_fog` | `(H,W)` | Mask of castles/mountains in fog |
 | `owned_land_count` | scalar | Total cells you own |
 | `owned_army_count` | scalar | Total armies you have |
 | `opponent_land_count` | scalar | Opponent's cell count |
 | `opponent_army_count` | scalar | Opponent's army count |
 | `timestep` | scalar | Current game step |
-| `allied_cells` | `(H, W)` | Mask of teammates' visible cells (team games; all-False otherwise) |
+| `allied_cells` | `(H,W)` | Mask of teammates' visible cells (team games; all-False otherwise) |
 | `allied_land_count` | scalar | Teammates' cell count |
 | `allied_army_count` | scalar | Teammates' army count |
 
