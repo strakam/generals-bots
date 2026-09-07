@@ -1,0 +1,14 @@
+# host=a06 device=cpu:cpu cores=128 jax=0.11.1 python=3.12.13 grid=24 tag=amd-threads32
+sim,device,envs,variant,frames_per_s
+jax,cpu,1,step_only,16931
+jax,cpu,1,env_step,20671
+jax,cpu,16,step_only,111775
+jax,cpu,16,env_step,150416
+jax,cpu,128,step_only,324918
+jax,cpu,128,env_step,248925
+jax,cpu,1024,step_only,437260
+jax,cpu,1024,env_step,384591
+jax,cpu,4096,step_only,511089
+jax,cpu,4096,env_step,542272
+jax,cpu,16384,step_only,576680
+jax,cpu,16384,env_step,535495

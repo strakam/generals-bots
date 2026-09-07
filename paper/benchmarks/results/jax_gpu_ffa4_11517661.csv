@@ -1,0 +1,10 @@
+# host=h02 device=gpu:NVIDIA H200 NVL cores=128 jax=0.11.1 python=3.12.13 grid=24 tag=h200-ffa4 players=4 teams=ffa
+sim,device,envs,variant,frames_per_s
+jax,gpu,1024,step_only,6795532
+jax,gpu,1024,env_step,5737896
+jax,gpu,4096,step_only,11114844
+jax,gpu,4096,env_step,10610870
+jax,gpu,16384,step_only,18193561
+jax,gpu,16384,env_step,16342424
+jax,gpu,65536,step_only,21046661
+jax,gpu,65536,env_step,19404734

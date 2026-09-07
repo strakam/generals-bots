@@ -1,0 +1,8 @@
+# host=a12 cores_available=64 python=3.12.13 grid=24 tag=amd-threads64-merged
+sim,device,envs,variant,frames_per_s
+numpy,cpu,1,env_step,1121
+numpy,cpu,16,env_step,6494
+numpy,cpu,32,env_step,7756
+numpy,cpu,64,env_step,9540
+numpy,cpu,128,env_step,10906
+numpy,cpu,256,env_step,11570

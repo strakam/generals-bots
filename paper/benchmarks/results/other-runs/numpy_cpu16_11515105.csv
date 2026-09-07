@@ -1,0 +1,5 @@
+# host=h01 cores_available=16 python=3.12.13 grid=24 tag=h200node-cpu16
+sim,device,envs,variant,frames_per_s
+numpy,cpu,1,env_step,2400
+numpy,cpu,8,env_step,8086
+numpy,cpu,16,env_step,10915

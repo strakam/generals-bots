@@ -1,0 +1,8 @@
+# host=a15 cores_available=64 python=3.12.13 grid=24 tag=amd-excl-r1
+sim,device,envs,variant,frames_per_s
+numpy,cpu,1,env_step,1124
+numpy,cpu,16,env_step,6493
+numpy,cpu,32,env_step,8621
+numpy,cpu,64,env_step,8715
+numpy,cpu,128,env_step,7359
+numpy,cpu,256,env_step,8337

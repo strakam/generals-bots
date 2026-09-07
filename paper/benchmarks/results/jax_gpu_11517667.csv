@@ -1,0 +1,18 @@
+# host=h03 device=gpu:NVIDIA H200 NVL cores=128 jax=0.11.1 python=3.12.13 grid=24 tag=h200-merged players=2 teams=ffa
+sim,device,envs,variant,frames_per_s
+jax,gpu,1,step_only,21589
+jax,gpu,1,env_step,20761
+jax,gpu,16,step_only,226050
+jax,gpu,16,env_step,182986
+jax,gpu,64,step_only,889010
+jax,gpu,64,env_step,874649
+jax,gpu,256,step_only,3474990
+jax,gpu,256,env_step,2796760
+jax,gpu,1024,step_only,10867946
+jax,gpu,1024,env_step,10304733
+jax,gpu,4096,step_only,22744223
+jax,gpu,4096,env_step,20464315
+jax,gpu,16384,step_only,41920010
+jax,gpu,16384,env_step,35599152
+jax,gpu,65536,step_only,52170359
+jax,gpu,65536,env_step,44990025

@@ -1,0 +1,10 @@
+# host=a06 cores_available=32 python=3.12.13 grid=24 tag=amd-threads32
+sim,device,envs,variant,frames_per_s
+numpy,cpu,1,env_step,1055
+numpy,cpu,2,env_step,1654
+numpy,cpu,4,env_step,2568
+numpy,cpu,8,env_step,4285
+numpy,cpu,12,env_step,4917
+numpy,cpu,16,env_step,4508
+numpy,cpu,24,env_step,5443
+numpy,cpu,32,env_step,5774

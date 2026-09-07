@@ -1,0 +1,18 @@
+# host=h01 device=gpu:NVIDIA H200 NVL cores=128 jax=0.11.1 python=3.12.13 grid=24 tag=h200
+sim,device,envs,variant,frames_per_s
+jax,gpu,128,step_only,1688466
+jax,gpu,128,env_step,1337114
+jax,gpu,1024,step_only,9226254
+jax,gpu,1024,env_step,8746514
+jax,gpu,2048,step_only,14525017
+jax,gpu,2048,env_step,12468146
+jax,gpu,4096,step_only,18424478
+jax,gpu,4096,env_step,17425472
+jax,gpu,8192,step_only,24669042
+jax,gpu,8192,env_step,21989777
+jax,gpu,16384,step_only,28514916
+jax,gpu,16384,env_step,25674414
+jax,gpu,32768,step_only,30475205
+jax,gpu,32768,env_step,28019117
+jax,gpu,65536,step_only,32155986
+jax,gpu,65536,env_step,29691437
