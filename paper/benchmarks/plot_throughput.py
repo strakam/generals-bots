@@ -49,7 +49,7 @@ if __name__ == "__main__":
     plt.rcParams.update({"font.family": "serif", "font.size": 8, "axes.labelsize": 8, "legend.fontsize": 7,
                          "xtick.labelsize": 7, "ytick.labelsize": 7, "axes.linewidth": 0.6})
     fig, ax = plt.subplots(figsize=(3.45, 2.5))
-    styles = [dict(marker="s", color="#7f7f7f"), dict(marker="o", color="#2e6fb7"), dict(marker="^", color="#c0392b")]
+    styles = [dict(marker="s", color="#7f7f7f"), dict(marker="o", color="#0ea5e9"), dict(marker="^", color="#ef4444")]
     for (label, s), st in zip(S.items(), styles):
         if not s: continue
         xs, ys = zip(*s)
