@@ -57,6 +57,7 @@ if __name__ == "__main__":
         px, py = max(s, key=lambda t: t[1])
         ax.annotate(fmt(py), (px, py), textcoords="offset points", xytext=(0, 5), ha="center", fontsize=7, color=st["color"])
     ax.set_xscale("log", base=2); ax.set_yscale("log")
+    ax.set_ylim(top=ax.get_ylim()[1] * 2.5)  # room for the peak annotation
     ax.set_xlabel("Parallel environments"); ax.set_ylabel("Frames per second")
     ax.grid(True, which="major", lw=0.4, alpha=0.5); ax.grid(True, which="minor", lw=0.2, alpha=0.3)
     ax.legend(frameon=False, loc="upper left")
