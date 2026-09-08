@@ -38,18 +38,18 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--numpy-tag", required=True); ap.add_argument("--jaxcpu-tag", required=True); ap.add_argument("--gpu-tag", required=True)
     ap.add_argument("--out", default="sim_throughput.pdf"); ap.add_argument("--tex", default=None)
-    ap.add_argument("--cpu-label", default="CPU node"); ap.add_argument("--gpu-label", default="one H200 GPU")
+    ap.add_argument("--cpu-label", default="CPU (64 threads)"); ap.add_argument("--gpu-label", default="one H200 GPU")
     a = ap.parse_args()
     rows = load(glob.glob("results/*.csv"))
     S = {
         "NumPy, " + a.cpu_label: series(rows, a.numpy_tag, "numpy", "cpu"),
-        "JAX, same " + a.cpu_label: series(rows, a.jaxcpu_tag, "jax", "cpu"),
+        "JAX, " + a.cpu_label: series(rows, a.jaxcpu_tag, "jax", "cpu"),
         "JAX, " + a.gpu_label: series(rows, a.gpu_tag, "jax", "gpu"),
     }
     plt.rcParams.update({"font.family": "serif", "font.size": 8, "axes.labelsize": 8, "legend.fontsize": 7,
                          "xtick.labelsize": 7, "ytick.labelsize": 7, "axes.linewidth": 0.6})
     fig, ax = plt.subplots(figsize=(3.45, 2.5))
-    styles = [dict(marker="s", color="#7a7a7a"), dict(marker="o", color="#2c5bd0"), dict(marker="^", color="#cf3a3a")]
+    styles = [dict(marker="s", color="#7f7f7f"), dict(marker="o", color="#2e6fb7"), dict(marker="^", color="#c0392b")]
     for (label, s), st in zip(S.items(), styles):
         if not s: continue
         xs, ys = zip(*s)
