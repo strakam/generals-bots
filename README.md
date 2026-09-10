@@ -159,6 +159,13 @@ See `examples/multiplayer_example.py` for batched 2v2 / FFA / 1v1 games under `j
 
 ## 🌍 Environment
 
+### Softmax Coworld integration
+
+The optional [Softmax integration](integrations/softmax/README.md) packages the
+1v1 competition rules with networked players, browser controls, and portable
+replays. Run `pip install -e '.[softmax]'`, then
+`python -m integrations.softmax.local --human` to play locally.
+
 ### Observation
 
 Each player receives an `Observation` with these fields:

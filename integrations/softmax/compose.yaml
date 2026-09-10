@@ -1,0 +1,15 @@
+services:
+  generals-game:
+    image: generals-coworld-game:local
+    platform: linux/amd64
+    build:
+      context: ../..
+      dockerfile: integrations/softmax/Dockerfile
+      target: game
+  generals-player:
+    image: generals-coworld-player:local
+    platform: linux/amd64
+    build:
+      context: ../..
+      dockerfile: integrations/softmax/Dockerfile
+      target: player

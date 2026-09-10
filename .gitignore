@@ -176,3 +176,8 @@ competition/agents/*/target/
 # local research artifacts
 figures/
 uv.lock
+
+# Softmax local credentials, episode artifacts, and generated release bundles
+integrations/softmax/local-output/
+integrations/softmax/dist/
+tmp/coworld-*/

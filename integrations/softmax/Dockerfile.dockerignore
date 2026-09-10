@@ -1,0 +1,17 @@
+**
+!generals/
+!generals/**
+!integrations/
+!integrations/__init__.py
+!integrations/softmax/
+!integrations/softmax/*.py
+!integrations/softmax/requirements.txt
+!integrations/softmax/requirements.lock
+!integrations/softmax/static/
+!integrations/softmax/static/**
+!competition/
+!competition/agents/
+!competition/agents/expander_python/
+!competition/agents/expander_python/**
+**/__pycache__/
+**/*.pyc

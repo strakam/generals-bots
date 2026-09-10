@@ -1,0 +1,287 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Metta-AI/coworld/4c26e51/src/coworld/coworld_manifest_schema.json",
+  "tags": [
+    "strategy",
+    "1v1",
+    "fog-of-war",
+    "territory-control"
+  ],
+  "game": {
+    "name": "generals-competition",
+    "owner": "Matej Straka",
+    "description": "Capture the enemy general in a seeded 1v1 fog-of-war strategy game. Build castles; Deathtouch starts at turn 800.",
+    "runnable": {
+      "type": "game",
+      "image": "{{GENERALS_GAME_IMAGE}}",
+      "run": [
+        "python",
+        "-m",
+        "integrations.softmax.server"
+      ],
+      "source_url": "https://github.com/strakam/generals-bots/tree/softmax/integrations/softmax"
+    },
+    "config_schema": {
+      "$defs": {
+        "PlayerName": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "maxLength": 100,
+              "minLength": 1,
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "title": "PlayerName",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "tokens": {
+          "items": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Tokens",
+          "type": "array"
+        },
+        "players": {
+          "items": {
+            "$ref": "#/$defs/PlayerName"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Players",
+          "type": "array"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "maximum": 4294967295,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        },
+        "max_turns": {
+          "default": 1200,
+          "maximum": 1200,
+          "minimum": 1,
+          "title": "Max Turns",
+          "type": "integer"
+        },
+        "turn_timeout_seconds": {
+          "default": 0.5,
+          "maximum": 0.5,
+          "minimum": 0.05,
+          "title": "Turn Timeout Seconds",
+          "type": "number"
+        },
+        "tick_interval_seconds": {
+          "default": 0,
+          "maximum": 0.5,
+          "minimum": 0,
+          "title": "Tick Interval Seconds",
+          "type": "number"
+        },
+        "player_connect_timeout_seconds": {
+          "default": 180,
+          "maximum": 180,
+          "minimum": 1,
+          "title": "Player Connect Timeout Seconds",
+          "type": "number"
+        },
+        "max_consecutive_timeouts": {
+          "default": 20,
+          "maximum": 1200,
+          "minimum": 1,
+          "title": "Max Consecutive Timeouts",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tokens",
+        "players"
+      ],
+      "title": "GameConfig",
+      "type": "object"
+    },
+    "results_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scores",
+        "winner",
+        "reason",
+        "turns",
+        "army",
+        "land",
+        "timeouts"
+      ],
+      "properties": {
+        "scores": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number"
+          }
+        },
+        "winner": {
+          "type": "integer",
+          "enum": [
+            -1,
+            0,
+            1
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "general_capture",
+            "turn_limit",
+            "forfeit",
+            "double_forfeit"
+          ]
+        },
+        "turns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1200
+        },
+        "army": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "land": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "timeouts": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "protocols": {
+      "player": {
+        "type": "text",
+        "value": "# Generals Coworld player protocol v1\n\nConnect to the runner-provided `COWORLD_PLAYER_WS_URL`, a fully formed URL like\n`ws://game:8080/player?slot=0&token=...`. Never log the URL/token. Use WebSocket\nJSON text messages. Python `websockets` clients should use `ping_timeout=None`.\nThe game answers WebSocket ping frames normally. One connection may occupy each\nslot; invalid credentials and concurrent duplicate connections are rejected.\n\nThe game sends a `hello` with `protocol_version: 1`, your `slot` (0 or 1), board\n`height` and `width`, the two display names in `players`, and\n`ruleset: \"competition\"`. Wait for an `observation` before sending actions.\n\nEach observation has:\n\n| Field | Meaning |\n| --- | --- |\n| `type` | `\"observation\"` |\n| `protocol_version`, `slot`, `height`, `width`, `players` | Same as the handshake |\n| `turn` | Current state tick, starting at 0 |\n| `max_turns` | Episode cap; 1200 in the competition variant |\n| `turn_timeout_seconds` | Deadline duration from server observation publication |\n| `my_land`, `my_army`, `opp_land`, `opp_army` | Public totals |\n| `type_grid` | H rows of W integers: 0 fog, 1 plain, 2 mountain, 3 castle, 4 general, 5 structure in fog |\n| `owner_grid` | H\u00d7W, perspective-relative: 0 neutral/unknown, 1 me, 2 opponent |\n| `army_grid` | H\u00d7W visible army counts; zero in fog |\n\nReply with exactly these three fields:\n\n```json\n{\"type\":\"action\",\"turn\":12,\"action\":[0,5,8,3,0]}\n```\n\n`action` contains five integers `[kind, row, col, direction, split]`:\n\n- `kind`: 0 move, 1 pass, 2 build castle.\n- `row`, `col`: a source cell within the board bounds.\n- `direction`: 0 up, 1 down, 2 left, 3 right.\n- `split`: 0 all-but-one, 1 half (rounded down).\n\nUse `[1,0,0,0,0]` to pass and `[2,row,col,0,0]` to build. All five values must\nbe valid integers even when a field is unused. The server rejects booleans,\nfloats, out-of-range coordinates, invalid directions, stale/future turns,\nextra message fields, and malformed shapes before entering JAX. Legally shaped\nbut impossible game actions are no-ops, as in the competition engine.\n\nOnly the **first valid message for the current turn** is accepted. Actions from\nboth players resolve together using the existing engine's move-order rules.\nThere is no action queue: act only on the newest observation. The game advances\nas soon as both actions arrive, subject to the variant's minimum tick interval,\nor when the deadline elapses. The human variant's minimum interval is 500 ms;\nthe competitive bot variant has no artificial delay.\n\nProtocol errors return `{\"type\":\"error\",\"message\":\"...\"}` and do not fill\nthe action slot. You may correct the action before the deadline. Oversized\nmessages close the connection. A missed action becomes a pass; 20 consecutive\nmisses forfeit. Reconnection resumes with `hello` and, if an action window is\nopen, its current observation. Accepted actions and timeout counters survive\nreconnection. Two simultaneous forfeits draw. A player who never connects\ncauses an episode failure rather than an opponent win.\n\nThe final message is `{\"type\":\"final\",\"result\":{...}}`, followed by a clean\nclose. `result.scores` is one number per absolute slot (+1/-1 or 0/0), `winner`\nis 0/1 or -1 for a draw, `reason` is `general_capture`, `turn_limit`, `forfeit`,\nor `double_forfeit`, `turns` is the final state tick, and `army`, `land`, and\n`timeouts` are two-element arrays. Exit cleanly after receiving the final message.\n`{\"type\":\"failure\",\"result\":null}` means the game failed to complete.\n\nNo map seed, hidden board, other player's token, or opponent action is provided\nduring play. The completed public replay reveals the full match. The baseline\nbridge in `player.py` converts these observations to the existing stdio protocol;\nits subprocess must respond within the deadline and exit on stdin EOF.\n"
+      },
+      "global": {
+        "type": "text",
+        "value": "# Generals Coworld global and replay protocol v1\n\n`GET /client/global` serves the public score viewer. Connect to `/global` for\nJSON text updates. No spectator credential is required, so **this stream must\nbe safe for either competing player to read**. Incoming messages never mutate\nthe game. WebSocket ping receives a matching pong.\n\nUpdates contain `type: \"global\"`, `protocol_version: 1`, `phase`, `turn`,\n`max_turns`, two `players` display names, two-element `army` and `land` totals,\n`result`, and `board`. During the match, `board` and `result` are null. Phases\nare `waiting`, `playing`, `resolving`, `saving`, `finished`, and `failed`;\nbrief transitional phases need not each be delivered to a slow viewer.\n\nOnly `finished` reveals a board and result. `GET /replay.json` returns HTTP 409\nuntil then. The game server exits after completing the hosted episode; hosted\nreplay viewing uses the static bundle, independent of the game container.\n\nThe replay is JSON:\n\n- `format: \"generals-coworld\"`, `version: 1`, `ruleset: \"competition\"`.\n- Actual `seed`, `height`, `width`, and two display names in `players`.\n- `frames`: initial frame, then one frame after every applied turn. Each has\n  `turn`, `type_grid`, `owner_grid`, `army_grid`, `army`, and `land`.\n- Replay owners are **absolute**: 0 neutral, 1 slot 0, 2 slot 1. Replay types\n  use the same integer codes as player observations but contain no fog.\n- `turns`: each attempted turn's `turn`, two `actions`, two Boolean `timed_out`\n  flags, and `applied`. The final attempt that causes a forfeit is not applied\n  to the engine; this is explicitly marked `applied: false`.\n- `result`: the same final scoring object sent to players.\n\nThere are no tokens or presigned upload URLs in replays. Board frames allow\nbrowser playback without resimulating JAX. Seed and action history additionally\nallow deterministic resimulation against the recorded ruleset release.\n\nThe static viewer loads a replay URL from `#replay=`, falling back to `?replay=`.\nIt accepts raw JSON or gzip identified by magic bytes. Internal assets use\nrelative URLs and replay fetching needs CORS when hosted on a different origin.\nThe viewer sends `coworld-replay` loading/phase/ready/error messages to its\nembedding parent, autoplays, loops, and exposes pause, seek, speed and restart.\n"
+      }
+    },
+    "docs": {
+      "readme": {
+        "type": "text",
+        "value": "# Generals Competition \u00b7 Softmax Coworld\n\nA bounded **1v1** territory-control game, running this repository's\n`GeneralsEnv(mode=\"competition\")` rules. The authoritative engine is Python/JAX\non CPU. Players run separately and connect over WebSocket. A lightweight bridge\nlets existing Python, C++, and Rust competition bots keep their stdio protocol.\n\n## Play locally\n\nFrom the repository root, with Python 3.12:\n\n```bash\npip install -e '.[softmax]'\npython -m integrations.softmax.local --human\n```\n\nOpen the printed player link. Select an owned tile, then use arrow keys/WASD or\nclick a neighboring cell to move. H toggles half-army moves, B builds a castle,\nand Space passes. The browser passes automatically if you do not act. The human\nconfiguration advances at two turns per second. After the match, use the same\npage to watch the full replay. Ctrl+C stops the local server.\n\nFor two bundled bots playing as fast as they can:\n\n```bash\npython -m integrations.softmax.local --seed 7 --keep-open\n```\n\n`--max-turns 40` makes a short smoke test; the competition variant always uses\n1,200. Each local run writes into its own ignored `local-output/episode-*`\ndirectory. `config.json` contains local player tokens; do not publish it. The\nshareable outputs are `results.json` and `replay.json`. `--port` selects another\nlocal port. The local launcher binds only to loopback.\n\n## Rules and scoring\n\n- Two opposing generals on an independently sampled 18\u201321 by 18\u201321 board.\n- Fog of war: a player sees its owned tiles and their neighbors. Public army\n  and land totals remain visible. Unexplored mountains/castles share one\n  structure marker. Enemy generals are hidden until visible.\n- A move sends all but one army, or half the source army (rounded down), into\n  one orthogonally adjacent cell. Mountains cannot be entered. Friendly armies\n  combine; attacking armies subtract from defenders. You must exceed the\n  defending army to take a cell under normal combat.\n- Generals and owned castles grow each even tick; owned land grows every 50\n  ticks. There are no neutral castles at spawn.\n- Build on an owned plain cell for **35 + \u03a3 max(0, 14 \u2212 2d)** armies, where `d`\n  is Manhattan distance to each of your existing castles/general. Builds resolve\n  before moves. Unaffordable/illegal game moves are no-ops.\n- From turn 800, Deathtouch makes an executed move onto the enemy general an\n  immediate victory. All move-order and simultaneous-capture rules come directly\n  from the shared engine; the adapter does not reimplement them.\n- Capture scores **+1** for the winner and **\u22121** for the loser. Reaching the\n  1,200-turn cap scores **0 / 0**, regardless of army or land advantage.\n\nThe hosted runtime adds explicit failure rules: actions have a 500 ms deadline\n(including transport) from publication of each observation. A missing action is\na pass. After 20 consecutive missed turns a player forfeits; if both reach the\nthreshold together, both score zero. A valid pass resets the counter. If a\nplayer never connects before the 180-second start deadline, the episode emits a\ntyped player failure instead of competitive scores. Reconnection is allowed\nduring play with the original token, but never resets timeout counters.\n\nCompetitive episodes omit `seed`, generating a fresh server-private 32-bit seed.\nExplicit seeds are for reproducible local tests/evaluations. The seed is recorded\nonly in the completed replay. Do not pin a league to a known fixed seed: a bot\ncould reconstruct the hidden map.\n\n## Player protocol\n\nSee [PLAYER_PROTOCOL.md](PLAYER_PROTOCOL.md) for the exact JSON contract and\nthe existing [competition protocol](../../competition/protocol.py) for stdio bots.\nThe bundled player is the repository's pure-Python Expander; it does not need\nJAX or access to the engine.\n\nTo bridge another bot, run in its player container:\n\n```bash\npython -m integrations.softmax.player -- /path/to/compiled-bot\n```\n\nThe runner supplies `COWORLD_PLAYER_WS_URL`. Python scripts can be passed as\n`-- python -u /path/to/main.py`. Build C++/Rust executables into the player image\nahead of time. The bridge owns only its child process; the game owns scoring.\n\n## Spectators and replays\n\n`/client/global` shows live public scores and match status. **It deliberately\ndoes not show the live board.** Player containers can reach the game server, so\nan unauthenticated omniscient WebSocket would defeat fog of war. Player pages\nand `/player` require the slot's token. The public stream accepts no game-control\ncommands, and `/replay.json` is unavailable until all success artifacts are saved.\n\nThe completed replay includes every board frame and the submitted/applied\nactions, seed, timeout flags, and result. The same Canvas renderer serves player\nviews and replays. The static replay bundle needs no Python server, JAX, WASM,\nor network access beyond fetching its replay and local assets. It supports\nautoplay, looping, pause, seek, playback speed, resize, and gzip replay bytes.\nHistorical releases keep their own immutable viewer bundle.\n\nFor a standalone replay, serve the generated bundle and a replay over HTTP:\n\n```bash\nintegrations/softmax/tools/build_replay_viewer.sh integrations/softmax/dist/replay-viewer\n# Copy only a completed replay into dist/replay-viewer/replay.json, then:\npython -m http.server 8090 --directory integrations/softmax/dist/replay-viewer\n# Open http://localhost:8090/#replay=replay.json\n```\n\nSee [GLOBAL_PROTOCOL.md](GLOBAL_PROTOCOL.md). Full live board spectating would\nrequire a separate trusted-viewer authorization contract with Softmax; it must\nnot be enabled by copying the example's public omniscient stream.\n\n## Build and certify\n\nThe project lives in this directory so the training package does not depend on\nthe Coworld SDK. It needs Docker with Compose/Buildx and Docker daemon access.\nKeep the SDK in a separate Python environment. The initial integration targets\nthe public Coworld contract at commit\n`4c26e51` (2026-09-08); pin and review SDK updates before releases.\n\nFrom the repository root:\n\n```bash\npython -m integrations.softmax.tools.manifest --check\ncoworld build --project integrations/softmax --version 0.1.0\ncoworld certify integrations/softmax/dist/coworld_manifest.json\n```\n\n`compose.yaml` builds separate CPU game and lightweight player images. The\nmanifest template embeds the protocol/rules docs and derives its config schema\nfrom the runtime model. If those sources change, regenerate it with\n`python -m integrations.softmax.tools.manifest`. The build hook recreates the\nstatic replay directory and Coworld resolves images to immutable identifiers.\n\nBefore publishing, commit and push the release inputs on the integration branch\nso the pinned source URL resolves, inspect a full-length match and static replay,\nand confirm the game name/account ownership with Softmax. Then use the\nauthenticated SDK:\n\n```bash\ncoworld upload-coworld integrations/softmax/dist/coworld_manifest.json\n```\n\nHosted verification must exercise real episodes, result scores, player shutdown,\nlogs, and the hosted replay. A local pass is not evidence of hosted operation.\nLeague setup uses Softmax's platform scheduler; no custom commissioner,\nreporter, grader, or optimizer is required for this release.\n\n## Maintenance and tests\n\n```bash\nJAX_PLATFORMS=cpu pytest -q tests/test_softmax.py tests/test_matchup.py\n```\n\nThe integration tests cover real engine observation/wire parity, action\nvalidation, authentication, information boundaries, deterministic replay,\ntimeouts, startup failures, Deathtouch scoring, and failed artifact writes.\nBefore releases, run the complete engine suite, local container certification,\nand browser checks for live player controls and the static replay bundle.\n\nTo run the real Chromium checks (including mobile layout, gzip, corrupt replays,\nand WebSocket pong), install `playwright` and Chromium, then run:\n\n```bash\nGENERALS_BROWSER_TESTS=1 pytest -q tests/test_softmax_browser.py\n```\n\nSet `CHROMIUM_PATH` if Chromium is not on PATH, or use Playwright's installed\nbrowser. Deployment dependencies, including transitive packages, are pinned in\n`requirements.lock`; regenerate it with `uv pip compile requirements.txt\n--python-version 3.12 --output-file requirements.lock` from this directory when\ndeliberately updating the runtime.\n\nRules changes belong in `generals/`; both this adapter and the local competition\nrunner call `generals.core.match`. Publish a new Coworld version for rules,\nprotocol, rendering, or dependency changes. Preserve old replay fixtures when\nthe format changes. Keep participant support and league balancing distinct from\ntechnical adapter maintenance. Hosting/resource allowances and ongoing support\nownership need agreement with Softmax.\n"
+      }
+    },
+    "replay_viewer": {
+      "bundle": "replay-viewer",
+      "replay_compression": "gzip"
+    }
+  },
+  "player": [
+    {
+      "id": "expander",
+      "name": "Expander",
+      "description": "Pure-Python competition baseline through the stdio bridge.",
+      "type": "player",
+      "image": "{{GENERALS_PLAYER_IMAGE}}",
+      "run": [
+        "python",
+        "-m",
+        "integrations.softmax.player"
+      ],
+      "source_url": "https://github.com/strakam/generals-bots/tree/softmax/integrations/softmax"
+    }
+  ],
+  "variants": [
+    {
+      "id": "competition",
+      "name": "Competition 1v1",
+      "description": "Full 1200-turn ruleset; fresh private seed per episode; fast bot play.",
+      "game_config": {
+        "players": [
+          {
+            "name": "Red"
+          },
+          {
+            "name": "Blue"
+          }
+        ],
+        "max_turns": 1200
+      }
+    },
+    {
+      "id": "human",
+      "name": "Human play 1v1",
+      "description": "The same competition rules paced at two turns per second.",
+      "game_config": {
+        "players": [
+          {
+            "name": "Red"
+          },
+          {
+            "name": "Blue"
+          }
+        ],
+        "max_turns": 1200,
+        "tick_interval_seconds": 0.5
+      }
+    }
+  ],
+  "certification": {
+    "game_config": {
+      "players": [
+        {
+          "name": "Red"
+        },
+        {
+          "name": "Blue"
+        }
+      ],
+      "seed": 7,
+      "max_turns": 40,
+      "tick_interval_seconds": 0.05
+    },
+    "players": [
+      {
+        "player_id": "expander"
+      },
+      {
+        "player_id": "expander"
+      }
+    ]
+  }
+}

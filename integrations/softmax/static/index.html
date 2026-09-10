@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Generals · Competition</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" data-local="style.css">
+</head>
+<body>
+  <main>
+    <header><a class="brand" href="https://generals.bot" target="_blank" rel="noreferrer">GENERALS<span>COMPETITION</span></a><span id="mode" class="badge">CONNECTING</span></header>
+    <section class="matchbar">
+      <div class="player red"><span class="dot"></span><div><b id="name0">Player 1</b><small><span id="army0">—</span> army <span class="divider">/</span> <span id="land0">—</span> land</small></div></div>
+      <div class="clock"><b id="turn">0</b><small id="turn-label">TURN</small></div>
+      <div class="player blue"><div><b id="name1">Player 2</b><small><span id="army1">—</span> army <span class="divider">/</span> <span id="land1">—</span> land</small></div><span class="dot"></span></div>
+    </section>
+    <section class="arena" aria-label="Game board">
+      <canvas id="board" width="720" height="720" tabindex="0" aria-label="Select an owned tile, then use arrow keys to move"></canvas>
+      <div id="cover"><span class="crown">♛</span><h1 id="cover-title">Preparing the battlefield</h1><p id="cover-text">Waiting for the match to begin.</p></div>
+    </section>
+    <div id="status" role="status" aria-live="polite">Connecting…</div>
+    <section id="play-controls" class="controls" hidden>
+      <button id="split" aria-pressed="false">Half army <kbd>H</kbd></button>
+      <button id="build">Build castle <kbd>B</kbd></button>
+      <button id="pass">Pass <kbd>Space</kbd></button>
+      <span class="hint">Select your tile · Arrow keys or WASD to move</span>
+    </section>
+    <section id="replay-controls" class="controls" hidden>
+      <button id="pause">Pause</button><button id="restart" aria-label="Restart replay">↺</button>
+      <input id="seek" type="range" min="0" max="1" value="0" aria-label="Replay turn">
+      <select id="speed" aria-label="Playback speed"><option value="2">½×</option><option value="4" selected>1×</option><option value="8">2×</option><option value="20">5×</option><option value="60">15×</option></select>
+    </section>
+    <footer><span>Capture the general. Hold your ground.</span><span id="endgame">Deathtouch from turn 800</span></footer>
+  </main>
+  <script>
+    // Live pages may be nested beneath a platform proxy. Static bundles use
+    // sibling assets; game-served pages use their corresponding /static prefix.
+    const prefix = location.pathname.includes('/client/') ? location.pathname.split('/client/')[0] + '/static/' : './';
+    document.querySelector('link[data-local]').href = prefix + 'style.css';
+    const script = document.createElement('script'); script.src = prefix + 'app.js'; document.body.appendChild(script);
+  </script>
+</body>
+</html>

@@ -17,6 +17,7 @@ jobs:
           python-version: '3.12'
       - name: Install engine + test deps
         run: |
-          pip install -e .
+          pip install -e '.[softmax]'
           pip install pytest
+      - run: python -m integrations.softmax.tools.manifest --check
       - run: pytest -q

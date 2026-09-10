@@ -1,0 +1,206 @@
+/* Shared board renderer for the authenticated player, public viewer and static replay. */
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const canvas = $('board'), ctx = canvas.getContext('2d');
+  const colors = {0: '#384238', 1: '#a85749', 2: '#486f9f'};
+  const params = new URLSearchParams(location.search);
+  const replayURL = new URLSearchParams(location.hash.slice(1)).get('replay') || params.get('replay');
+  const livePrefix = location.pathname.includes('/client/') ? location.pathname.split('/client/')[0] : '';
+  let board = null, slot = null, selected = null, half = false, ws = null;
+  let currentTurn = -1, sent = true, passTimer = null, replay = null, frameIndex = 0;
+  let playing = true, replayTimer = null, readySent = false, replayLoad = 0;
+  const post = data => { if (parent !== window) parent.postMessage({src: 'coworld-replay', ...data}, '*'); };
+  function status(text, error = false) { $('status').textContent = text; $('status').classList.toggle('error', error); }
+  function ready() { if (!readySent) { readySent = true; setTimeout(() => post({type: 'ready'}), 0); } }
+  function fail(message) {
+    status(message, true); $('cover').hidden = false;
+    $('cover-title').textContent = 'Unable to open this match'; $('cover-text').textContent = message;
+    post({type: 'error', message});
+  }
+  function names(players) { players.forEach((name, i) => { $(`name${i}`).textContent = name; }); }
+  function scoreboard(turn, army, land) {
+    $('turn').textContent = turn;
+    for (let i = 0; i < 2; i++) { $(`army${i}`).textContent = army[i]; $(`land${i}`).textContent = land[i]; }
+    $('endgame').textContent = turn >= 800 ? 'DEATHTOUCH ACTIVE · Reach the enemy general to win' : 'Deathtouch from turn 800';
+  }
+  function draw() {
+    if (!board) return;
+    const h = board.type_grid.length, w = board.type_grid[0].length;
+    const cssWidth = canvas.getBoundingClientRect().width || 720;
+    const ratio = Math.min(devicePixelRatio || 1, 2);
+    canvas.width = Math.round(cssWidth * ratio); canvas.height = Math.round(cssWidth * h / w * ratio);
+    const cw = canvas.width / w, ch = canvas.height / h;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) {
+      const kind = board.type_grid[r][c], owner = board.owner_grid[r][c], army = board.army_grid[r][c];
+      const x = c*cw, y = r*ch;
+      ctx.fillStyle = kind === 0 || kind === 5 ? '#202922' : kind === 2 ? '#566051' : colors[owner];
+      ctx.fillRect(x, y, cw, ch);
+      ctx.strokeStyle = '#111a1555'; ctx.lineWidth = ratio; ctx.strokeRect(x, y, cw, ch);
+      const small = Math.max(8 * ratio, Math.min(cw, ch) * .28);
+      if (kind === 2 || kind === 5) {
+        ctx.fillStyle = kind === 2 ? '#8c9680' : '#3c493b';
+        ctx.beginPath(); ctx.moveTo(x+cw*.2, y+ch*.72); ctx.lineTo(x+cw*.5, y+ch*.25); ctx.lineTo(x+cw*.8, y+ch*.72); ctx.fill();
+      }
+      if (kind === 3 || kind === 4) {
+        ctx.font = `${small*1.2}px Georgia, serif`; ctx.fillStyle = '#f6ead5';
+        ctx.fillText(kind === 4 ? '♛' : '♜', x+cw*.5, y+ch*.29);
+      }
+      if ((army > 0 || owner > 0) && kind !== 0 && kind !== 5) {
+        ctx.font = `600 ${small}px ui-sans-serif, system-ui`; ctx.fillStyle = '#fcf5e8';
+        const text = army >= 10000 ? (army / 1000).toFixed(1)+'k' : String(army);
+        ctx.fillText(text, x+cw*.5, y+ch*(kind === 3 || kind === 4 ? .73 : .53), cw*.92);
+      }
+      if (selected && selected[0] === r && selected[1] === c) {
+        ctx.strokeStyle = '#fff1b1'; ctx.lineWidth = 2.5*ratio;
+        ctx.strokeRect(x+ratio, y+ratio, cw-2*ratio, ch-2*ratio);
+      }
+    }
+    $('cover').hidden = true; ready();
+  }
+  function send(action) {
+    if (!ws || ws.readyState !== WebSocket.OPEN || sent || currentTurn < 0) return;
+    ws.send(JSON.stringify({type: 'action', turn: currentTurn, action}));
+    sent = true; clearTimeout(passTimer);
+    status(action[0] === 1 ? 'Holding position.' : action[0] === 2 ? 'Castle requested.' : 'Move submitted.');
+  }
+  function move(direction) {
+    if (!selected || !board || sent) return;
+    const [r, c] = selected, delta = [[-1,0],[1,0],[0,-1],[0,1]][direction];
+    const nr = r+delta[0], nc = c+delta[1];
+    if (nr < 0 || nc < 0 || nr >= board.type_grid.length || nc >= board.type_grid[0].length) return;
+    send([0,r,c,direction,half ? 1 : 0]); selected = [nr,nc]; draw();
+  }
+  canvas.addEventListener('click', event => {
+    if (slot === null || !board) return;
+    const rect = canvas.getBoundingClientRect();
+    const r = Math.floor((event.clientY-rect.top)/rect.height*board.type_grid.length);
+    const c = Math.floor((event.clientX-rect.left)/rect.width*board.type_grid[0].length);
+    if (r < 0 || c < 0 || r >= board.type_grid.length || c >= board.type_grid[0].length) return;
+    if (selected) {
+      const dr = r-selected[0], dc = c-selected[1];
+      if (Math.abs(dr)+Math.abs(dc) === 1) { move(dr < 0 ? 0 : dr > 0 ? 1 : dc < 0 ? 2 : 3); canvas.focus(); return; }
+    }
+    if (board.owner_grid[r][c] === slot+1) selected = [r,c];
+    draw(); canvas.focus();
+  });
+  $('split').onclick = () => { half = !half; $('split').setAttribute('aria-pressed', String(half)); };
+  $('build').onclick = () => { if (selected) send([2, ...selected, 0, 0]); };
+  $('pass').onclick = () => send([1,0,0,0,0]);
+  document.addEventListener('keydown', event => {
+    if (slot === null || event.target.matches('input, select, button')) return;
+    const key = event.key.toLowerCase();
+    const keys = {arrowup:0, w:0, arrowdown:1, s:1, arrowleft:2, a:2, arrowright:3, d:3};
+    if (key in keys) { event.preventDefault(); move(keys[key]); }
+    else if (key === 'h') $('split').click();
+    else if (key === 'b') $('build').click();
+    else if (key === ' ') { event.preventDefault(); $('pass').click(); }
+  });
+  function outcome(result) {
+    const text = result.winner < 0 ? 'Draw' : `${$('name'+result.winner).textContent} wins`;
+    const reasons = {general_capture:'general captured', turn_limit:'turn limit reached', forfeit:'opponent timed out', double_forfeit:'both players timed out'};
+    return `${text} · ${reasons[result.reason] || result.reason}`;
+  }
+  function showReplayFrame() {
+    board = replay.frames[frameIndex]; scoreboard(board.turn, board.army, board.land); draw();
+    $('seek').value = frameIndex;
+    status(`${outcome(replay.result)} · Frame ${frameIndex+1} of ${replay.frames.length}`);
+  }
+  function resetReplayTimer() {
+    clearInterval(replayTimer);
+    replayTimer = setInterval(() => {
+      if (playing && replay) { frameIndex = (frameIndex+1) % replay.frames.length; showReplayFrame(); }
+    }, 1000 / Number($('speed').value));
+  }
+  $('pause').onclick = () => { playing = !playing; $('pause').textContent = playing ? 'Pause' : 'Play'; };
+  $('restart').onclick = () => { frameIndex = 0; showReplayFrame(); };
+  $('seek').oninput = () => { frameIndex = Number($('seek').value); showReplayFrame(); };
+  $('speed').onchange = resetReplayTimer;
+  async function loadReplay(url) {
+    const load = ++replayLoad;
+    clearInterval(replayTimer); clearTimeout(passTimer);
+    replay = null; board = null; readySent = false;
+    $('mode').textContent = 'LOADING'; $('replay-controls').hidden = true;
+    $('cover').hidden = false; $('cover-title').textContent = 'Loading the replay';
+    $('cover-text').textContent = 'Reconstructing the battlefield.';
+    post({type:'loading'}); post({type:'phase', phase:'replay_fetch_start'});
+    const response = await fetch(url, {credentials:'omit'});
+    if (!response.ok) throw new Error(`Replay could not be loaded (${response.status}).`);
+    let bytes = new Uint8Array(await response.arrayBuffer());
+    const compressed = bytes[0] === 0x1f && bytes[1] === 0x8b;
+    post({type:'phase', phase:'replay_fetch_end', bytes:bytes.length, compressed});
+    if (compressed) bytes = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
+    const data = JSON.parse(new TextDecoder().decode(bytes));
+    if (load !== replayLoad) return;
+    if (data.format !== 'generals-coworld' || data.version !== 1 || !Array.isArray(data.frames) || !data.frames.length || data.frames.length > 1201 ||
+        !Number.isInteger(data.height) || !Number.isInteger(data.width) || data.height < 1 || data.height > 21 || data.width < 1 || data.width > 21 ||
+        !Array.isArray(data.players) || data.players.length !== 2 || !data.result) throw new Error('Unsupported or incomplete Generals replay.');
+    for (const frame of data.frames) for (const key of ['type_grid','owner_grid','army_grid']) {
+      if (!Array.isArray(frame[key]) || frame[key].length !== data.height || frame[key].some(row => !Array.isArray(row) || row.length !== data.width || row.some(n => !Number.isInteger(n)))) throw new Error('Replay contains an invalid board.');
+    }
+    replay = data; slot = null; selected = null; clearTimeout(passTimer);
+    names(data.players); $('mode').textContent = 'REPLAY';
+    $('play-controls').hidden = true; $('replay-controls').hidden = false; $('seek').max = data.frames.length-1;
+    post({type:'phase', phase:'replay_parsed'});
+    readySent = false; frameIndex = 0; showReplayFrame(); resetReplayTimer();
+  }
+  function observe(message) {
+    slot = message.slot; currentTurn = message.turn; sent = false; names(message.players);
+    const owners = message.owner_grid.map(row => row.map(o => o === 0 ? 0 : o === 1 ? slot+1 : 2-slot));
+    board = {...message, owner_grid: owners};
+    if (selected && owners[selected[0]][selected[1]] !== slot+1) selected = null;
+    if (!selected) {
+      for (let r=0; r<owners.length; r++) for (let c=0; c<owners[0].length; c++) {
+        if (owners[r][c] === slot+1 && board.type_grid[r][c] === 4) selected = [r,c];
+      }
+    }
+    const army = [], land = [];
+    army[slot] = message.my_army; army[1-slot] = message.opp_army;
+    land[slot] = message.my_land; land[1-slot] = message.opp_land;
+    scoreboard(message.turn, army, land); draw();
+    status('Your move · Select a tile and a direction.');
+    clearTimeout(passTimer);
+    passTimer = setTimeout(() => send([1,0,0,0,0]), message.turn_timeout_seconds * 800);
+  }
+  function connectLive() {
+    const isPlayer = location.pathname.endsWith('/client/player');
+    const route = livePrefix + (isPlayer ? '/player' : '/global');
+    const url = new URL(route, location.href); url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    if (isPlayer) { url.searchParams.set('slot', params.get('slot') || ''); url.searchParams.set('token', params.get('token') || ''); }
+    ws = new WebSocket(url);
+    ws.onopen = () => { $('mode').textContent = isPlayer ? 'PLAYER' : 'LIVE'; status('Waiting for both players.'); };
+    ws.onmessage = event => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'hello') {
+          slot = message.slot; names(message.players); $('play-controls').hidden = false;
+        } else if (message.type === 'observation') observe(message);
+        else if (message.type === 'global') {
+          names(message.players); scoreboard(message.turn, message.army, message.land);
+          if (message.phase === 'finished') { loadReplay(livePrefix+'/replay.json').catch(err => fail(err.message)); }
+          else {
+            $('cover-title').textContent = message.phase === 'waiting' ? 'Waiting for the generals' : message.phase === 'failed' ? 'Match could not finish' : 'The battle is underway';
+            $('cover-text').textContent = 'The live map stays hidden to protect fog of war. Watch the score here, then explore the full replay.';
+            status(message.phase === 'waiting' ? 'Waiting for both players.' : message.phase === 'failed' ? 'The episode failed. Check the game logs.' : 'Live score · Board revealed after the match.'); ready();
+          }
+        } else if (message.type === 'final') {
+          sent = true; clearTimeout(passTimer); status(outcome(message.result));
+          loadReplay(livePrefix+'/replay.json').catch(err => fail(err.message));
+        } else if (message.type === 'error') status(message.message, true);
+        else if (message.type === 'failure') fail('The episode could not complete.');
+      } catch (err) { fail(err.message); }
+    };
+    ws.onerror = () => status('Connection failed. Check the player link and game server.', true);
+    ws.onclose = () => { clearTimeout(passTimer); if (!replay) status('Connection closed. Reopen your player link to reconnect.', true); };
+  }
+  new ResizeObserver(draw).observe(canvas.parentElement);
+  window.addEventListener('hashchange', () => {
+    const url = new URLSearchParams(location.hash.slice(1)).get('replay');
+    if (url) loadReplay(url).catch(err => fail(err.message));
+  });
+  if (replayURL) loadReplay(replayURL).catch(err => fail(err.message));
+  else if (location.pathname.endsWith('/client/replay')) loadReplay(livePrefix+'/replay.json').catch(err => fail(err.message));
+  else if (location.pathname.includes('/client/')) connectLive();
+  else fail('Open this viewer with a replay URL in #replay=.');
+})();
