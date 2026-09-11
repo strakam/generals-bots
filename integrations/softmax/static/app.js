@@ -1,9 +1,8 @@
-/* Shared board renderer for the authenticated player, public viewer and static replay. */
+/* Coworld transport and controls around the existing competition tile renderer. */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
-  const canvas = $('board'), ctx = canvas.getContext('2d');
-  const colors = {0: '#384238', 1: '#a85749', 2: '#486f9f'};
+  const canvas = $('board'), renderer = GeneralsTiles(canvas);
   const params = new URLSearchParams(location.search);
   const replayURL = new URLSearchParams(location.hash.slice(1)).get('replay') || params.get('replay');
   const livePrefix = location.pathname.includes('/client/') ? location.pathname.split('/client/')[0] : '';
@@ -26,37 +25,7 @@
   }
   function draw() {
     if (!board) return;
-    const h = board.type_grid.length, w = board.type_grid[0].length;
-    const cssWidth = canvas.getBoundingClientRect().width || 720;
-    const ratio = Math.min(devicePixelRatio || 1, 2);
-    canvas.width = Math.round(cssWidth * ratio); canvas.height = Math.round(cssWidth * h / w * ratio);
-    const cw = canvas.width / w, ch = canvas.height / h;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) {
-      const kind = board.type_grid[r][c], owner = board.owner_grid[r][c], army = board.army_grid[r][c];
-      const x = c*cw, y = r*ch;
-      ctx.fillStyle = kind === 0 || kind === 5 ? '#202922' : kind === 2 ? '#566051' : colors[owner];
-      ctx.fillRect(x, y, cw, ch);
-      ctx.strokeStyle = '#111a1555'; ctx.lineWidth = ratio; ctx.strokeRect(x, y, cw, ch);
-      const small = Math.max(8 * ratio, Math.min(cw, ch) * .28);
-      if (kind === 2 || kind === 5) {
-        ctx.fillStyle = kind === 2 ? '#8c9680' : '#3c493b';
-        ctx.beginPath(); ctx.moveTo(x+cw*.2, y+ch*.72); ctx.lineTo(x+cw*.5, y+ch*.25); ctx.lineTo(x+cw*.8, y+ch*.72); ctx.fill();
-      }
-      if (kind === 3 || kind === 4) {
-        ctx.font = `${small*1.2}px Georgia, serif`; ctx.fillStyle = '#f6ead5';
-        ctx.fillText(kind === 4 ? '♛' : '♜', x+cw*.5, y+ch*.29);
-      }
-      if ((army > 0 || owner > 0) && kind !== 0 && kind !== 5) {
-        ctx.font = `600 ${small}px ui-sans-serif, system-ui`; ctx.fillStyle = '#fcf5e8';
-        const text = army >= 10000 ? (army / 1000).toFixed(1)+'k' : String(army);
-        ctx.fillText(text, x+cw*.5, y+ch*(kind === 3 || kind === 4 ? .73 : .53), cw*.92);
-      }
-      if (selected && selected[0] === r && selected[1] === c) {
-        ctx.strokeStyle = '#fff1b1'; ctx.lineWidth = 2.5*ratio;
-        ctx.strokeRect(x+ratio, y+ratio, cw-2*ratio, ch-2*ratio);
-      }
-    }
+    renderer.draw(board, selected);
     $('cover').hidden = true; ready();
   }
   function send(action) {

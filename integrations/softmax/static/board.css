@@ -1,0 +1,96 @@
+/* Tile styles reused from generals-competition/style.css at 83a9b23. */
+:root {
+  --bg: #ffffff;
+  --fg: #0a0a0c;
+  --muted: #6b6b74;
+  --accent: #e23a3a;
+  /* player colors — the engine's replay palette, exact (generals/gui/replay_gui.py):
+     blue rgb(70,100,220), red rgb(220,70,70) */
+  --blue: #4664dc;
+  --red: #dc4646;
+  /* board tiles — exact engine values (generals/gui/rendering.py):
+     plains rgb(230,230,230), mountains rgb(187,187,187), neutral castles rgb(128,128,128) */
+  --neutral-tile: #e6e6e6;
+  --neutral-castle-tile: #808080;
+  --mountain-tile: #bbbbbb;
+  --fog-tile: #4a4f56;
+  --fog-mountain-tile: #767b83;
+  --border: rgba(0, 0, 0, 0.12);
+  --stage-max: 1600px;
+
+  /* Typography
+     - --font-body: Inter — designed for screen readability at small sizes (Linear, Figma, GitHub).
+     - --font-display: Space Grotesk — geometric grotesque with personality, still legible at large sizes.
+     - --font-mono: JetBrains Mono — code, tags, mono labels. Familiar to the dev audience. */
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+
+.tile {
+  font-family: var(--font-mono);
+  font-size: calc(var(--tile-size) * 0.38);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #e6e6e6;
+  /* engine grid (rendering.py draw_channel): 1px left+top lines per tile, in a
+     0.72-brightness shade of the tile's own fill — softer than a flat black grid */
+  --fill: var(--neutral-tile);
+  background: var(--fill);
+  border: 0;
+  border-left: 1px solid color-mix(in srgb, var(--fill) 72%, black);
+  border-top: 1px solid color-mix(in srgb, var(--fill) 72%, black);
+  transition: background-color 0.4s ease, opacity 500ms ease var(--d, 0s);
+  position: relative;
+  line-height: 1;
+  overflow: hidden;
+}
+.tile .num {
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+.tile .icon {
+  position: absolute;
+  inset: 15%;
+  background-color: #000;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  z-index: 1;
+}
+.tile.has-mountain .icon {
+  -webkit-mask-image: url('assets/mountainie.png');
+  mask-image: url('assets/mountainie.png');
+}
+.tile.has-castle .icon {
+  -webkit-mask-image: url('assets/citie.png');
+  mask-image: url('assets/citie.png');
+}
+.tile.has-general .icon {
+  -webkit-mask-image: url('assets/crownie.png');
+  mask-image: url('assets/crownie.png');
+}
+
+/* fog: neither player sees this cell (owner -2) — dark, no army or terrain */
+.tile.fog { --fill: var(--fog-tile); color: transparent; }
+/* a mountain in fog stays visible as static terrain: a grayer tile + icon */
+.tile.fog.fog-mountain { --fill: var(--fog-mountain-tile); }
+.tile.neutral { --fill: var(--neutral-tile); color: #333; }
+.tile.mountain { --fill: var(--mountain-tile); color: #222; }
+.tile.neutral-castle { --fill: var(--neutral-castle-tile); color: #fff; }
+.tile.blue { --owner: var(--blue); --fill: var(--owner); color: #fff; }
+.tile.red { --owner: var(--red); --fill: var(--owner); color: #fff; }
+/* owned structures stand out as a darker shade of the owner's color — exact
+   engine factors (rendering.py): generals 0.65, captured castles 0.8 */
+.tile.blue.has-general, .tile.red.has-general { --fill: color-mix(in srgb, var(--owner) 65%, black); }
+.tile.blue.has-castle, .tile.red.has-castle { --fill: color-mix(in srgb, var(--owner) 80%, black); }
+
+.tile { transition: none; }
+.tile.selected { outline: 2px solid #ffde59; outline-offset: -2px; z-index: 3; }

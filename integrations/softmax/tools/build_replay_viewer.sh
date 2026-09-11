@@ -12,4 +12,12 @@ if output == source or output in source.parents or source in output.parents:
 if output.exists():
     shutil.rmtree(output)
 shutil.copytree(source, output)
+assets = source.parents[2] / 'generals/assets/images'
+(output / 'assets').mkdir()
+for name in ('crownie.png', 'citie.png', 'mountainie.png'):
+    shutil.copyfile(assets / name, output / 'assets' / name)
+fonts = source.parents[2] / 'generals/assets/fonts'
+(output / 'fonts').mkdir()
+for name in ('Quicksand-VariableFont_wght.ttf', 'OFL.txt'):
+    shutil.copyfile(fonts / name, output / 'fonts' / name)
 PY

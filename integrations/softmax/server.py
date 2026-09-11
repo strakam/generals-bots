@@ -265,6 +265,11 @@ def create_app(config: GameConfig | None = None, artifacts: dict | None = None, 
                 await task
 
     app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
+    # Use the engine's original sprites; the replay build copies the same files.
+    app.mount(
+        "/static/assets", StaticFiles(directory=Path(__file__).parents[2] / "generals/assets/images"), name="sprites"
+    )
+    app.mount("/static/fonts", StaticFiles(directory=Path(__file__).parents[2] / "generals/assets/fonts"), name="fonts")
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
     @app.middleware("http")

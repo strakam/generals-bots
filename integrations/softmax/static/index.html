@@ -6,6 +6,7 @@
   <meta name="referrer" content="no-referrer">
   <title>Generals · Competition</title>
   <link rel="icon" href="data:,">
+  <link rel="stylesheet" data-local="board.css">
   <link rel="stylesheet" data-local="style.css">
 </head>
 <body>
@@ -17,8 +18,8 @@
       <div class="player blue"><div><b id="name1">Player 2</b><small><span id="army1">—</span> army <span class="divider">/</span> <span id="land1">—</span> land</small></div><span class="dot"></span></div>
     </section>
     <section class="arena" aria-label="Game board">
-      <canvas id="board" width="720" height="720" tabindex="0" aria-label="Select an owned tile, then use arrow keys to move"></canvas>
-      <div id="cover"><span class="crown">♛</span><h1 id="cover-title">Preparing the battlefield</h1><p id="cover-text">Waiting for the match to begin.</p></div>
+      <div id="board" tabindex="0" aria-label="Select an owned tile, then use arrow keys to move"></div>
+      <div id="cover"><h1 id="cover-title">Preparing the battlefield</h1><p id="cover-text">Waiting for the match to begin.</p></div>
     </section>
     <div id="status" role="status" aria-live="polite">Connecting…</div>
     <section id="play-controls" class="controls" hidden>
@@ -38,8 +39,12 @@
     // Live pages may be nested beneath a platform proxy. Static bundles use
     // sibling assets; game-served pages use their corresponding /static prefix.
     const prefix = location.pathname.includes('/client/') ? location.pathname.split('/client/')[0] + '/static/' : './';
-    document.querySelector('link[data-local]').href = prefix + 'style.css';
-    const script = document.createElement('script'); script.src = prefix + 'app.js'; document.body.appendChild(script);
+    document.querySelectorAll('link[data-local]').forEach(link => link.href = prefix + link.dataset.local);
+    const rendererScript = document.createElement('script'); rendererScript.src = prefix + 'board.js';
+    rendererScript.onload = () => {
+      const script = document.createElement('script'); script.src = prefix + 'app.js'; document.body.appendChild(script);
+    };
+    document.body.appendChild(rendererScript);
   </script>
 </body>
 </html>

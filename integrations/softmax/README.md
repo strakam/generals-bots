@@ -92,8 +92,9 @@ and `/player` require the slot's token. The public stream accepts no game-contro
 commands, and `/replay.json` is unavailable until all success artifacts are saved.
 
 The completed replay includes every board frame and the submitted/applied
-actions, seed, timeout flags, and result. The same Canvas renderer serves player
-views and replays. The static replay bundle needs no Python server, JAX, WASM,
+actions, seed, timeout flags, and result. The tile renderer and styles from `generals-competition` serve player views
+and replays. Crown, castle, and mountain sprites come directly from this repo's
+`generals/assets/images`, with the same assets copied into the static bundle. The static replay bundle needs no Python server, JAX, WASM,
 or network access beyond fetching its replay and local assets. It supports
 autoplay, looping, pause, seek, playback speed, resize, and gzip replay bytes.
 Historical releases keep their own immutable viewer bundle.
@@ -178,3 +179,17 @@ protocol, rendering, or dependency changes. Preserve old replay fixtures when
 the format changes. Keep participant support and league balancing distinct from
 technical adapter maintenance. Hosting/resource allowances and ongoing support
 ownership need agreement with Softmax.
+
+## Visual sources
+
+`static/board.js` reuses the tile-rendering function from
+`generals-competition/board.js` at commit `83a9b23`. `static/board.css` contains
+that repo's tile styles and color variables from the same commit. Only the
+Coworld snapshot-to-tile mapping and selected-cell indicator are adapter-specific.
+The surrounding layout follows its `assets/site.css` replay viewer. There is no
+procedural game fallback or second game simulation in this renderer.
+
+Keep the tile styling aligned with the competition site when updating it.
+Sprites stay owned by `generals/assets/images`, and the Quicksand font comes
+from `generals/assets/fonts`, including its license in the replay bundle. No
+copied source assets need to be synchronized manually.
