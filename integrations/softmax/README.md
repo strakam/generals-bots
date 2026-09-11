@@ -15,7 +15,7 @@ python -m integrations.softmax.local --human
 ```
 
 Open the printed player link. Select an owned tile, then use arrow keys/WASD or
-click neighboring cells to queue a route. Outlined yellow arrows show queued moves;
+click neighboring cells to queue a route. Black arrows with white outlines show queued moves;
 a white arrow marks the move already submitted for this turn. E undoes the last
 queued action; Q clears all remaining actions. Neither cancels an action already
 submitted. H toggles half-army moves for new inputs, B queues a castle build,

@@ -93,19 +93,24 @@
 .tile.blue.has-castle, .tile.red.has-castle { --fill: color-mix(in srgb, var(--owner) 80%, black); }
 
 .tile { transition: none; overflow: visible; }
-.tile.selected { outline: 2px solid #ffde59; outline-offset: -2px; z-index: 3; }
+.tile.selected {
+  outline: 3px solid #111;
+  outline-offset: -3px;
+  box-shadow: inset 0 0 0 4px #fff;
+  z-index: 3;
+}
 
 /* Center route arrows on tile borders, clear of army counts and sprites. */
 .move-arrow {
   position: absolute;
-  width: clamp(8px, calc(var(--tile-size) * .4), 15px);
-  height: clamp(8px, calc(var(--tile-size) * .4), 15px);
+  width: clamp(10px, calc(var(--tile-size) * .5), 18px);
+  height: clamp(10px, calc(var(--tile-size) * .5), 18px);
   z-index: 4; pointer-events: none;
 }
 .move-arrow path { stroke-linejoin: round; }
-.arrow-halo { fill: none; stroke: #fff; stroke-width: 4; }
-.arrow-body { fill: #ffda55; stroke: #222831; stroke-width: 2; }
-.move-arrow.submitted .arrow-body { fill: #fff; }
+.arrow-halo { fill: none; stroke: #fff; stroke-width: 5; }
+.arrow-body { fill: #111; stroke: #111; stroke-width: 1.5; }
+.move-arrow.submitted .arrow-body { fill: #fff; stroke-width: 2; }
 .move-arrow[data-direction="0"] { top: 0; left: 50%; transform: translate(-50%, -50%) rotate(-90deg); }
 .move-arrow[data-direction="1"] { bottom: 0; left: 50%; transform: translate(-50%, 50%) rotate(90deg); }
 .move-arrow[data-direction="2"] { left: 0; top: 50%; transform: translate(-50%, -50%) rotate(180deg); }
