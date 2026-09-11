@@ -103,6 +103,10 @@ def test_browser_premove_controls(tmp_path):
             observe(1)
             expect(page.locator(".tile.selected")).to_have_count(0)
             page.locator("#board > .tile").nth(2 * 8 + 1).click()
+            page.keyboard.press("Space")
+            expect(page.locator(".tile.selected")).to_have_count(0)
+            assert actions == []  # Space deselects; it never submits a pass.
+            page.locator("#board > .tile").nth(2 * 8 + 1).click()
             for key in ["ArrowRight", "ArrowRight", "ArrowDown", "ArrowLeft"]:
                 page.keyboard.press(key)
             expect(page.locator("#queue-count")).to_have_text("3 queued")
@@ -129,8 +133,13 @@ def test_browser_premove_controls(tmp_path):
             observe(2, 2, 2, 8)
             expect(page.locator("#queue-count")).to_have_text("2 queued")
             selected(3, 2)  # The planned endpoint is still unowned.
+            page.keyboard.press("Space")
+            expect(page.locator(".tile.selected")).to_have_count(0)
+            expect(page.locator("#queue-count")).to_have_text("2 queued")
+            expect(page.locator(".move-arrow")).to_have_count(3)
             observe(3, 2, 3, 4)
             expect(page.locator("#queue-count")).to_have_text("1 queued")
+            expect(page.locator(".tile.selected")).to_have_count(0)
             observe(4, 3, 3, 2)
             expect(page.locator("#queue-count")).to_have_text("0 queued")
             assert [a["action"] for a in actions] == [
@@ -141,6 +150,7 @@ def test_browser_premove_controls(tmp_path):
             # Insufficient army cancels the route and stays deselected after growth.
             obs["turn_timeout_seconds"] = 1
             observe(5, 3, 2, 1)
+            page.locator("#board > .tile").nth(3 * 8 + 2).click()
             page.keyboard.press("ArrowDown")
             expect(page.locator("#queue-count")).to_have_text("0 queued")
             expect(page.locator(".tile.selected")).to_have_count(0)

@@ -19,7 +19,8 @@ click neighboring cells to queue a route. Outlined yellow arrows show queued mov
 a white arrow marks the move already submitted for this turn. E undoes the last
 queued action; Q clears all remaining actions. Neither cancels an action already
 submitted. H toggles half-army moves for new inputs, B queues a castle build,
-and Space queues a pass. Moves execute one per turn. If a move cannot execute
+and Space clears the tile selection while keeping queued moves intact. The Pass
+button queues a pass. Moves execute one per turn. If a move cannot execute
 (including insufficient army), fails to secure its destination, or an obstacle
 blocks the queued route, the entire queue is cancelled and the selection is
 cleared. Click an owned tile to start again; the general is never selected

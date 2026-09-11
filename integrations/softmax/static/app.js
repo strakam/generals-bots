@@ -110,6 +110,7 @@
   $('split').onclick = () => { half = !half; $('split').setAttribute('aria-pressed', String(half)); };
   $('build').onclick = () => { if (selected) enqueue([2, ...selected, 0, 0]); };
   $('pass').onclick = () => enqueue([1,0,0,0,0]);
+  $('deselect').onclick = () => { selected = null; draw(); status('Selection cleared.'); };
   $('undo').onclick = undoMove;
   $('clear').onclick = clearQueue;
   // Keep keyboard play working after clicking a control with the mouse.
@@ -124,7 +125,7 @@
     else if (key === 'b') $('build').click();
     else if (key === 'e') { event.preventDefault(); undoMove(); }
     else if (key === 'q') { event.preventDefault(); clearQueue(); }
-    else if (key === ' ') { event.preventDefault(); $('pass').click(); }
+    else if (key === ' ') { event.preventDefault(); $('deselect').click(); }
   });
   function outcome(result) {
     const text = result.winner < 0 ? 'Draw' : `${$('name'+result.winner).textContent} wins`;
