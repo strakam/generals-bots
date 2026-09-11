@@ -13,6 +13,14 @@
   let inFlight = null;
   const sameTile = (a, b) => a && b && a[0] === b[0] && a[1] === b[1];
   const canQueue = () => slot !== null && board && ws?.readyState === WebSocket.OPEN && !replay;
+  // Fog obstacles may hide castles or mountains. Plan around them until revealed.
+  const blocked = (r, c) => r < 0 || c < 0 || r >= board.type_grid.length ||
+    c >= board.type_grid[0].length || [2, 5].includes(board.type_grid[r][c]);
+  function blockedMove(action) {
+    if (action[0] !== 0) return false;
+    const [, r, c, direction] = action, [dr, dc] = moves[direction];
+    return blocked(r+dr, c+dc);
+  }
   const post = data => { if (parent !== window) parent.postMessage({src: 'coworld-replay', ...data}, '*'); };
   function status(text, error = false) { $('status').textContent = text; $('status').classList.toggle('error', error); }
   function ready() { if (!readySent) { readySent = true; setTimeout(() => post({type: 'ready'}), 0); } }
@@ -42,15 +50,14 @@
   }
   function dispatchQueue() {
     if (!canQueue() || sent || !queue.length) return;
-    const [kind, r, c, direction] = queue[0].action;
+    const [kind, r, c] = queue[0].action;
     if (kind !== 1 && board.owner_grid[r][c] !== slot+1) {
       clearQueue();
       status('Queue stopped: the next source tile is no longer yours.'); return;
     }
     if (kind === 0) {
-      const [dr, dc] = moves[direction];
-      if (board.type_grid[r+dr][c+dc] === 2) {
-        clearQueue(); status('Queue stopped at a mountain.'); return;
+      if (blockedMove(queue[0].action)) {
+        clearQueue(); status('Queue stopped at an obstacle.'); return;
       }
       if (board.army_grid[r][c] < 2) {
         status('Waiting for an army to move · E undoes one, Q clears the queue.'); return;
@@ -79,8 +86,9 @@
     if (!selected || !canQueue()) return;
     const [r, c] = selected, delta = moves[direction];
     const nr = r+delta[0], nc = c+delta[1];
-    if (nr < 0 || nc < 0 || nr >= board.type_grid.length || nc >= board.type_grid[0].length) return;
-    if (board.type_grid[nr][nc] === 2) return;
+    if (blocked(nr, nc)) {
+      status('Route blocked · Choose a direction around the obstacle.'); return;
+    }
     enqueue([0,r,c,direction,half ? 1 : 0], [nr,nc]);
   }
   boardElement.addEventListener('click', event => {
@@ -169,6 +177,12 @@
     slot = message.slot; currentTurn = message.turn; sent = false; inFlight = null; names(message.players);
     const owners = message.owner_grid.map(row => row.map(o => o === 0 ? 0 : o === 1 ? slot+1 : 2-slot));
     board = {...message, owner_grid: owners};
+    // Newly visible obstacles invalidate the route from that step onward.
+    const obstruction = queue.findIndex(item => blockedMove(item.action));
+    if (obstruction !== -1) {
+      if (sameTile(selected, queue[queue.length-1].to)) selected = queue[obstruction].from;
+      queue.splice(obstruction);
+    }
     if (!queue.length && selected && owners[selected[0]][selected[1]] !== slot+1) selected = null;
     if (!selected) {
       for (let r=0; r<owners.length; r++) for (let c=0; c<owners[0].length; c++) {
@@ -183,6 +197,7 @@
     clearTimeout(passTimer);
     passTimer = setTimeout(() => send([1,0,0,0,0]), message.turn_timeout_seconds * 800);
     dispatchQueue();
+    if (obstruction !== -1) status('Route shortened at a revealed obstacle · Choose a new direction.');
   }
   function connectLive() {
     const isPlayer = location.pathname.endsWith('/client/player');

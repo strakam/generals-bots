@@ -173,6 +173,37 @@ def test_browser_premove_controls(tmp_path):
             expect(page.locator(".move-arrow")).to_have_count(0)
             selected(2, 2)
 
+            # The mountain-shaped obstacles in fog must reject keyboard AND mouse input.
+            obs["type_grid"][1][2] = 5
+            observe(9, 2, 2, 8)
+            before = len(actions)
+            page.keyboard.press("ArrowUp")
+            page.locator("#board > .tile").nth(1 * 8 + 2).click()
+            expect(page.locator("#queue-count")).to_have_text("0 queued")
+            expect(page.locator(".move-arrow")).to_have_count(0)
+            selected(2, 2)
+            assert len(actions) == before
+
+            # A newly revealed obstacle trims only the blocked suffix of a route.
+            for key in ["ArrowRight", "ArrowDown", "ArrowRight", "ArrowUp"]:
+                page.keyboard.press(key)
+            expect(page.locator("#queue-count")).to_have_text("3 queued")
+            obs["type_grid"][2][4] = 5
+            observe(10, 2, 3, 8)
+            expect(page.locator("#queue-count")).to_have_text("1 queued")
+            expect(page.locator(".move-arrow[data-direction='0']")).to_have_count(0)
+            selected(3, 4)
+            assert actions[-1]["action"] == [0, 2, 3, 1, 0]
+            page.keyboard.press("q")
+
+            # Once revealed as a castle, the fog obstacle is a valid attack target.
+            obs["type_grid"][1][2] = 3
+            observe(11, 3, 3, 7)
+            page.locator("#board > .tile").nth(2 * 8 + 2).click()
+            page.keyboard.press("ArrowUp")
+            assert actions[-1]["action"] == [0, 2, 2, 0, 0]
+            observe(12, 1, 2, 6)
+
             # Disconnect discards local plans and prevents further submissions.
             page.keyboard.press("ArrowRight")
             page.keyboard.press("ArrowDown")
@@ -184,6 +215,19 @@ def test_browser_premove_controls(tmp_path):
             page.keyboard.press("ArrowRight")
             expect(page.locator("#queue-count")).to_have_text("0 queued")
             assert not errors
+
+            # Visual review of every direction over ground, both owners, fog and castles.
+            page.evaluate("""() => {
+                const frame = {
+                    type_grid: [1, 1, 1, 0, 3].map(kind => Array(4).fill(kind)),
+                    owner_grid: [0, 1, 2, 0, 0].map(owner => Array(4).fill(owner)),
+                    army_grid: Array.from({length: 5}, () => Array(4).fill(123)),
+                };
+                const arrows = Array.from({length: 5}, (_, r) =>
+                    Array.from({length: 4}, (_, c) => [0, r, c, c, 0])).flat();
+                GeneralsTiles(document.getElementById('board')).draw(frame, null, arrows);
+            }""")
+            page.locator("#board").screenshot(path=str(tmp_path / "arrow-contrast.png"))
             browser.close()
     finally:
         http.shutdown()

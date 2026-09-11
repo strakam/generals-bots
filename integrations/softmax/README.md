@@ -15,13 +15,15 @@ python -m integrations.softmax.local --human
 ```
 
 Open the printed player link. Select an owned tile, then use arrow keys/WASD or
-click neighboring cells to queue a route. Tiny yellow arrows show queued moves;
+click neighboring cells to queue a route. Outlined yellow arrows show queued moves;
 a white arrow marks the move already submitted for this turn. E undoes the last
 queued action; Q clears all remaining actions. Neither cancels an action already
 submitted. H toggles half-army moves for new inputs, B queues a castle build,
 and Space queues a pass. Moves execute one per turn, waiting if the source has
-only one army; the queue stops if its next source is lost or its path reveals a
-mountain. The browser passes automatically if you do not act. Queues are local
+only one army; the queue stops if its next source is lost. Mountains and fog
+obstacles cannot be queued into; a newly revealed obstacle trims the route from
+that step onward. A castle hidden by a fog obstacle can be entered once revealed.
+The browser passes automatically if you do not act. Queues are local
 to the browser and reset on disconnect or reload. The human
 configuration advances at two turns per second. After the match, use the same
 page to watch the full replay. Ctrl+C stops the local server.

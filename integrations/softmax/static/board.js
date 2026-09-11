@@ -35,7 +35,10 @@
         }
         if (i === selectedIndex) cls += ' selected';
         for (const [direction, pending] of arrows.get(i) || []) {
-          content += `<span class="move-arrow ${pending ? 'queued' : 'submitted'}" data-direction="${direction}" aria-hidden="true"></span>`;
+          content += `<svg class="move-arrow ${pending ? 'queued' : 'submitted'}" data-direction="${direction}" viewBox="0 0 18 18" aria-hidden="true">
+            <path class="arrow-halo" d="M3 6H9V3L15 9L9 15V12H3Z"/>
+            <path class="arrow-body" d="M3 6H9V3L15 9L9 15V12H3Z"/>
+          </svg>`;
         }
         if (el.className !== cls) el.className = cls;
         if (el.innerHTML !== content) el.innerHTML = content;
