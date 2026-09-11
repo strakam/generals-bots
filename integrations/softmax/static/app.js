@@ -52,19 +52,22 @@
     if (!canQueue() || sent || !queue.length) return;
     const [kind, r, c] = queue[0].action;
     if (kind !== 1 && board.owner_grid[r][c] !== slot+1) {
-      clearQueue();
-      status('Queue stopped: the next source tile is no longer yours.'); return;
+      stopQueue('the next source tile is no longer yours'); return;
     }
     if (kind === 0) {
       if (blockedMove(queue[0].action)) {
-        clearQueue(); status('Queue stopped at an obstacle.'); return;
+        stopQueue('the next move is blocked'); return;
       }
       if (board.army_grid[r][c] < 2) {
-        status('Waiting for an army to move · E undoes one, Q clears the queue.'); return;
+        stopQueue('not enough army to move'); return;
       }
     }
     if (send(queue[0].action)) inFlight = queue.shift();
     draw();
+  }
+  function stopQueue(reason) {
+    queue.length = 0; inFlight = null; selected = null;
+    draw(); status(`Queue stopped: ${reason}. Select a tile to start a new route.`);
   }
   function enqueue(action, to = selected) {
     if (!canQueue()) return;
@@ -174,21 +177,16 @@
     readySent = false; frameIndex = 0; showReplayFrame(); resetReplayTimer();
   }
   function observe(message) {
+    const previousMove = inFlight;
     slot = message.slot; currentTurn = message.turn; sent = false; inFlight = null; names(message.players);
     const owners = message.owner_grid.map(row => row.map(o => o === 0 ? 0 : o === 1 ? slot+1 : 2-slot));
     board = {...message, owner_grid: owners};
-    // Newly visible obstacles invalidate the route from that step onward.
-    const obstruction = queue.findIndex(item => blockedMove(item.action));
-    if (obstruction !== -1) {
-      if (sameTile(selected, queue[queue.length-1].to)) selected = queue[obstruction].from;
-      queue.splice(obstruction);
-    }
+    // Check the submitted step before dispatching ANY remaining route, including
+    // routes selected from a different owned tile while the move was in flight.
+    const failedMove = previousMove?.action[0] === 0 &&
+      (message.last_move_executed === false || owners[previousMove.to[0]][previousMove.to[1]] !== slot+1);
+    const obstruction = queue.some(item => blockedMove(item.action));
     if (!queue.length && selected && owners[selected[0]][selected[1]] !== slot+1) selected = null;
-    if (!selected) {
-      for (let r=0; r<owners.length; r++) for (let c=0; c<owners[0].length; c++) {
-        if (owners[r][c] === slot+1 && board.type_grid[r][c] === 4) selected = [r,c];
-      }
-    }
     const army = [], land = [];
     army[slot] = message.my_army; army[1-slot] = message.opp_army;
     land[slot] = message.my_land; land[1-slot] = message.opp_land;
@@ -196,8 +194,9 @@
     status('Your move · Select a tile and a direction.');
     clearTimeout(passTimer);
     passTimer = setTimeout(() => send([1,0,0,0,0]), message.turn_timeout_seconds * 800);
-    dispatchQueue();
-    if (obstruction !== -1) status('Route shortened at a revealed obstacle · Choose a new direction.');
+    if (failedMove) stopQueue('the previous move did not reach its destination');
+    else if (obstruction) stopQueue('an obstacle blocks the route');
+    else dispatchQueue();
   }
   function connectLive() {
     const isPlayer = location.pathname.endsWith('/client/player');
@@ -223,7 +222,7 @@
         } else if (message.type === 'final') {
           sent = true; clearTimeout(passTimer); status(outcome(message.result));
           loadReplay(livePrefix+'/replay.json').catch(err => fail(err.message));
-        } else if (message.type === 'error') status(message.message, true);
+        } else if (message.type === 'error') stopQueue(message.message);
         else if (message.type === 'failure') fail('The episode could not complete.');
       } catch (err) { fail(err.message); }
     };

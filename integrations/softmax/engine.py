@@ -7,8 +7,27 @@ import numpy as np
 from generals import GeneralsEnv
 from generals.core import game
 from generals.core.match import make_board, make_transition
+from generals.modifiers import build_castles
 
 from .protocol import PASS, VERSION
+
+
+@jax.jit
+def executed_moves(state, actions):
+    """Receipts for the base moves, using the engine's actual resolution order.
+
+    Observe each action separately, before growth or the other action can mask
+    its effects. Terminal deathtouch overrides never have a next observation.
+    """
+    state, actions = build_castles.apply_build_actions(state, actions)
+    executed = jnp.zeros((2,), dtype=bool)
+    for player in game._determine_move_order(state, actions):
+        action = actions[player]
+        r, c = action[1], action[2]
+        before = state.armies[r, c]
+        state = game.execute_action(state, player, action)
+        executed = executed.at[player].set((action[0] == 0) & (state.armies[r, c] < before))
+    return executed
 
 
 class Match:
@@ -16,8 +35,10 @@ class Match:
         self.env = GeneralsEnv(mode="competition")
         self.state = make_board(self.env, seed)
         self.transition = jax.jit(make_transition(self.env))
+        self.last_move_executed = [None, None]
         # Compile before /healthz and before player deadlines begin.
         jax.block_until_ready(self.transition(self.state, jnp.array([PASS, PASS], dtype=jnp.int32)))
+        jax.block_until_ready(executed_moves(self.state, jnp.array([PASS, PASS], dtype=jnp.int32)))
         for slot in range(2):
             jax.block_until_ready(game.get_observation(self.state, slot))
         self.height, self.width = self.state.armies.shape
@@ -45,6 +66,7 @@ class Match:
             "protocol_version": VERSION,
             "slot": slot,
             "turn": self.turn,
+            "last_move_executed": self.last_move_executed[slot],
             "height": self.height,
             "width": self.width,
             "my_land": int(obs.owned_land_count),
@@ -75,5 +97,8 @@ class Match:
         }
 
     def advance(self, actions: list[list[int]]) -> int:
-        self.state, info = self.transition(self.state, jnp.array(actions, dtype=jnp.int32))
+        batch = jnp.array(actions, dtype=jnp.int32)
+        executed = executed_moves(self.state, batch)
+        self.state, info = self.transition(self.state, batch)
+        self.last_move_executed = [bool(executed[s]) if actions[s][0] == 0 else None for s in range(2)]
         return int(info.winner) if bool(info.is_done) else -1

@@ -14,7 +14,7 @@ from starlette.websockets import WebSocketDisconnect
 from generals.core.game import create_initial_state
 from integrations.softmax.artifacts import read_json, write_json
 from integrations.softmax.config import GameConfig
-from integrations.softmax.engine import Match
+from integrations.softmax.engine import Match, executed_moves
 from integrations.softmax.protocol import PASS, parse_action, stdio_frame
 from integrations.softmax.server import create_app
 
@@ -109,7 +109,22 @@ def test_engine_observation_matches_existing_stdio_protocol():
     for _ in range(3):
         for slot in range(2):
             assert stdio_frame(match.observation(slot)) == encode_observation(get_observation(match.state, slot))
+            assert match.observation(slot)["last_move_executed"] is None
         match.advance([PASS, PASS])
+
+
+@pytest.mark.parametrize("attacking_army,expected", [(10, [False, True]), (8, [True, True])])
+def test_move_receipts_follow_actual_execution_order(attacking_army, expected):
+    state = create_initial_state(jnp.array([[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 2]]))
+    state = state._replace(
+        ownership=state.ownership.at[0, 1, 1:3].set(True).at[1, 1, 0].set(True),
+        ownership_neutral=state.ownership_neutral.at[1, :3].set(False),
+        armies=state.armies.at[1, 0].set(attacking_army).at[1, 1].set(10).at[1, 2].set(5),
+    )
+    # Blue's chase resolves first. Red may still own BOTH endpoints but be
+    # reduced to one army, making its move a no-op invisible to ownership checks.
+    actions = jnp.array([[0, 1, 1, 3, 0], [0, 1, 0, 3, 0]])
+    assert executed_moves(state, actions).tolist() == expected
 
 
 def test_episode_records_reproducible_replay_and_scores(tmp_path):

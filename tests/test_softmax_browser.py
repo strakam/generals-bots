@@ -101,6 +101,8 @@ def test_browser_premove_controls(tmp_path):
                 expect(page.locator("#board > .tile").nth(r * 8 + c)).to_have_class(re.compile(r"\bselected\b"))
 
             observe(1)
+            expect(page.locator(".tile.selected")).to_have_count(0)
+            page.locator("#board > .tile").nth(2 * 8 + 1).click()
             for key in ["ArrowRight", "ArrowRight", "ArrowDown", "ArrowLeft"]:
                 page.keyboard.press(key)
             expect(page.locator("#queue-count")).to_have_text("3 queued")
@@ -136,26 +138,34 @@ def test_browser_premove_controls(tmp_path):
             ]
             assert [a["turn"] for a in actions] == [1, 2, 3, 4]
 
-            # A premove waits for reinforcements instead of losing the route.
+            # Insufficient army cancels the route and stays deselected after growth.
             obs["turn_timeout_seconds"] = 1
             observe(5, 3, 2, 1)
             page.keyboard.press("ArrowDown")
-            expect(page.locator("#queue-count")).to_have_text("1 queued")
+            expect(page.locator("#queue-count")).to_have_text("0 queued")
+            expect(page.locator(".tile.selected")).to_have_count(0)
             assert len(actions) == 4
             page.clock.run_for(800)
             assert actions[-1] == {"type": "action", "turn": 5, "action": [1, 0, 0, 0, 0]}
-            expect(page.locator("#queue-count")).to_have_text("1 queued")
+            expect(page.locator("#queue-count")).to_have_text("0 queued")
             obs["turn_timeout_seconds"] = 3600
             observe(6, 3, 2, 3)
             expect(page.locator("#queue-count")).to_have_text("0 queued")
+            expect(page.locator(".tile.selected")).to_have_count(0)
+            page.keyboard.press("ArrowDown")
+            assert len(actions) == 5
+            page.locator("#board > .tile").nth(3 * 8 + 2).click()
+            page.keyboard.press("ArrowDown")
             assert actions[-1]["action"] == [0, 3, 2, 1, 0]
 
-            # A failed capture stops the rest of the path; no moves from unowned tiles.
+            # A failed capture cancels even a separate route from a valid owned source.
+            page.locator("#board > .tile").nth(2 * 8 + 1).click()
             page.keyboard.press("ArrowRight")
             observe(7)
             expect(page.locator("#queue-count")).to_have_text("0 queued")
-            expect(page.locator("#status")).to_contain_text("no longer yours")
+            expect(page.locator("#status")).to_contain_text("did not reach its destination")
             expect(page.locator(".move-arrow")).to_have_count(0)
+            expect(page.locator(".tile.selected")).to_have_count(0)
             assert len(actions) == 6
 
             # Mouse input, keyboard focus after buttons, and visible mountains.
@@ -184,17 +194,16 @@ def test_browser_premove_controls(tmp_path):
             selected(2, 2)
             assert len(actions) == before
 
-            # A newly revealed obstacle trims only the blocked suffix of a route.
+            # A newly revealed obstacle cancels the entire route, including its valid prefix.
             for key in ["ArrowRight", "ArrowDown", "ArrowRight", "ArrowUp"]:
                 page.keyboard.press(key)
             expect(page.locator("#queue-count")).to_have_text("3 queued")
             obs["type_grid"][2][4] = 5
             observe(10, 2, 3, 8)
-            expect(page.locator("#queue-count")).to_have_text("1 queued")
-            expect(page.locator(".move-arrow[data-direction='0']")).to_have_count(0)
-            selected(3, 4)
-            assert actions[-1]["action"] == [0, 2, 3, 1, 0]
-            page.keyboard.press("q")
+            expect(page.locator("#queue-count")).to_have_text("0 queued")
+            expect(page.locator(".move-arrow")).to_have_count(0)
+            expect(page.locator(".tile.selected")).to_have_count(0)
+            assert actions[-1]["turn"] == 9
 
             # Once revealed as a castle, the fog obstacle is a valid attack target.
             obs["type_grid"][1][2] = 3
@@ -203,6 +212,19 @@ def test_browser_premove_controls(tmp_path):
             page.keyboard.press("ArrowUp")
             assert actions[-1]["action"] == [0, 2, 2, 0, 0]
             observe(12, 1, 2, 6)
+
+            # A server-confirmed no-op stops the route even if its destination is owned.
+            page.keyboard.press("ArrowDown")
+            page.keyboard.press("ArrowRight")
+            obs["last_move_executed"] = False
+            observe(13, 2, 2, 8)
+            expect(page.locator("#queue-count")).to_have_text("0 queued")
+            expect(page.locator(".tile.selected")).to_have_count(0)
+            assert actions[-1]["turn"] == 12
+            obs.pop("last_move_executed")
+            observe(14, 1, 2, 6)
+            expect(page.locator(".tile.selected")).to_have_count(0)
+            page.locator("#board > .tile").nth(1 * 8 + 2).click()
 
             # Disconnect discards local plans and prevents further submissions.
             page.keyboard.press("ArrowRight")
@@ -308,6 +330,7 @@ def test_browser_play_and_standalone_replay(tmp_path):
                 if kind == 4 and obs["owner_grid"][r][c] == 1
             )
             r, c = general
+            page.locator("#board > .tile").nth(r * obs["width"] + c).click()
             direction = next(
                 key
                 for dr, dc, key in [(-1, 0, "ArrowUp"), (1, 0, "ArrowDown"), (0, -1, "ArrowLeft"), (0, 1, "ArrowRight")]

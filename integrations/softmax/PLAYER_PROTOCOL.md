@@ -17,6 +17,7 @@ Each observation has:
 | `type` | `"observation"` |
 | `protocol_version`, `slot`, `height`, `width`, `players` | Same as the handshake |
 | `turn` | Current state tick, starting at 0 |
+| `last_move_executed` | Whether your preceding turn's move executed; `null` initially or after pass/build. An executed attack need not capture its destination. |
 | `max_turns` | Episode cap; 1200 in the competition variant |
 | `turn_timeout_seconds` | Deadline duration from server observation publication |
 | `my_land`, `my_army`, `opp_land`, `opp_army` | Public totals |
