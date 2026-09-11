@@ -2,13 +2,17 @@
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
-  const canvas = $('board'), renderer = GeneralsTiles(canvas);
+  const boardElement = $('board'), renderer = GeneralsTiles(boardElement);
   const params = new URLSearchParams(location.search);
   const replayURL = new URLSearchParams(location.hash.slice(1)).get('replay') || params.get('replay');
   const livePrefix = location.pathname.includes('/client/') ? location.pathname.split('/client/')[0] : '';
   let board = null, slot = null, selected = null, half = false, ws = null;
   let currentTurn = -1, sent = true, passTimer = null, replay = null, frameIndex = 0;
   let playing = true, replayTimer = null, readySent = false, replayLoad = 0;
+  const moves = [[-1,0],[1,0],[0,-1],[0,1]], queue = [];
+  let inFlight = null;
+  const sameTile = (a, b) => a && b && a[0] === b[0] && a[1] === b[1];
+  const canQueue = () => slot !== null && board && ws?.readyState === WebSocket.OPEN && !replay;
   const post = data => { if (parent !== window) parent.postMessage({src: 'coworld-replay', ...data}, '*'); };
   function status(text, error = false) { $('status').textContent = text; $('status').classList.toggle('error', error); }
   function ready() { if (!readySent) { readySent = true; setTimeout(() => post({type: 'ready'}), 0); } }
@@ -25,45 +29,90 @@
   }
   function draw() {
     if (!board) return;
-    renderer.draw(board, selected);
+    renderer.draw(board, selected, queue.map(item => item.action), inFlight?.action);
+    $('queue-count').textContent = `${queue.length} queued`;
     $('cover').hidden = true; ready();
   }
   function send(action) {
-    if (!ws || ws.readyState !== WebSocket.OPEN || sent || currentTurn < 0) return;
+    if (!ws || ws.readyState !== WebSocket.OPEN || sent || currentTurn < 0) return false;
     ws.send(JSON.stringify({type: 'action', turn: currentTurn, action}));
     sent = true; clearTimeout(passTimer);
     status(action[0] === 1 ? 'Holding position.' : action[0] === 2 ? 'Castle requested.' : 'Move submitted.');
+    return true;
+  }
+  function dispatchQueue() {
+    if (!canQueue() || sent || !queue.length) return;
+    const [kind, r, c, direction] = queue[0].action;
+    if (kind !== 1 && board.owner_grid[r][c] !== slot+1) {
+      clearQueue();
+      status('Queue stopped: the next source tile is no longer yours.'); return;
+    }
+    if (kind === 0) {
+      const [dr, dc] = moves[direction];
+      if (board.type_grid[r+dr][c+dc] === 2) {
+        clearQueue(); status('Queue stopped at a mountain.'); return;
+      }
+      if (board.army_grid[r][c] < 2) {
+        status('Waiting for an army to move · E undoes one, Q clears the queue.'); return;
+      }
+    }
+    if (send(queue[0].action)) inFlight = queue.shift();
+    draw();
+  }
+  function enqueue(action, to = selected) {
+    if (!canQueue()) return;
+    queue.push({action, from: selected, to}); selected = to;
+    status(`${queue.length} queued · E undoes one, Q clears the queue.`);
+    dispatchQueue(); draw();
+  }
+  function undoMove() {
+    const removed = queue.pop();
+    if (removed && sameTile(selected, removed.to)) selected = removed.from;
+    draw(); status(removed ? 'Last queued action removed.' : 'No queued moves to undo.');
+  }
+  function clearQueue() {
+    if (queue.length && sameTile(selected, queue[queue.length-1].to)) selected = queue[0].from;
+    queue.length = 0; draw();
+    status(inFlight ? 'Queue cleared. The submitted action will finish this turn.' : 'Queue cleared.');
   }
   function move(direction) {
-    if (!selected || !board || sent) return;
-    const [r, c] = selected, delta = [[-1,0],[1,0],[0,-1],[0,1]][direction];
+    if (!selected || !canQueue()) return;
+    const [r, c] = selected, delta = moves[direction];
     const nr = r+delta[0], nc = c+delta[1];
     if (nr < 0 || nc < 0 || nr >= board.type_grid.length || nc >= board.type_grid[0].length) return;
-    send([0,r,c,direction,half ? 1 : 0]); selected = [nr,nc]; draw();
+    if (board.type_grid[nr][nc] === 2) return;
+    enqueue([0,r,c,direction,half ? 1 : 0], [nr,nc]);
   }
-  canvas.addEventListener('click', event => {
-    if (slot === null || !board) return;
-    const rect = canvas.getBoundingClientRect();
+  boardElement.addEventListener('click', event => {
+    if (!canQueue()) return;
+    const rect = boardElement.getBoundingClientRect();
     const r = Math.floor((event.clientY-rect.top)/rect.height*board.type_grid.length);
     const c = Math.floor((event.clientX-rect.left)/rect.width*board.type_grid[0].length);
     if (r < 0 || c < 0 || r >= board.type_grid.length || c >= board.type_grid[0].length) return;
     if (selected) {
       const dr = r-selected[0], dc = c-selected[1];
-      if (Math.abs(dr)+Math.abs(dc) === 1) { move(dr < 0 ? 0 : dr > 0 ? 1 : dc < 0 ? 2 : 3); canvas.focus(); return; }
+      if (Math.abs(dr)+Math.abs(dc) === 1) { move(dr < 0 ? 0 : dr > 0 ? 1 : dc < 0 ? 2 : 3); boardElement.focus(); return; }
     }
     if (board.owner_grid[r][c] === slot+1) selected = [r,c];
-    draw(); canvas.focus();
+    draw(); boardElement.focus();
   });
   $('split').onclick = () => { half = !half; $('split').setAttribute('aria-pressed', String(half)); };
-  $('build').onclick = () => { if (selected) send([2, ...selected, 0, 0]); };
-  $('pass').onclick = () => send([1,0,0,0,0]);
+  $('build').onclick = () => { if (selected) enqueue([2, ...selected, 0, 0]); };
+  $('pass').onclick = () => enqueue([1,0,0,0,0]);
+  $('undo').onclick = undoMove;
+  $('clear').onclick = clearQueue;
+  // Keep keyboard play working after clicking a control with the mouse.
+  $('play-controls').addEventListener('click', event => { if (event.target.closest('button')) boardElement.focus(); });
   document.addEventListener('keydown', event => {
-    if (slot === null || event.target.matches('input, select, button')) return;
+    if (slot === null || event.ctrlKey || event.metaKey || event.altKey ||
+        event.target.matches('input, textarea, select, button') || event.target.isContentEditable) return;
     const key = event.key.toLowerCase();
     const keys = {arrowup:0, w:0, arrowdown:1, s:1, arrowleft:2, a:2, arrowright:3, d:3};
     if (key in keys) { event.preventDefault(); move(keys[key]); }
     else if (key === 'h') $('split').click();
     else if (key === 'b') $('build').click();
+    else if (key === 'e') { event.preventDefault(); undoMove(); }
+    else if (key === 'q') { event.preventDefault(); clearQueue(); }
     else if (key === ' ') { event.preventDefault(); $('pass').click(); }
   });
   function outcome(result) {
@@ -89,7 +138,9 @@
   async function loadReplay(url) {
     const load = ++replayLoad;
     clearInterval(replayTimer); clearTimeout(passTimer);
-    replay = null; board = null; readySent = false;
+    replay = null; board = null; readySent = false; slot = null; sent = true;
+    queue.length = 0; inFlight = null; selected = null;
+    $('play-controls').hidden = true;
     $('mode').textContent = 'LOADING'; $('replay-controls').hidden = true;
     $('cover').hidden = false; $('cover-title').textContent = 'Loading the replay';
     $('cover-text').textContent = 'Reconstructing the battlefield.';
@@ -115,10 +166,10 @@
     readySent = false; frameIndex = 0; showReplayFrame(); resetReplayTimer();
   }
   function observe(message) {
-    slot = message.slot; currentTurn = message.turn; sent = false; names(message.players);
+    slot = message.slot; currentTurn = message.turn; sent = false; inFlight = null; names(message.players);
     const owners = message.owner_grid.map(row => row.map(o => o === 0 ? 0 : o === 1 ? slot+1 : 2-slot));
     board = {...message, owner_grid: owners};
-    if (selected && owners[selected[0]][selected[1]] !== slot+1) selected = null;
+    if (!queue.length && selected && owners[selected[0]][selected[1]] !== slot+1) selected = null;
     if (!selected) {
       for (let r=0; r<owners.length; r++) for (let c=0; c<owners[0].length; c++) {
         if (owners[r][c] === slot+1 && board.type_grid[r][c] === 4) selected = [r,c];
@@ -131,6 +182,7 @@
     status('Your move · Select a tile and a direction.');
     clearTimeout(passTimer);
     passTimer = setTimeout(() => send([1,0,0,0,0]), message.turn_timeout_seconds * 800);
+    dispatchQueue();
   }
   function connectLive() {
     const isPlayer = location.pathname.endsWith('/client/player');
@@ -161,9 +213,12 @@
       } catch (err) { fail(err.message); }
     };
     ws.onerror = () => status('Connection failed. Check the player link and game server.', true);
-    ws.onclose = () => { clearTimeout(passTimer); if (!replay) status('Connection closed. Reopen your player link to reconnect.', true); };
+    ws.onclose = () => {
+      clearTimeout(passTimer); queue.length = 0; inFlight = null; sent = true; draw();
+      if (!replay) status('Connection closed. Reopen your player link to reconnect.', true);
+    };
   }
-  new ResizeObserver(draw).observe(canvas.parentElement);
+  new ResizeObserver(draw).observe(boardElement.parentElement);
   window.addEventListener('hashchange', () => {
     const url = new URLSearchParams(location.hash.slice(1)).get('replay');
     if (url) loadReplay(url).catch(err => fail(err.message));

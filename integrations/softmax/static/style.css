@@ -33,6 +33,7 @@ button, select { font-family: var(--font-mono); font-size: 11px; background: tra
 button:hover, select:hover, button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
 kbd { font-size: 10px; margin-left: 6px; opacity: .6; }
 .hint { flex: 1; text-align: right; color: var(--muted); font-size: 11px; }
+#queue-count { color: var(--muted); font-size: 11px; white-space: nowrap; }
 #seek { flex: 1; min-width: 80px; accent-color: var(--fg); }
 footer { display: flex; justify-content: space-between; gap: 20px; color: var(--muted); font-size: 10px; margin-top: 22px; }
 @media (max-width: 600px) {

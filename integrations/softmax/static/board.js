@@ -2,7 +2,7 @@
 // The adapter supplies visible snapshots; replay loading and simulation stay outside this renderer.
 (() => {
   window.GeneralsTiles = function(container) {
-    let tiles = [], els = [], selectedIndex = -1;
+    let tiles = [], els = [], selectedIndex = -1, arrows = new Map();
     function render() {
       for (let i = 0; i < tiles.length; i++) {
         const t = tiles[i];
@@ -34,13 +34,16 @@
           }
         }
         if (i === selectedIndex) cls += ' selected';
+        for (const [direction, pending] of arrows.get(i) || []) {
+          content += `<span class="move-arrow ${pending ? 'queued' : 'submitted'}" data-direction="${direction}" aria-hidden="true"></span>`;
+        }
         if (el.className !== cls) el.className = cls;
         if (el.innerHTML !== content) el.innerHTML = content;
       }
     }
 
     return {
-      draw(frame, selected) {
+      draw(frame, selected, queued = [], submitted = null) {
         const rows = frame.type_grid.length, cols = frame.type_grid[0].length;
         container.style.setProperty('--cols', cols);
         container.style.setProperty('--rows', rows);
@@ -52,6 +55,14 @@
           });
         }
         selectedIndex = selected ? selected[0] * cols + selected[1] : -1;
+        arrows = new Map();
+        // One small arrow per outgoing edge, even when a route loops over it.
+        for (const action of [submitted, ...queued]) {
+          if (!action || action[0] !== 0) continue;
+          const [, r, c, direction] = action, index = r * cols + c;
+          if (!arrows.has(index)) arrows.set(index, new Map());
+          arrows.get(index).set(direction, action !== submitted);
+        }
         tiles = frame.type_grid.flatMap((row, r) => row.map((kind, c) => ({
           // Coworld uses 1=red and 2=blue; the competition renderer uses 0=blue and 1=red.
           owner: kind === 0 || kind === 5 ? -2 : frame.owner_grid[r][c] === 0 ? -1 :

@@ -18,7 +18,7 @@
       <div class="player blue"><div><b id="name1">Player 2</b><small><span id="army1">—</span> army <span class="divider">/</span> <span id="land1">—</span> land</small></div><span class="dot"></span></div>
     </section>
     <section class="arena" aria-label="Game board">
-      <div id="board" tabindex="0" aria-label="Select an owned tile, then use arrow keys to move"></div>
+      <div id="board" tabindex="0" aria-label="Select an owned tile, then use arrow keys to queue moves. E undoes one move; Q clears the queue."></div>
       <div id="cover"><h1 id="cover-title">Preparing the battlefield</h1><p id="cover-text">Waiting for the match to begin.</p></div>
     </section>
     <div id="status" role="status" aria-live="polite">Connecting…</div>
@@ -26,7 +26,10 @@
       <button id="split" aria-pressed="false">Half army <kbd>H</kbd></button>
       <button id="build">Build castle <kbd>B</kbd></button>
       <button id="pass">Pass <kbd>Space</kbd></button>
-      <span class="hint">Select your tile · Arrow keys or WASD to move</span>
+      <button id="undo">Undo last <kbd>E</kbd></button>
+      <button id="clear">Clear queue <kbd>Q</kbd></button>
+      <span id="queue-count">0 queued</span>
+      <span class="hint">Select your tile · Arrow keys or WASD to queue moves</span>
     </section>
     <section id="replay-controls" class="controls" hidden>
       <button id="pause">Pause</button><button id="restart" aria-label="Restart replay">↺</button>

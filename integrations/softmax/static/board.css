@@ -94,3 +94,17 @@
 
 .tile { transition: none; }
 .tile.selected { outline: 2px solid #ffde59; outline-offset: -2px; z-index: 3; }
+
+/* Route arrows sit at tile edges so army counts and sprites stay readable. */
+.move-arrow {
+  position: absolute;
+  width: 24%; height: 24%;
+  background: #ffde59;
+  clip-path: polygon(0 30%, 55% 30%, 55% 0, 100% 50%, 55% 100%, 55% 70%, 0 70%);
+  z-index: 4; pointer-events: none;
+}
+.move-arrow.submitted { background: #fff; }
+.move-arrow[data-direction="0"] { top: 2%; left: 38%; transform: rotate(-90deg); }
+.move-arrow[data-direction="1"] { bottom: 2%; left: 38%; transform: rotate(90deg); }
+.move-arrow[data-direction="2"] { left: 2%; top: 38%; transform: rotate(180deg); }
+.move-arrow[data-direction="3"] { right: 2%; top: 38%; }

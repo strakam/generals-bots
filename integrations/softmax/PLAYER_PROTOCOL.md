@@ -45,7 +45,9 @@ but impossible game actions are no-ops, as in the competition engine.
 
 Only the **first valid message for the current turn** is accepted. Actions from
 both players resolve together using the existing engine's move-order rules.
-There is no action queue: act only on the newest observation. The game advances
+The server has no action queue: act only on the newest observation. The browser
+player stores premoves locally and submits one action per observation using this
+same protocol. The game advances
 as soon as both actions arrive, subject to the variant's minimum tick interval,
 or when the deadline elapses. The human variant's minimum interval is 500 ms;
 the competitive bot variant has no artificial delay.

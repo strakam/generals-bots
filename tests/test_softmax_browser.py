@@ -5,6 +5,7 @@ import functools
 import gzip
 import json
 import os
+import re
 import shutil
 import socket
 import subprocess
@@ -20,7 +21,7 @@ if os.environ.get("GENERALS_BROWSER_TESTS") != "1":
     pytest.skip("opt-in browser check; install playwright and Chromium", allow_module_level=True)
 pytest.importorskip("playwright")
 import httpx
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import expect, sync_playwright
 from websockets.asyncio.client import connect
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -43,6 +44,150 @@ async def ping_global(port):
 class QuietHandler(SimpleHTTPRequestHandler):
     def log_message(self, *args):
         pass
+
+
+def test_browser_premove_controls(tmp_path):
+    """Drive turns explicitly to check fast inputs between observations deterministically."""
+    bundle = tmp_path / "viewer"
+    subprocess.run([str(ROOT / "integrations/softmax/tools/build_replay_viewer.sh"), str(bundle)], check=True)
+
+    class PlayerHandler(QuietHandler):
+        def do_GET(self):
+            if self.path.startswith("/client/player?"):
+                self.path = "/index.html"
+            elif self.path.startswith("/static/"):
+                self.path = self.path.removeprefix("/static")
+            super().do_GET()
+
+    http = ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(PlayerHandler, directory=bundle))
+    threading.Thread(target=http.serve_forever, daemon=True).start()
+    try:
+        with sync_playwright() as p:
+            executable = os.environ.get("CHROMIUM_PATH") or shutil.which("chromium")
+            browser = p.chromium.launch(executable_path=executable, args=["--no-sandbox"])
+            page = browser.new_page(viewport={"width": 1100, "height": 1000})
+            page.clock.install()
+            sockets, actions, errors = [], [], []
+            page.on("pageerror", lambda error: errors.append(str(error)))
+
+            def connected(ws):
+                sockets.append(ws)
+                ws.on_message(lambda raw: actions.append(json.loads(raw)))
+
+            page.route_web_socket("**/player?*", connected)
+            page.goto(f"http://127.0.0.1:{http.server_port}/client/player?slot=0&token=test")
+            expect(page.locator("#mode")).to_have_text("PLAYER")
+            sockets[0].send(json.dumps({"type": "hello", "slot": 0, "players": ["Human", "Bot"]}))
+            obs = {
+                "type": "observation", "slot": 0, "players": ["Human", "Bot"],
+                "height": 6, "width": 8, "my_army": 10, "opp_army": 10,
+                "my_land": 1, "opp_land": 1, "turn_timeout_seconds": 3600,
+                "type_grid": [[1] * 8 for _ in range(6)],
+                "owner_grid": [[0] * 8 for _ in range(6)],
+                "army_grid": [[0] * 8 for _ in range(6)],
+            }
+            obs["type_grid"][2][1] = 4
+            obs["owner_grid"][2][1] = 1
+            obs["army_grid"][2][1] = 10
+
+            def observe(turn, r=2, c=1, army=10):
+                obs["turn"] = turn
+                obs["owner_grid"][r][c] = 1
+                obs["army_grid"][r][c] = army
+                sockets[0].send(json.dumps(obs))
+                expect(page.locator("#turn")).to_have_text(str(turn))
+
+            def selected(r, c):
+                expect(page.locator("#board > .tile").nth(r * 8 + c)).to_have_class(re.compile(r"\bselected\b"))
+
+            observe(1)
+            for key in ["ArrowRight", "ArrowRight", "ArrowDown", "ArrowLeft"]:
+                page.keyboard.press(key)
+            expect(page.locator("#queue-count")).to_have_text("3 queued")
+            expect(page.locator(".move-arrow.queued")).to_have_count(3)
+            expect(page.locator(".move-arrow.submitted")).to_have_count(1)
+            selected(3, 2)
+            assert actions == [{"type": "action", "turn": 1, "action": [0, 2, 1, 3, 0]}]
+            page.keyboard.press("e")
+            expect(page.locator("#queue-count")).to_have_text("2 queued")
+            expect(page.locator(".move-arrow.queued")).to_have_count(2)
+            selected(3, 3)
+            page.keyboard.press("h")
+            page.keyboard.press("ArrowLeft")
+            page.screenshot(path=str(tmp_path / "premoves.png"), full_page=True)
+            page.keyboard.press("q")
+            expect(page.locator("#queue-count")).to_have_text("0 queued")
+            expect(page.locator(".move-arrow")).to_have_count(1)
+            selected(2, 2)
+            assert len(actions) == 1  # Q cannot retract this turn's submitted action.
+
+            for key in ["ArrowRight", "ArrowDown", "ArrowLeft"]:
+                page.keyboard.press(key)
+            page.keyboard.press("h")  # Already queued moves keep their half-army setting.
+            observe(2, 2, 2, 8)
+            expect(page.locator("#queue-count")).to_have_text("2 queued")
+            selected(3, 2)  # The planned endpoint is still unowned.
+            observe(3, 2, 3, 4)
+            expect(page.locator("#queue-count")).to_have_text("1 queued")
+            observe(4, 3, 3, 2)
+            expect(page.locator("#queue-count")).to_have_text("0 queued")
+            assert [a["action"] for a in actions] == [
+                [0, 2, 1, 3, 0], [0, 2, 2, 3, 1], [0, 2, 3, 1, 1], [0, 3, 3, 2, 1],
+            ]
+            assert [a["turn"] for a in actions] == [1, 2, 3, 4]
+
+            # A premove waits for reinforcements instead of losing the route.
+            obs["turn_timeout_seconds"] = 1
+            observe(5, 3, 2, 1)
+            page.keyboard.press("ArrowDown")
+            expect(page.locator("#queue-count")).to_have_text("1 queued")
+            assert len(actions) == 4
+            page.clock.run_for(800)
+            assert actions[-1] == {"type": "action", "turn": 5, "action": [1, 0, 0, 0, 0]}
+            expect(page.locator("#queue-count")).to_have_text("1 queued")
+            obs["turn_timeout_seconds"] = 3600
+            observe(6, 3, 2, 3)
+            expect(page.locator("#queue-count")).to_have_text("0 queued")
+            assert actions[-1]["action"] == [0, 3, 2, 1, 0]
+
+            # A failed capture stops the rest of the path; no moves from unowned tiles.
+            page.keyboard.press("ArrowRight")
+            observe(7)
+            expect(page.locator("#queue-count")).to_have_text("0 queued")
+            expect(page.locator("#status")).to_contain_text("no longer yours")
+            expect(page.locator(".move-arrow")).to_have_count(0)
+            assert len(actions) == 6
+
+            # Mouse input, keyboard focus after buttons, and visible mountains.
+            page.locator("#board > .tile").nth(2 * 8 + 1).click()
+            page.locator("#board > .tile").nth(2 * 8 + 2).click()
+            page.keyboard.press("ArrowRight")
+            page.click("#undo")
+            page.keyboard.press("ArrowDown")
+            expect(page.locator("#queue-count")).to_have_text("1 queued")
+            page.click("#clear")
+            expect(page.locator("#queue-count")).to_have_text("0 queued")
+            obs["type_grid"][1][2] = 2
+            observe(8, 2, 2, 8)
+            page.keyboard.press("ArrowUp")
+            expect(page.locator(".move-arrow")).to_have_count(0)
+            selected(2, 2)
+
+            # Disconnect discards local plans and prevents further submissions.
+            page.keyboard.press("ArrowRight")
+            page.keyboard.press("ArrowDown")
+            expect(page.locator("#queue-count")).to_have_text("1 queued")
+            sockets[0].close()
+            expect(page.locator("#status")).to_contain_text("Connection closed")
+            expect(page.locator("#queue-count")).to_have_text("0 queued")
+            expect(page.locator(".move-arrow")).to_have_count(0)
+            page.keyboard.press("ArrowRight")
+            expect(page.locator("#queue-count")).to_have_text("0 queued")
+            assert not errors
+            browser.close()
+    finally:
+        http.shutdown()
+        http.server_close()
 
 
 def test_browser_play_and_standalone_replay(tmp_path):
