@@ -17,7 +17,8 @@ replay viewing uses the static bundle, independent of the game container.
 
 The replay is JSON:
 
-- `format: "generals-coworld"`, `version: 1`, `ruleset: "competition"`.
+- `format: "generals-coworld"`, `version: 1`, `ruleset: "classic"`.
+  Archived release 0.1.0 replays use `ruleset: "competition"` instead.
 - Actual `seed`, `height`, `width`, and two display names in `players`.
 - `frames`: initial frame, then one frame after every applied turn. Each has
   `turn`, `type_grid`, `owner_grid`, `army_grid`, `army`, and `land`.

@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <title>Generals · Competition</title>
+  <title>Generals · Classic 1v1</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" data-local="board.css">
   <link rel="stylesheet" data-local="style.css">
 </head>
 <body>
   <main>
-    <header><a class="brand" href="https://generals.bot" target="_blank" rel="noreferrer">GENERALS<span>COMPETITION</span></a><span id="mode" class="badge">CONNECTING</span></header>
+    <header><a class="brand" href="https://generals.bot" target="_blank" rel="noreferrer">GENERALS<span>CLASSIC 1v1</span></a><span id="mode" class="badge">CONNECTING</span></header>
     <section class="matchbar">
       <div class="player red"><span class="dot"></span><div><b id="name0">Player 1</b><small><span id="army0">—</span> army <span class="divider">/</span> <span id="land0">—</span> land</small></div></div>
       <div class="clock"><b id="turn">0</b><small id="turn-label">TURN</small></div>
@@ -24,7 +24,6 @@
     <div id="status" role="status" aria-live="polite">Connecting…</div>
     <section id="play-controls" class="controls" hidden>
       <button id="split" aria-pressed="false">Half army <kbd>H</kbd></button>
-      <button id="build">Build castle <kbd>B</kbd></button>
       <button id="pass">Pass</button>
       <button id="deselect">Deselect <kbd>Space</kbd></button>
       <button id="undo">Undo last <kbd>E</kbd></button>
@@ -37,7 +36,7 @@
       <input id="seek" type="range" min="0" max="1" value="0" aria-label="Replay turn">
       <select id="speed" aria-label="Playback speed"><option value="2">½×</option><option value="4" selected>1×</option><option value="8">2×</option><option value="20">5×</option><option value="60">15×</option></select>
     </section>
-    <footer><span>Capture the general. Hold your ground.</span><span id="endgame">Deathtouch from turn 800</span></footer>
+    <footer><span>Capture the general. Hold your ground.</span><span id="endgame">Capture castles to grow your army</span></footer>
   </main>
   <script>
     // Live pages may be nested beneath a platform proxy. Static bundles use

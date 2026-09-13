@@ -1,9 +1,14 @@
-# Generals Competition · Softmax Coworld
+# Generals · Classic 1v1 Softmax Coworld
 
 A bounded **1v1** territory-control game, running this repository's
-`GeneralsEnv(mode="competition")` rules. The authoritative engine is Python/JAX
+regular `GeneralsEnv` rules, with neutral castles to capture, no castle building,
+and no Deathtouch. The authoritative engine is Python/JAX
 on CPU. Players run separately and connect over WebSocket. A lightweight bridge
 lets existing Python, C++, and Rust competition bots keep their stdio protocol.
+
+Release 0.2.0 replaces the competition modifiers used by 0.1.0. The registered
+Coworld name (`generals-competition`) and bot variant ID (`competition`) remain
+stable so existing links work. The repository's competition preset is unchanged.
 
 ## Play locally
 
@@ -18,8 +23,8 @@ Open the printed player link. Select an owned tile, then use arrow keys/WASD or
 click neighboring cells to queue a route. Black arrows with white outlines show queued moves;
 a white arrow marks the move already submitted for this turn. E undoes the last
 queued action; Q clears all remaining actions. Neither cancels an action already
-submitted. H toggles half-army moves for new inputs, B queues a castle build,
-and Space clears the tile selection while keeping queued moves intact. The Pass
+submitted. H toggles half-army moves for new inputs, and Space clears the tile
+selection while keeping queued moves intact. The Pass
 button queues a pass. Moves execute one per turn. If a move cannot execute
 (including insufficient army), fails to secure its destination, or an obstacle
 blocks the queued route, the entire queue is cancelled and the selection is
@@ -54,13 +59,11 @@ local port. The local launcher binds only to loopback.
   combine; attacking armies subtract from defenders. You must exceed the
   defending army to take a cell under normal combat.
 - Generals and owned castles grow each even tick; owned land grows every 50
-  ticks. There are no neutral castles at spawn.
-- Build on an owned plain cell for **35 + Σ max(0, 14 − 2d)** armies, where `d`
-  is Manhattan distance to each of your existing castles/general. Builds resolve
-  before moves. Unaffordable/illegal game moves are no-ops.
-- From turn 800, Deathtouch makes an executed move onto the enemy general an
-  immediate victory. All move-order and simultaneous-capture rules come directly
-  from the shared engine; the adapter does not reimplement them.
+  ticks. Neutral castles start on the map with 40–50 defenders and can be captured.
+- Castle building is disabled. The server rejects build actions; players can
+  only move or pass. The standard engine controls movement and combat order.
+- General capture always requires beating its defending army, including after
+  turn 800. There is no Deathtouch rule.
 - Capture scores **+1** for the winner and **−1** for the loser. Reaching the
   1,200-turn cap scores **0 / 0**, regardless of army or land advantage.
 
@@ -135,7 +138,7 @@ From the repository root:
 
 ```bash
 python -m integrations.softmax.tools.manifest --check
-coworld build --project integrations/softmax --version 0.1.0
+coworld build --project integrations/softmax --version 0.2.0
 coworld certify integrations/softmax/dist/coworld_manifest.json
 ```
 
@@ -167,7 +170,8 @@ JAX_PLATFORMS=cpu pytest -q tests/test_softmax.py tests/test_matchup.py
 
 The integration tests cover real engine observation/wire parity, action
 validation, authentication, information boundaries, deterministic replay,
-timeouts, startup failures, Deathtouch scoring, and failed artifact writes.
+timeouts, startup failures, regular general-capture scoring, neutral castles,
+rejected build actions, and failed artifact writes.
 Before releases, run the complete engine suite, local container certification,
 and browser checks for live player controls and the static replay bundle.
 
@@ -184,8 +188,9 @@ browser. Deployment dependencies, including transitive packages, are pinned in
 --python-version 3.12 --output-file requirements.lock` from this directory when
 deliberately updating the runtime.
 
-Rules changes belong in `generals/`; both this adapter and the local competition
-runner call `generals.core.match`. Publish a new Coworld version for rules,
+Both this adapter and the local competition runner call `generals.core.match`.
+The adapter selects regular rules; the competition runner keeps its competition
+preset. Publish a new Coworld version for rules,
 protocol, rendering, or dependency changes. Preserve old replay fixtures when
 the format changes. Keep participant support and league balancing distinct from
 technical adapter maintenance. Hosting/resource allowances and ongoing support

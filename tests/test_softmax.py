@@ -63,6 +63,7 @@ def act(ws, observation, action=PASS):
         [0, 0, 0, 4, 0],
         [0, 0, 0, 0, 2],
         [3, 0, 0, 0, 0],
+        [2, 0, 0, 0, 0],
         [False, 0, 0, 0, 0],
         [0, 2**100, 0, 0, 0],
         [0, 0.0, 0, 0, 0],
@@ -99,6 +100,29 @@ def test_config_cannot_change_rules_or_overrun_hosted_deadline(fields):
 
 def test_random_seed_is_default():
     assert GameConfig(tokens=["a", "b"], players=[{"name": "A"}, {"name": "B"}]).seed is None
+
+
+def test_classic_rules_have_neutral_castles_and_reject_builds():
+    match = Match(7)
+    castles = match.state.castles
+    assert 9 <= int(castles.sum()) <= 11
+    assert bool(jnp.all(match.state.ownership_neutral[castles]))
+    assert bool(jnp.all((match.state.armies[castles] >= 40) & (match.state.armies[castles] <= 50)))
+    with pytest.raises(ValueError, match="moves and passes"):
+        match.advance([[2, 0, 0, 0, 0], PASS])
+
+
+def test_classic_castles_can_be_captured_and_generate_armies():
+    match = Match(7)
+    grid = jnp.zeros((8, 8), dtype=jnp.int32).at[0, 0].set(1).at[7, 7].set(2).at[0, 1].set(40)
+    state = create_initial_state(grid)
+    match.state = state._replace(armies=state.armies.at[0, 0].set(50))
+    match.advance([[0, 0, 0, 3, 0], PASS])
+    assert bool(match.state.castles[0, 1]) and bool(match.state.ownership[0, 0, 1])
+    army = int(match.state.armies[0, 1])
+    assert army == 9  # 49 attackers minus the 40 neutral defenders.
+    match.advance([PASS, PASS])
+    assert int(match.state.armies[0, 1]) == army + 1
 
 
 def test_engine_observation_matches_existing_stdio_protocol():
@@ -205,11 +229,21 @@ def test_duplicate_and_stale_actions_do_not_replace_first_action(tmp_path):
         red.send_json({"type": "action", "turn": 900, "action": PASS})
         assert "current turn" in receive(red, "error")["message"]
         act(red, robs)
-        act(red, robs, [2, 0, 0, 0, 0])
+        act(red, robs, [0, 0, 0, 0, 0])
         assert "first valid" in receive(red, "error")["message"]
         act(blue, bobs)
         receive(red, "final")
         assert client.get("/replay.json").json()["turns"][0]["actions"][0] == PASS
+
+
+def test_build_rejection_does_not_consume_the_action_slot(tmp_path):
+    with client_for(tmp_path, max_turns=1) as client, connect(client, 0) as red, connect(client, 1) as blue:
+        robs, bobs = receive(red, "observation"), receive(blue, "observation")
+        act(red, robs, [2, 0, 0, 0, 0])
+        assert "invalid action kind" in receive(red, "error")["message"]
+        act(red, robs)
+        act(blue, bobs)
+        assert receive(red, "final")["result"]["timeouts"] == [0, 0]
 
 
 def test_silent_player_forfeits_without_hanging_episode(tmp_path):
@@ -235,14 +269,15 @@ def test_missing_player_writes_typed_failure_without_success(tmp_path):
         assert not (tmp_path / "replay.json").exists()
 
 
-def test_deathtouch_capture_is_scored_and_final_board_preserved(tmp_path):
-    with client_for(tmp_path, max_turns=1200) as client:
+@pytest.mark.parametrize("attack, scores, reason", [(3, [0, 0], "turn_limit"), (502, [1, -1], "general_capture")])
+def test_general_capture_requires_winning_combat_after_turn_800(tmp_path, attack, scores, reason):
+    with client_for(tmp_path, max_turns=802) as client:
         episode = client.app.state.episode
         grid = jnp.zeros((8, 8), dtype=jnp.int32).at[0, 0].set(1).at[0, 7].set(2)
         state = create_initial_state(grid)
         episode.match.state = state._replace(
             time=jnp.int32(801),
-            armies=state.armies.at[0, 6].set(3).at[0, 7].set(500),
+            armies=state.armies.at[0, 6].set(attack).at[0, 7].set(500),
             ownership=state.ownership.at[0, 0, 6].set(True),
             ownership_neutral=state.ownership_neutral.at[0, 6].set(False),
         )
@@ -252,7 +287,7 @@ def test_deathtouch_capture_is_scored_and_final_board_preserved(tmp_path):
             act(red, receive(red, "observation"), [0, 0, 6, 3, 0])
             act(blue, receive(blue, "observation"))
             result = receive(red, "final")["result"]
-            assert result["scores"] == [1, -1] and result["reason"] == "general_capture"
+            assert result["scores"] == scores and result["reason"] == reason
             assert result["turns"] == 802
             replay = client.get("/replay.json").json()
             assert replay["frames"][-1] == episode.match.frame()

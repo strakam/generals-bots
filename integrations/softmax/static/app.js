@@ -9,6 +9,7 @@
   let board = null, slot = null, selected = null, half = false, ws = null;
   let currentTurn = -1, sent = true, passTimer = null, replay = null, frameIndex = 0;
   let playing = true, replayTimer = null, readySent = false, replayLoad = 0;
+  let ruleset = 'classic';
   const moves = [[-1,0],[1,0],[0,-1],[0,1]], queue = [];
   let inFlight = null;
   const sameTile = (a, b) => a && b && a[0] === b[0] && a[1] === b[1];
@@ -33,7 +34,9 @@
   function scoreboard(turn, army, land) {
     $('turn').textContent = turn;
     for (let i = 0; i < 2; i++) { $(`army${i}`).textContent = army[i]; $(`land${i}`).textContent = land[i]; }
-    $('endgame').textContent = turn >= 800 ? 'DEATHTOUCH ACTIVE · Reach the enemy general to win' : 'Deathtouch from turn 800';
+    $('endgame').textContent = ruleset === 'competition'
+      ? (turn >= 800 ? 'DEATHTOUCH ACTIVE · Reach the enemy general to win' : 'Deathtouch from turn 800')
+      : 'Capture castles to grow your army';
   }
   function draw() {
     if (!board) return;
@@ -45,7 +48,7 @@
     if (!ws || ws.readyState !== WebSocket.OPEN || sent || currentTurn < 0) return false;
     ws.send(JSON.stringify({type: 'action', turn: currentTurn, action}));
     sent = true; clearTimeout(passTimer);
-    status(action[0] === 1 ? 'Holding position.' : action[0] === 2 ? 'Castle requested.' : 'Move submitted.');
+    status(action[0] === 1 ? 'Holding position.' : 'Move submitted.');
     return true;
   }
   function dispatchQueue() {
@@ -108,7 +111,6 @@
     draw(); boardElement.focus();
   });
   $('split').onclick = () => { half = !half; $('split').setAttribute('aria-pressed', String(half)); };
-  $('build').onclick = () => { if (selected) enqueue([2, ...selected, 0, 0]); };
   $('pass').onclick = () => enqueue([1,0,0,0,0]);
   $('deselect').onclick = () => { selected = null; draw(); status('Selection cleared.'); };
   $('undo').onclick = undoMove;
@@ -122,7 +124,6 @@
     const keys = {arrowup:0, w:0, arrowdown:1, s:1, arrowleft:2, a:2, arrowright:3, d:3};
     if (key in keys) { event.preventDefault(); move(keys[key]); }
     else if (key === 'h') $('split').click();
-    else if (key === 'b') $('build').click();
     else if (key === 'e') { event.preventDefault(); undoMove(); }
     else if (key === 'q') { event.preventDefault(); clearQueue(); }
     else if (key === ' ') { event.preventDefault(); $('deselect').click(); }
@@ -171,7 +172,7 @@
     for (const frame of data.frames) for (const key of ['type_grid','owner_grid','army_grid']) {
       if (!Array.isArray(frame[key]) || frame[key].length !== data.height || frame[key].some(row => !Array.isArray(row) || row.length !== data.width || row.some(n => !Number.isInteger(n)))) throw new Error('Replay contains an invalid board.');
     }
-    replay = data; slot = null; selected = null; clearTimeout(passTimer);
+    replay = data; ruleset = data.ruleset || 'competition'; slot = null; selected = null; clearTimeout(passTimer);
     names(data.players); $('mode').textContent = 'REPLAY';
     $('play-controls').hidden = true; $('replay-controls').hidden = false; $('seek').max = data.frames.length-1;
     post({type:'phase', phase:'replay_parsed'});
@@ -210,6 +211,7 @@
       try {
         const message = JSON.parse(event.data);
         if (message.type === 'hello') {
+          ruleset = message.ruleset || 'classic';
           slot = message.slot; names(message.players); $('play-controls').hidden = false;
         } else if (message.type === 'observation') observe(message);
         else if (message.type === 'global') {

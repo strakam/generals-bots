@@ -8,7 +8,7 @@ slot; invalid credentials and concurrent duplicate connections are rejected.
 
 The game sends a `hello` with `protocol_version: 1`, your `slot` (0 or 1), board
 `height` and `width`, the two display names in `players`, and
-`ruleset: "competition"`. Wait for an `observation` before sending actions.
+`ruleset: "classic"`. Wait for an `observation` before sending actions.
 
 Each observation has:
 
@@ -33,16 +33,16 @@ Reply with exactly these three fields:
 
 `action` contains five integers `[kind, row, col, direction, split]`:
 
-- `kind`: 0 move, 1 pass, 2 build castle.
+- `kind`: 0 move, 1 pass. Castle-building actions (kind 2) are rejected.
 - `row`, `col`: a source cell within the board bounds.
 - `direction`: 0 up, 1 down, 2 left, 3 right.
 - `split`: 0 all-but-one, 1 half (rounded down).
 
-Use `[1,0,0,0,0]` to pass and `[2,row,col,0,0]` to build. All five values must
+Use `[1,0,0,0,0]` to pass. All five values must
 be valid integers even when a field is unused. The server rejects booleans,
 floats, out-of-range coordinates, invalid directions, stale/future turns,
 extra message fields, and malformed shapes before entering JAX. Legally shaped
-but impossible game actions are no-ops, as in the competition engine.
+but impossible game actions are no-ops, as in the regular engine.
 
 Only the **first valid message for the current turn** is accepted. Actions from
 both players resolve together using the existing engine's move-order rules.

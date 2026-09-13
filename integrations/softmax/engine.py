@@ -1,4 +1,4 @@
-"""The Coworld boundary around the unchanged competition rules."""
+"""The Coworld boundary around the engine's regular, capture-only rules."""
 
 import jax
 import jax.numpy as jnp
@@ -7,9 +7,10 @@ import numpy as np
 from generals import GeneralsEnv
 from generals.core import game
 from generals.core.match import make_board, make_transition
-from generals.modifiers import build_castles
 
 from .protocol import PASS, VERSION
+
+RULESET = "classic"
 
 
 @jax.jit
@@ -17,9 +18,8 @@ def executed_moves(state, actions):
     """Receipts for the base moves, using the engine's actual resolution order.
 
     Observe each action separately, before growth or the other action can mask
-    its effects. Terminal deathtouch overrides never have a next observation.
+    its effects.
     """
-    state, actions = build_castles.apply_build_actions(state, actions)
     executed = jnp.zeros((2,), dtype=bool)
     for player in game._determine_move_order(state, actions):
         action = actions[player]
@@ -32,7 +32,13 @@ def executed_moves(state, actions):
 
 class Match:
     def __init__(self, seed: int):
-        self.env = GeneralsEnv(mode="competition")
+        # Keep the hosted 1v1 map dimensions, using ordinary engine combat and
+        # neutral castles (40–50 defenders), without the competition modifiers.
+        self.env = GeneralsEnv(
+            min_grid_size=18, max_grid_size=21, pad_to=21, truncation=1200,
+            mountain_density_range=(0.24, 0.26), min_generals_distance=17,
+            build_castles=False, deathtouch_turn=None,
+        )
         self.state = make_board(self.env, seed)
         self.transition = jax.jit(make_transition(self.env))
         self.last_move_executed = [None, None]
@@ -97,6 +103,8 @@ class Match:
         }
 
     def advance(self, actions: list[list[int]]) -> int:
+        if any(action[0] not in (0, 1) for action in actions):
+            raise ValueError("classic rules accept only moves and passes")
         batch = jnp.array(actions, dtype=jnp.int32)
         executed = executed_moves(self.state, batch)
         self.state, info = self.transition(self.state, batch)

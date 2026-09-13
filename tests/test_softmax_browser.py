@@ -101,6 +101,10 @@ def test_browser_premove_controls(tmp_path):
                 expect(page.locator("#board > .tile").nth(r * 8 + c)).to_have_class(re.compile(r"\bselected\b"))
 
             observe(1)
+            expect(page.locator('#build')).to_have_count(0)
+            page.keyboard.press('b')
+            assert actions == []
+            expect(page.locator('#endgame')).to_have_text('Capture castles to grow your army')
             expect(page.locator(".tile.selected")).to_have_count(0)
             page.locator("#board > .tile").nth(2 * 8 + 1).click()
             page.keyboard.press("Space")

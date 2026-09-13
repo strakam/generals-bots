@@ -40,7 +40,7 @@ def template():
             "owner": "Matej Straka",
             "description": (
                 "Capture the enemy general in a seeded 1v1 fog-of-war strategy game. "
-                "Build castles; Deathtouch starts at turn 800."
+                "Capture neutral castles. Regular combat; no castle building or Deathtouch."
             ),
             "runnable": {
                 "type": "game",
@@ -68,14 +68,14 @@ def template():
         "variants": [
             {
                 "id": "competition",
-                "name": "Competition 1v1",
-                "description": "Full 1200-turn ruleset; fresh private seed per episode; fast bot play.",
+                "name": "Classic 1v1",
+                "description": "Regular capture-only rules, 1200-turn cap, fresh private seed; fast bot play.",
                 "game_config": {"players": players, "max_turns": 1200},
             },
             {
                 "id": "human",
                 "name": "Human play 1v1",
-                "description": "The same competition rules paced at two turns per second.",
+                "description": "The same classic rules paced at two turns per second.",
                 "game_config": {"players": players, "max_turns": 1200, "tick_interval_seconds": 0.5},
             },
         ],

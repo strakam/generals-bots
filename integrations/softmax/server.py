@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .artifacts import read_json, write_json
 from .config import GameConfig
-from .engine import Match
+from .engine import Match, RULESET
 from .protocol import PASS, VERSION, parse_action
 
 STATIC = Path(__file__).parent / "static"
@@ -191,7 +191,7 @@ class Episode:
         replay = {
             "format": "generals-coworld",
             "version": VERSION,
-            "ruleset": "competition",
+            "ruleset": RULESET,
             "seed": self.config.seed,
             "height": self.match.height,
             "width": self.match.width,
@@ -326,7 +326,7 @@ def create_app(config: GameConfig | None = None, artifacts: dict | None = None, 
                 "height": episode.match.height,
                 "width": episode.match.width,
                 "players": episode.names,
-                "ruleset": "competition",
+                "ruleset": RULESET,
             },
         )
         if episode.phase == "playing":
