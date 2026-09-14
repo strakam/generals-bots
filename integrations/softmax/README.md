@@ -10,6 +10,10 @@ Release 0.2.0 replaces the competition modifiers used by 0.1.0. The registered
 Coworld name (`generals-competition`) and bot variant ID (`competition`) remain
 stable so existing links work. The repository's competition preset is unchanged.
 
+Release 0.2.1 fixes human lobby connections through Softmax's hosted proxy.
+Browser pages accept its `address` parameter containing the complete player
+WebSocket URL, while local player links continue to accept `slot` and `token`.
+
 ## Play locally
 
 From the repository root, with Python 3.12:
@@ -138,7 +142,7 @@ From the repository root:
 
 ```bash
 python -m integrations.softmax.tools.manifest --check
-coworld build --project integrations/softmax --version 0.2.0
+coworld build --project integrations/softmax --version 0.2.1
 coworld certify integrations/softmax/dist/coworld_manifest.json
 ```
 

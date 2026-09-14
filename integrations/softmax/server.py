@@ -8,6 +8,7 @@ import os
 import secrets
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, WebSocket
@@ -285,7 +286,18 @@ def create_app(config: GameConfig | None = None, artifacts: dict | None = None, 
         return {"ready": True}
 
     @app.get("/client/player")
-    async def player_client(slot: str = "", token: str = ""):
+    async def player_client(slot: str = "", token: str = "", address: str | None = None):
+        # Hosted play wraps the full proxied WebSocket URL in `address`.
+        # Validate its credentials without making any request to that URL.
+        if address is not None:
+            try:
+                url = urlsplit(address)
+                query = parse_qs(url.query)
+                if url.scheme not in ("ws", "wss") or not url.netloc:
+                    raise ValueError("invalid address")
+                [slot], [token] = query.get("slot", []), query.get("token", [])
+            except ValueError:
+                raise HTTPException(403, "invalid player credentials") from None
         if app.state.episode.authorize(slot, token) is None:
             raise HTTPException(403, "invalid player credentials")
         return FileResponse(STATIC / "index.html")

@@ -181,6 +181,21 @@ def test_live_public_routes_do_not_reveal_hidden_state(tmp_path):
         assert client.get("/client/player?slot=0&token=wrong").status_code == 403
         page = client.get("/client/player?slot=0&token=red-secret")
         assert page.status_code == 200 and page.headers["referrer-policy"] == "no-referrer"
+        hosted_address = "wss://example.com/session/proxy/player?slot=0&token=red-secret"
+        page = client.get("/client/player", params={"address": hosted_address})
+        assert page.status_code == 200 and page.headers["referrer-policy"] == "no-referrer"
+        for address in (
+            hosted_address.replace("red-secret", "wrong"),
+            hosted_address.replace("wss:", "https:"),
+            hosted_address + "&slot=1",
+            hosted_address.replace("slot=0&", ""),
+            "wss://[broken",
+            "",
+        ):
+            # Valid legacy parameters must not override an invalid hosted address.
+            assert client.get("/client/player", params={
+                "address": address, "slot": "0", "token": "red-secret",
+            }).status_code == 403
         with client.websocket_connect("/global") as global_ws:
             message = global_ws.receive_json()
             assert message["board"] is None

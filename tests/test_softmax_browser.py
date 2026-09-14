@@ -14,6 +14,7 @@ import threading
 import time
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import urlencode
 
 import pytest
 
@@ -46,13 +47,15 @@ class QuietHandler(SimpleHTTPRequestHandler):
         pass
 
 
-def test_browser_premove_controls(tmp_path):
+@pytest.mark.parametrize("hosted", [False, True])
+def test_browser_premove_controls(tmp_path, hosted):
     """Drive turns explicitly to check fast inputs between observations deterministically."""
     bundle = tmp_path / "viewer"
     subprocess.run([str(ROOT / "integrations/softmax/tools/build_replay_viewer.sh"), str(bundle)], check=True)
 
     class PlayerHandler(QuietHandler):
         def do_GET(self):
+            self.path = self.path.removeprefix("/session/proxy")
             if self.path.startswith("/client/player?"):
                 self.path = "/index.html"
             elif self.path.startswith("/static/"):
@@ -75,8 +78,12 @@ def test_browser_premove_controls(tmp_path):
                 ws.on_message(lambda raw: actions.append(json.loads(raw)))
 
             page.route_web_socket("**/player?*", connected)
-            page.goto(f"http://127.0.0.1:{http.server_port}/client/player?slot=0&token=test")
+            prefix = "/session/proxy" if hosted else ""
+            websocket_url = f"ws://127.0.0.1:{http.server_port}{prefix}/player?slot=0&token=test"
+            query = urlencode({"address": websocket_url}) if hosted else "slot=0&token=test"
+            page.goto(f"http://127.0.0.1:{http.server_port}{prefix}/client/player?{query}")
             expect(page.locator("#mode")).to_have_text("PLAYER")
+            assert sockets[0].url == websocket_url
             sockets[0].send(json.dumps({"type": "hello", "slot": 0, "players": ["Human", "Bot"]}))
             obs = {
                 "type": "observation", "slot": 0, "players": ["Human", "Bot"],
@@ -328,7 +335,8 @@ def test_browser_play_and_standalone_replay(tmp_path):
                 ws.on("framereceived", received)
 
             page.on("websocket", on_socket)
-            page.goto(f"http://127.0.0.1:{port}/client/player?slot=0&token=browser-red")
+            query = urlencode({"address": f"ws://127.0.0.1:{port}/player?slot=0&token=browser-red"})
+            page.goto(f"http://127.0.0.1:{port}/client/player?{query}")
             player_env = {
                 **os.environ,
                 "COWORLD_PLAYER_WS_URL": f"ws://127.0.0.1:{port}/player?slot=1&token=browser-blue",

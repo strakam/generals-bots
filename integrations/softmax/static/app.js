@@ -203,8 +203,19 @@
   function connectLive() {
     const isPlayer = location.pathname.endsWith('/client/player');
     const route = livePrefix + (isPlayer ? '/player' : '/global');
-    const url = new URL(route, location.href); url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    if (isPlayer) { url.searchParams.set('slot', params.get('slot') || ''); url.searchParams.set('token', params.get('token') || ''); }
+    const address = params.get('address');
+    let url;
+    if (address !== null) {
+      try {
+        url = new URL(address);
+        if (!['ws:', 'wss:'].includes(url.protocol) || url.host !== location.host || url.pathname !== route) {
+          throw new Error('Invalid connection address');
+        }
+      } catch (_) { fail('Invalid connection address. Reopen this game from its lobby.'); return; }
+    } else {
+      url = new URL(route, location.href); url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      if (isPlayer) { url.searchParams.set('slot', params.get('slot') || ''); url.searchParams.set('token', params.get('token') || ''); }
+    }
     ws = new WebSocket(url);
     ws.onopen = () => { $('mode').textContent = isPlayer ? 'PLAYER' : 'LIVE'; status('Waiting for both players.'); };
     ws.onmessage = event => {
