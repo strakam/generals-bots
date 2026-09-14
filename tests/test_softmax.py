@@ -177,6 +177,9 @@ def test_live_public_routes_do_not_reveal_hidden_state(tmp_path):
     with client_for(tmp_path) as client:
         assert client.get("/healthz").status_code == 200
         assert client.get("/replay.json").status_code == 409
+        assert client.get("/client/replay.json").status_code == 409
+        for asset in ("app.js", "board.css", "assets/crownie.png", "fonts/Quicksand-VariableFont_wght.ttf"):
+            assert client.get("/client/static/" + asset).status_code == 200
         assert client.get("/config.json").status_code == 404
         assert client.get("/client/player?slot=0&token=wrong").status_code == 403
         page = client.get("/client/player?slot=0&token=red-secret")

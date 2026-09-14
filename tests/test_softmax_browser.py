@@ -56,10 +56,13 @@ def test_browser_premove_controls(tmp_path, hosted):
     class PlayerHandler(QuietHandler):
         def do_GET(self):
             self.path = self.path.removeprefix("/session/proxy")
+            if hosted and not self.path.startswith("/client/"):
+                self.send_error(404, "Play session path not found")
+                return
             if self.path.startswith("/client/player?"):
                 self.path = "/index.html"
-            elif self.path.startswith("/static/"):
-                self.path = self.path.removeprefix("/static")
+            elif self.path.startswith("/client/static/"):
+                self.path = self.path.removeprefix("/client/static")
             super().do_GET()
 
     http = ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(PlayerHandler, directory=bundle))

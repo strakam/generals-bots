@@ -13,6 +13,9 @@ stable so existing links work. The repository's competition preset is unchanged.
 Release 0.2.1 fixes human lobby connections through Softmax's hosted proxy.
 Browser pages accept its `address` parameter containing the complete player
 WebSocket URL, while local player links continue to accept `slot` and `token`.
+Release 0.2.2 also serves live assets and completed replays under `/client/`,
+which Softmax's hosted-play proxy forwards. Replay access still requires the
+match to finish; no live hidden state is exposed.
 
 ## Play locally
 
@@ -142,7 +145,7 @@ From the repository root:
 
 ```bash
 python -m integrations.softmax.tools.manifest --check
-coworld build --project integrations/softmax --version 0.2.1
+coworld build --project integrations/softmax --version 0.2.2
 coworld certify integrations/softmax/dist/coworld_manifest.json
 ```
 

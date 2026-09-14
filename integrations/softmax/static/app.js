@@ -227,7 +227,7 @@
         } else if (message.type === 'observation') observe(message);
         else if (message.type === 'global') {
           names(message.players); scoreboard(message.turn, message.army, message.land);
-          if (message.phase === 'finished') { loadReplay(livePrefix+'/replay.json').catch(err => fail(err.message)); }
+          if (message.phase === 'finished') { loadReplay(livePrefix+'/client/replay.json').catch(err => fail(err.message)); }
           else {
             $('cover-title').textContent = message.phase === 'waiting' ? 'Waiting for the generals' : message.phase === 'failed' ? 'Match could not finish' : 'The battle is underway';
             $('cover-text').textContent = 'The live map stays hidden to protect fog of war. Watch the score here, then explore the full replay.';
@@ -235,7 +235,7 @@
           }
         } else if (message.type === 'final') {
           sent = true; clearTimeout(passTimer); status(outcome(message.result));
-          loadReplay(livePrefix+'/replay.json').catch(err => fail(err.message));
+          loadReplay(livePrefix+'/client/replay.json').catch(err => fail(err.message));
         } else if (message.type === 'error') stopQueue(message.message);
         else if (message.type === 'failure') fail('The episode could not complete.');
       } catch (err) { fail(err.message); }
@@ -252,7 +252,7 @@
     if (url) loadReplay(url).catch(err => fail(err.message));
   });
   if (replayURL) loadReplay(replayURL).catch(err => fail(err.message));
-  else if (location.pathname.endsWith('/client/replay')) loadReplay(livePrefix+'/replay.json').catch(err => fail(err.message));
+  else if (location.pathname.endsWith('/client/replay')) loadReplay(livePrefix+'/client/replay.json').catch(err => fail(err.message));
   else if (location.pathname.includes('/client/')) connectLive();
   else fail('Open this viewer with a replay URL in #replay=.');
 })();

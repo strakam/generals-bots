@@ -40,8 +40,8 @@
   </main>
   <script>
     // Live pages may be nested beneath a platform proxy. Static bundles use
-    // sibling assets; game-served pages use their corresponding /static prefix.
-    const prefix = location.pathname.includes('/client/') ? location.pathname.split('/client/')[0] + '/static/' : './';
+    // sibling assets; hosted play forwards game assets under /client/.
+    const prefix = location.pathname.includes('/client/') ? location.pathname.split('/client/')[0] + '/client/static/' : './';
     document.querySelectorAll('link[data-local]').forEach(link => link.href = prefix + link.dataset.local);
     const rendererScript = document.createElement('script'); rendererScript.src = prefix + 'board.js';
     rendererScript.onload = () => {
