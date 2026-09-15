@@ -47,6 +47,52 @@ class QuietHandler(SimpleHTTPRequestHandler):
         pass
 
 
+def test_board_updates_preserve_icons_and_queue_arrows():
+    """Ticks must not tear down visible sprites or arrows and make them flash."""
+    with sync_playwright() as p:
+        executable = os.environ.get("CHROMIUM_PATH") or shutil.which("chromium")
+        browser = p.chromium.launch(executable_path=executable, args=["--no-sandbox"])
+        try:
+            page = browser.new_page()
+            page.set_content('<div id="board"></div>')
+            page.add_script_tag(path=str(ROOT / "integrations/softmax/static/board.js"))
+            result = page.evaluate("""() => {
+              const board = document.getElementById('board'), renderer = GeneralsTiles(board);
+              const frame = {type_grid:[[4,3,2]], owner_grid:[[1,0,0]], army_grid:[[5,40,0]]};
+              const move = [0,0,0,3,0];
+              renderer.draw(frame, [0,0], [move]);
+              const tile = board.children[0], icon = tile.querySelector('.icon');
+              const number = tile.querySelector('.num'), arrow = tile.querySelector('.move-arrow');
+              const path = arrow.firstElementChild, mountain = board.children[2].firstElementChild;
+              const mutations = new MutationObserver(() => {});
+              mutations.observe(board, {subtree:true, childList:true, attributes:true, characterData:true});
+              renderer.draw(frame, [0,0], [move]);
+              const unchangedMutations = mutations.takeRecords().length;
+              frame.army_grid[0][0] = 6;
+              renderer.draw(frame, [0,0], [move]);
+              const growthStable = tile.querySelector('.icon') === icon && tile.querySelector('.num') === number &&
+                tile.querySelector('.move-arrow') === arrow && arrow.firstElementChild === path && number.textContent === '6';
+              renderer.draw(frame, [0,0], [], move);
+              const submittedStable = tile.querySelector('.move-arrow') === arrow && arrow.classList.contains('submitted');
+              frame.owner_grid[0][0] = 2;
+              renderer.draw(frame, null);
+              const captured = tile.classList.contains('blue') && !tile.classList.contains('selected') &&
+                tile.querySelector('.icon') === icon && !tile.querySelector('.move-arrow');
+              frame.type_grid[0][0] = 0;
+              renderer.draw(frame, null);
+              const fogClearsDetails = tile.classList.contains('fog') && tile.children.length === 0;
+              mutations.disconnect();
+              return {unchangedMutations, growthStable, submittedStable, captured, fogClearsDetails,
+                otherSpriteStable: board.children[2].firstElementChild === mountain};
+            }""")
+            assert result == {
+                "unchangedMutations": 0, "growthStable": True, "submittedStable": True,
+                "captured": True, "fogClearsDetails": True, "otherSpriteStable": True,
+            }
+        finally:
+            browser.close()
+
+
 @pytest.mark.parametrize("hosted", [False, True])
 def test_browser_premove_controls(tmp_path, hosted):
     """Drive turns explicitly to check fast inputs between observations deterministically."""

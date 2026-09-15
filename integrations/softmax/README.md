@@ -16,6 +16,8 @@ WebSocket URL, while local player links continue to accept `slot` and `token`.
 Release 0.2.2 also serves live assets and completed replays under `/client/`,
 which Softmax's hosted-play proxy forwards. Replay access still requires the
 match to finish; no live hidden state is exposed.
+Release 0.2.3 keeps tile icons and queue arrows mounted across turn updates,
+updating army counts and arrow state in place to avoid visual flicker.
 
 ## Play locally
 
@@ -145,7 +147,7 @@ From the repository root:
 
 ```bash
 python -m integrations.softmax.tools.manifest --check
-coworld build --project integrations/softmax --version 0.2.2
+coworld build --project integrations/softmax --version 0.2.3
 coworld certify integrations/softmax/dist/coworld_manifest.json
 ```
 
