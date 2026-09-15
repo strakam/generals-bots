@@ -118,7 +118,8 @@ def test_browser_premove_controls(tmp_path, hosted):
             executable = os.environ.get("CHROMIUM_PATH") or shutil.which("chromium")
             browser = p.chromium.launch(executable_path=executable, args=["--no-sandbox"])
             page = browser.new_page(viewport={"width": 1100, "height": 1000})
-            page.clock.install()
+            page.clock.install(time=0)
+            page.clock.pause_at(1)
             sockets, actions, errors = [], [], []
             page.on("pageerror", lambda error: errors.append(str(error)))
 
@@ -208,18 +209,23 @@ def test_browser_premove_controls(tmp_path, hosted):
             assert [a["turn"] for a in actions] == [1, 2, 3, 4]
 
             # Insufficient army cancels the route and stays deselected after growth.
-            obs["turn_timeout_seconds"] = 1
+            obs["turn_timeout_seconds"] = 0.5
             observe(5, 3, 2, 1)
             page.locator("#board > .tile").nth(3 * 8 + 2).click()
             page.keyboard.press("ArrowDown")
             expect(page.locator("#queue-count")).to_have_text("0 queued")
             expect(page.locator(".tile.selected")).to_have_count(0)
             assert len(actions) == 4
-            page.clock.run_for(800)
+            stopped_status = page.locator("#status").inner_text()
+            # Leave room for 150 ms of transport in EACH direction inside a
+            # 500 ms server deadline. An idle pass must not blink the status.
+            page.clock.run_for(150)
             assert actions[-1] == {"type": "action", "turn": 5, "action": [1, 0, 0, 0, 0]}
+            expect(page.locator("#status")).to_have_text(stopped_status)
             expect(page.locator("#queue-count")).to_have_text("0 queued")
             obs["turn_timeout_seconds"] = 3600
             observe(6, 3, 2, 3)
+            expect(page.locator("#status")).to_have_text(stopped_status)
             expect(page.locator("#queue-count")).to_have_text("0 queued")
             expect(page.locator(".tile.selected")).to_have_count(0)
             page.keyboard.press("ArrowDown")

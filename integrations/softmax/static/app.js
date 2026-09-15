@@ -44,11 +44,11 @@
     $('queue-count').textContent = `${queue.length} queued`;
     $('cover').hidden = true; ready();
   }
-  function send(action) {
+  function send(action, automatic = false) {
     if (!ws || ws.readyState !== WebSocket.OPEN || sent || currentTurn < 0) return false;
     ws.send(JSON.stringify({type: 'action', turn: currentTurn, action}));
     sent = true; clearTimeout(passTimer);
-    status(action[0] === 1 ? 'Holding position.' : 'Move submitted.');
+    if (!automatic) status(action[0] === 1 ? 'Holding position.' : 'Move submitted.');
     return true;
   }
   function dispatchQueue() {
@@ -179,6 +179,7 @@
     readySent = false; frameIndex = 0; showReplayFrame(); resetReplayTimer();
   }
   function observe(message) {
+    const firstTurn = currentTurn < 0;
     const previousMove = inFlight;
     slot = message.slot; currentTurn = message.turn; sent = false; inFlight = null; names(message.players);
     const owners = message.owner_grid.map(row => row.map(o => o === 0 ? 0 : o === 1 ? slot+1 : 2-slot));
@@ -193,9 +194,11 @@
     army[slot] = message.my_army; army[1-slot] = message.opp_army;
     land[slot] = message.my_land; land[1-slot] = message.opp_land;
     scoreboard(message.turn, army, land); draw();
-    status('Your move · Select a tile and a direction.');
+    if (firstTurn) status('Select a tile and queue moves with the arrow keys.');
     clearTimeout(passTimer);
-    passTimer = setTimeout(() => send([1,0,0,0,0]), message.turn_timeout_seconds * 800);
+    // The deadline starts on the server, before either leg of the proxy trip.
+    // Queue inputs made after this pass will execute on the following tick.
+    passTimer = setTimeout(() => send([1,0,0,0,0], true), Math.min(50, message.turn_timeout_seconds * 200));
     if (failedMove) stopQueue('the previous move did not reach its destination');
     else if (obstruction) stopQueue('an obstacle blocks the route');
     else dispatchQueue();

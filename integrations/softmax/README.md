@@ -18,6 +18,10 @@ which Softmax's hosted-play proxy forwards. Replay access still requires the
 match to finish; no live hidden state is exposed.
 Release 0.2.3 keeps tile icons and queue arrows mounted across turn updates,
 updating army counts and arrow state in place to avoid visual flicker.
+Release 0.2.4 sends automatic passes early enough for the hosted proxy and gives
+human lobbies a one-second network deadline. Their normal minimum tick interval
+remains 500 ms; slow connections can extend a turn. Status text stays steady
+while idle instead of alternating messages each tick.
 
 ## Play locally
 
@@ -76,8 +80,9 @@ local port. The local launcher binds only to loopback.
 - Capture scores **+1** for the winner and **−1** for the loser. Reaching the
   1,200-turn cap scores **0 / 0**, regardless of army or land advantage.
 
-The hosted runtime adds explicit failure rules: actions have a 500 ms deadline
-(including transport) from publication of each observation. A missing action is
+The hosted runtime adds explicit failure rules: bot matches have a 500 ms action
+deadline; human lobbies allow one second for transport, while normally advancing
+at two turns per second. Deadlines start at publication of each observation. A missing action is
 a pass. After 20 consecutive missed turns a player forfeits; if both reach the
 threshold together, both score zero. A valid pass resets the counter. If a
 player never connects before the 180-second start deadline, the episode emits a
@@ -147,7 +152,7 @@ From the repository root:
 
 ```bash
 python -m integrations.softmax.tools.manifest --check
-coworld build --project integrations/softmax --version 0.2.3
+coworld build --project integrations/softmax --version 0.2.4
 coworld certify integrations/softmax/dist/coworld_manifest.json
 ```
 

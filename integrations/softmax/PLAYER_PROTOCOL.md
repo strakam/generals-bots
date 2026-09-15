@@ -50,8 +50,10 @@ The server has no action queue: act only on the newest observation. The browser
 player stores premoves locally and submits one action per observation using this
 same protocol. The game advances
 as soon as both actions arrive, subject to the variant's minimum tick interval,
-or when the deadline elapses. The human variant's minimum interval is 500 ms;
-the competitive bot variant has no artificial delay.
+or when the deadline elapses. The human variant's minimum interval is 500 ms,
+with a one-second action deadline to allow for proxy transport. Browser clients
+send idle passes early; queued inputs after that pass execute on the next tick.
+The competitive bot variant has no artificial delay and retains a 500 ms deadline.
 
 Protocol errors return `{"type":"error","message":"..."}` and do not fill
 the action slot. You may correct the action before the deadline. Oversized

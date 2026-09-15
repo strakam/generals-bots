@@ -76,7 +76,10 @@ def template():
                 "id": "human",
                 "name": "Human play 1v1",
                 "description": "The same classic rules paced at two turns per second.",
-                "game_config": {"players": players, "max_turns": 1200, "tick_interval_seconds": 0.5},
+                "game_config": {
+                    "players": players, "max_turns": 1200,
+                    "tick_interval_seconds": 0.5, "turn_timeout_seconds": 1,
+                },
             },
         ],
         "certification": {
