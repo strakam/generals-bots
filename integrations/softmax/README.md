@@ -22,6 +22,8 @@ Release 0.2.4 sends automatic passes early enough for the hosted proxy and gives
 human lobbies a one-second network deadline. Their normal minimum tick interval
 remains 500 ms; slow connections can extend a turn. Status text stays steady
 while idle instead of alternating messages each tick.
+Release 0.2.5 tracks separately selected army routes: a failed route is removed
+while other queued routes continue in order.
 
 ## Play locally
 
@@ -40,9 +42,12 @@ submitted. H toggles half-army moves for new inputs, and Space clears the tile
 selection while keeping queued moves intact. The Pass
 button queues a pass. Moves execute one per turn. If a move cannot execute
 (including insufficient army), fails to secure its destination, or an obstacle
-blocks the queued route, the entire queue is cancelled and the selection is
-cleared. Click an owned tile to start again; the general is never selected
-automatically. Mountains and fog obstacles cannot be queued into. A castle
+blocks the queued route, only that route is cancelled. Other queued routes
+continue in order, starting on the same turn when possible. Selecting another
+owned tile starts a separate route; use Space first when an adjacent click would
+otherwise extend your current route. A failure clears the selection only if it
+belongs to the failed route. The general is never selected automatically.
+Mountains and fog obstacles cannot be queued into. A castle
 hidden by a fog obstacle can be entered once revealed.
 The browser passes automatically if you do not act. Queues are local
 to the browser and reset on disconnect or reload. The human
@@ -152,7 +157,7 @@ From the repository root:
 
 ```bash
 python -m integrations.softmax.tools.manifest --check
-coworld build --project integrations/softmax --version 0.2.4
+coworld build --project integrations/softmax --version 0.2.5
 coworld certify integrations/softmax/dist/coworld_manifest.json
 ```
 

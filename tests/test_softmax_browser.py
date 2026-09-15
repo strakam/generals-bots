@@ -234,15 +234,18 @@ def test_browser_premove_controls(tmp_path, hosted):
             page.keyboard.press("ArrowDown")
             assert actions[-1]["action"] == [0, 3, 2, 1, 0]
 
-            # A failed capture cancels even a separate route from a valid owned source.
+            # A failed capture drops its remaining steps, then sends the next army's route.
+            page.keyboard.press("ArrowRight")
             page.locator("#board > .tile").nth(2 * 8 + 1).click()
             page.keyboard.press("ArrowRight")
             observe(7)
             expect(page.locator("#queue-count")).to_have_text("0 queued")
-            expect(page.locator("#status")).to_contain_text("did not reach its destination")
-            expect(page.locator(".move-arrow")).to_have_count(0)
-            expect(page.locator(".tile.selected")).to_have_count(0)
-            assert len(actions) == 6
+            expect(page.locator(".move-arrow.submitted")).to_have_count(1)
+            selected(2, 2)
+            assert len(actions) == 7
+            assert actions[-1] == {"type": "action", "turn": 7, "action": [0, 2, 1, 3, 0]}
+            observe(8, 2, 2, 8)
+            page.keyboard.press("Space")
 
             # Mouse input, keyboard focus after buttons, and visible mountains.
             page.locator("#board > .tile").nth(2 * 8 + 1).click()
@@ -254,14 +257,14 @@ def test_browser_premove_controls(tmp_path, hosted):
             page.click("#clear")
             expect(page.locator("#queue-count")).to_have_text("0 queued")
             obs["type_grid"][1][2] = 2
-            observe(8, 2, 2, 8)
+            observe(9, 2, 2, 8)
             page.keyboard.press("ArrowUp")
             expect(page.locator(".move-arrow")).to_have_count(0)
             selected(2, 2)
 
             # The mountain-shaped obstacles in fog must reject keyboard AND mouse input.
             obs["type_grid"][1][2] = 5
-            observe(9, 2, 2, 8)
+            observe(10, 2, 2, 8)
             before = len(actions)
             page.keyboard.press("ArrowUp")
             page.locator("#board > .tile").nth(1 * 8 + 2).click()
@@ -275,31 +278,85 @@ def test_browser_premove_controls(tmp_path, hosted):
                 page.keyboard.press(key)
             expect(page.locator("#queue-count")).to_have_text("3 queued")
             obs["type_grid"][2][4] = 5
-            observe(10, 2, 3, 8)
+            observe(11, 2, 3, 8)
             expect(page.locator("#queue-count")).to_have_text("0 queued")
             expect(page.locator(".move-arrow")).to_have_count(0)
             expect(page.locator(".tile.selected")).to_have_count(0)
-            assert actions[-1]["turn"] == 9
+            assert actions[-1]["turn"] == 10
 
             # Once revealed as a castle, the fog obstacle is a valid attack target.
             obs["type_grid"][1][2] = 3
-            observe(11, 3, 3, 7)
+            observe(12, 3, 3, 7)
             page.locator("#board > .tile").nth(2 * 8 + 2).click()
             page.keyboard.press("ArrowUp")
             assert actions[-1]["action"] == [0, 2, 2, 0, 0]
-            observe(12, 1, 2, 6)
+            observe(13, 1, 2, 6)
 
             # A server-confirmed no-op stops the route even if its destination is owned.
             page.keyboard.press("ArrowDown")
             page.keyboard.press("ArrowRight")
             obs["last_move_executed"] = False
-            observe(13, 2, 2, 8)
+            observe(14, 2, 2, 8)
             expect(page.locator("#queue-count")).to_have_text("0 queued")
             expect(page.locator(".tile.selected")).to_have_count(0)
-            assert actions[-1]["turn"] == 12
+            assert actions[-1]["turn"] == 13
             obs.pop("last_move_executed")
-            observe(14, 1, 2, 6)
+            observe(15, 1, 2, 6)
             expect(page.locator(".tile.selected")).to_have_count(0)
+
+            def route(r, c, *keys):
+                page.keyboard.press("Space")
+                page.locator("#board > .tile").nth(r * 8 + c).click()
+                for key in keys:
+                    page.keyboard.press(key)
+
+            # Skip multiple invalid chains without spending a turn on each.
+            page.click("#pass")
+            route(2, 1, "ArrowDown", "ArrowRight")
+            route(3, 3, "ArrowDown", "ArrowRight")
+            route(1, 2, "ArrowRight", "ArrowDown")
+            obs["owner_grid"][2][1] = 2
+            obs["army_grid"][3][3] = 1
+            before = len(actions)
+            observe(16, 1, 2, 6)
+            assert len(actions) == before + 1
+            assert actions[-1]["action"] == [0, 1, 2, 3, 0]
+            expect(page.locator("#queue-count")).to_have_text("1 queued")
+            selected(2, 3)
+
+            # A server-rejected step must preserve a newly selected chain, even
+            # when both routes have the same endpoint. Undo preserves its identity.
+            route(2, 2, "ArrowRight", "ArrowDown")
+            page.keyboard.press("e")
+            selected(2, 3)
+            obs["last_move_executed"] = False
+            observe(17, 1, 3, 6)
+            assert actions[-1] == {"type": "action", "turn": 17, "action": [0, 2, 2, 3, 0]}
+            expect(page.locator("#queue-count")).to_have_text("0 queued")
+            selected(2, 3)
+            obs.pop("last_move_executed")
+            observe(18, 2, 3, 6)
+
+            # A newly visible obstacle in a later chain leaves the earlier chain
+            # intact. A third chain survives too and retains its selected endpoint.
+            page.click("#pass")
+            route(1, 2, "ArrowRight", "ArrowDown")
+            route(3, 3, "ArrowLeft", "ArrowDown")
+            route(2, 2, "ArrowDown", "ArrowLeft")
+            obs["type_grid"][4][2] = 2
+            observe(19, 1, 2, 6)
+            assert actions[-1]["action"] == [0, 1, 2, 3, 0]
+            expect(page.locator("#queue-count")).to_have_text("3 queued")
+            selected(3, 1)
+            observe(20, 1, 3, 5)
+            assert actions[-1]["action"] == [0, 1, 3, 1, 0]
+            observe(21, 2, 3, 4)
+            assert actions[-1]["action"] == [0, 2, 2, 1, 0]
+            expect(page.locator("#queue-count")).to_have_text("1 queued")
+            page.keyboard.press("q")
+            expect(page.locator("#queue-count")).to_have_text("0 queued")
+            observe(22, 3, 2, 5)
+            page.keyboard.press("Space")
             page.locator("#board > .tile").nth(1 * 8 + 2).click()
 
             # Disconnect discards local plans and prevents further submissions.
