@@ -35,7 +35,7 @@ class Match:
         # Keep the hosted 1v1 map dimensions, using ordinary engine combat and
         # neutral castles (40–50 defenders), without the competition modifiers.
         self.env = GeneralsEnv(
-            min_grid_size=18, max_grid_size=21, pad_to=21, truncation=1200,
+            min_grid_size=18, max_grid_size=21, pad_to=21, truncation=2000,
             mountain_density_range=(0.24, 0.26), min_generals_distance=17,
             build_castles=False, deathtouch_turn=None,
         )

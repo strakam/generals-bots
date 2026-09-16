@@ -24,6 +24,8 @@ remains 500 ms; slow connections can extend a turn. Status text stays steady
 while idle instead of alternating messages each tick.
 Release 0.2.5 tracks separately selected army routes: a failed route is removed
 while other queued routes continue in order.
+Release 0.2.6 raises the competition turn cap to 2,000; the human variant stays
+at 1,200 turns.
 
 ## Play locally
 
@@ -61,7 +63,7 @@ python -m integrations.softmax.local --seed 7 --keep-open
 ```
 
 `--max-turns 40` makes a short smoke test; the competition variant always uses
-1,200. Each local run writes into its own ignored `local-output/episode-*`
+2,000. Each local run writes into its own ignored `local-output/episode-*`
 directory. `config.json` contains local player tokens; do not publish it. The
 shareable outputs are `results.json` and `replay.json`. `--port` selects another
 local port. The local launcher binds only to loopback.
@@ -83,7 +85,7 @@ local port. The local launcher binds only to loopback.
 - General capture always requires beating its defending army, including after
   turn 800. There is no Deathtouch rule.
 - Capture scores **+1** for the winner and **−1** for the loser. Reaching the
-  1,200-turn cap scores **0 / 0**, regardless of army or land advantage.
+  configured turn cap scores **0 / 0**, regardless of army or land advantage.
 
 The hosted runtime adds explicit failure rules: bot matches have a 500 ms action
 deadline; human lobbies allow one second for transport, while normally advancing
@@ -157,7 +159,7 @@ From the repository root:
 
 ```bash
 python -m integrations.softmax.tools.manifest --check
-coworld build --project integrations/softmax --version 0.2.5
+coworld build --project integrations/softmax --version 0.2.6
 coworld certify integrations/softmax/dist/coworld_manifest.json
 ```
 
