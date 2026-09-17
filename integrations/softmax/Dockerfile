@@ -20,3 +20,8 @@ COPY integrations/softmax/__init__.py integrations/softmax/config.py integration
 COPY integrations/softmax/static /app/integrations/softmax/static
 EXPOSE 8080
 CMD ["python", "-m", "integrations.softmax.server"]
+
+FROM game AS hunter
+COPY integrations/softmax/hunter_player.py /app/integrations/softmax/
+USER 10001:10001
+CMD ["python", "-m", "integrations.softmax.hunter_player"]
