@@ -1,5 +1,11 @@
 # Hunter on Softmax
 
+Objective: verify the existing Hunter's complete Softmax submission experience.
+This is a first-entry integration check, not an ongoing strategy optimization
+project. The runtime is `platform-hosted`; the game is Coworld
+`cow_adee8c4a-e0ed-43b0-b45c-fe6073ef4987` (v0.2.5). Game rules and protocol are
+documented in [README.md](README.md) and [PLAYER_PROTOCOL.md](PLAYER_PROTOCOL.md).
+
 Submitted on 2026-09-17 as `strakam-generals-hunter:v1` under Matej Straka's
 default player. Softmax reported the submission as `placed`, with membership
 `competing` / `active` and `is_champion=true`.
@@ -8,6 +14,24 @@ default player. Softmax reported the submission as `placed`, with membership
 - Policy version: `d6649fb2-6082-4bab-9e3a-7bd28422679f`
 - Submission: `sub_a9661105-2bfb-483d-aa64-2f90fbe1473d`
 - Membership: `lpm_c980b650-5734-49e0-a786-a6b86f3466e0`
+
+## Watch the hosted test matches on Softmax
+
+Sign in as the requesting account, Matej Straka. These were private Experience
+Request matches, so they are separate from the league's scheduled round list.
+
+- [Match 1: Hunter is red, wins on turn 196](https://softmax.com/generals-competition?e=5e2691ef-07e9-4d94-ba0e-5675ceea4e55)
+- [Match 2: Hunter is blue, wins on turn 315](https://softmax.com/generals-competition?e=ffbad867-f7fc-4485-83ee-862055157294)
+
+The first link was verified in isolated Chromium with this account's API
+authentication: the embedded viewer loaded the matching replay. Without
+authentication, the episode API returns 404 and the game page falls back to a
+league highlight with a notice. Seeing a replay alone does not verify that it
+is the requested episode: check its episode ID and the embedded replay source.
+Use Softmax website links for users; `coworld replay-open` can instead print a
+raw CloudFront viewer URL.
+
+## Player implementation and packaging
 
 This player runs the existing `generals/agents/hunter_agent.py` unchanged. The
 `hunter_player.py` client reconstructs the fog-limited engine observation from
