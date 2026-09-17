@@ -2,7 +2,10 @@
 
 Updated 2026-09-17. Matej has now requested FFA and castle-building leagues
 under the existing Coworld, authorizing parallel implementation and deployment.
-See [VARIANTS.md](VARIANTS.md) for the current work and verification record.
+Both modes are now uploaded and certified as v0.3.0 with full-length hosted
+verification. Creating their separate leagues is blocked by a team-only
+permission to set the default variant. See [VARIANTS.md](VARIANTS.md) for the
+exact blocker, replay links, and Richard handoff.
 The original ordering below is retained for context. The order below is a rough estimate of effort, not a
 commitment to dates.
 
@@ -91,10 +94,10 @@ Done when newcomers have a clear entry point and can understand how to participa
 
 ### 5. Add castle-building as a separate mode — medium to large
 
-- [ ] Reuse and inspect the existing castle-building engine/modifier code.
-- [ ] Define the mode's rules, including neutral castles and whether Deathtouch
+- [x] Reuse and inspect the existing castle-building engine/modifier code.
+- [x] Define the mode's rules, including neutral castles and whether Deathtouch
       belongs in it; enabling castle building need not enable every old modifier.
-- [ ] Extend configuration, action validation, browser controls, bot documentation,
+- [x] Extend configuration, action validation, browser controls, bot documentation,
       and replays for the mode while preserving classic 1v1 behavior.
 - [ ] Test and certify it, then choose how to expose it in the existing league/divisions
       or a separate competition based on Softmax's supported configuration.
@@ -104,11 +107,11 @@ rules shown match what the engine executes.
 
 ### 6. Add FFA — largest; scope before implementing
 
-- [ ] Inspect existing multiplayer work/branches for reusable engine support.
-- [ ] Define player count, spawning, elimination, captured territory, ranking,
+- [x] Inspect existing multiplayer work/branches for reusable engine support.
+- [x] Define player count, spawning, elimination, captured territory, ranking,
       scoring, disconnect behavior, and fog of war.
-- [ ] Check Softmax's support for the intended multi-player league and lobby setup.
-- [ ] Extend the adapter's current two-player assumptions in authentication,
+- [x] Check Softmax's support for the intended multi-player league and lobby setup.
+- [x] Extend the adapter's current two-player assumptions in authentication,
       observations, scheduling, results, bots, colors, scoreboard, and replays.
 - [ ] Test multi-player outcomes and information boundaries, certify, and expose
       FFA as a separate mode.
@@ -118,8 +121,9 @@ than increasing a player-count setting in the current 1v1 adapter.
 
 ## Current step
 
-Implement and verify FFA and castle building, publish them together as v0.3.0,
-and configure separate leagues under the same Coworld. Classic rules and
+FFA and castle building are implemented, tested, and published as v0.3.0.
+Ask Richard to create their variant-selected leagues (the API restricts that
+field to Softmax team members), then verify division settings and scheduled rounds. Classic rules and
 entrants remain available. Ownership access is now granted and classic league
 rounds are running, superseding the earlier access-blocked notes above.
 PR #141 remains a separate longer-match change; it is not merged by this work.

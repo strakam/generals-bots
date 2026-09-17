@@ -1,7 +1,8 @@
 # Softmax integration and player work
 
 This directory contains the game adapter and a participant example. Read
-`README.md` for the game contract, `ROADMAP.md` for the agreed scope, and
+`README.md` for the game contract, `ROADMAP.md` for the agreed scope,
+`VARIANTS.md` for v0.3.0 deployment and the league-creation permission blocker, and
 `HUNTER.md` before working on the Hunter participant. Keep work on the `softmax`
 branch. Do not open or navigate the user's browser unless requested; use an
 isolated headless browser for checks.
@@ -18,7 +19,7 @@ Supporting documentation:
 Apply the participant workflow to player work, not to unrelated game-adapter
 maintenance. User instructions and existing authorization take precedence.
 
-- The current objective is testing participation with the existing Hunter.
+- For Hunter participant work, the scope is testing participation with the existing Hunter.
   Its v1 policy is already uploaded and entered. Inspect its recorded IDs and
   status before creating another policy, submission, or competition.
 - The user's goal and constraints are already recorded in `HUNTER.md`. Do not
