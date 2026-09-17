@@ -55,7 +55,9 @@ Evidence for the initial submission is saved locally under the ignored
 Initial verification: two observation/action parity tests passed; a local
 container match against Expander reached turn 1,200 with zero timeouts for
 either player and a draw. The full replay loaded through its final turn in
-headless Chromium without browser errors. Two hosted verification matches were
-requested (`xreq_8e07a544-1b3b-4716-b412-1867d5a11e26`); their completion must be
-checked separately before claiming hosted match success. League placement
-alone does not prove that a match has run.
+headless Chromium without browser errors. Both hosted verification matches
+(`xreq_8e07a544-1b3b-4716-b412-1867d5a11e26`) completed: Hunter beat Expander by
+general capture from both seats, on turns 196 and 315, with zero timeouts for
+either player. These are verification matches, not league ranking results.
+The league membership is active; its first scheduled round/standing still
+needs checking separately.

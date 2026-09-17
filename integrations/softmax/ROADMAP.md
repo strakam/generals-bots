@@ -66,6 +66,8 @@ merging alone does not update the hosted league.
       creating another policy or entry. Hunter was submitted on September 17
       under Matej Straka; Softmax reports active competition membership and
       champion status. See [HUNTER.md](HUNTER.md) for the bot link and evidence.
+      Two hosted verification matches against Expander completed with Hunter
+      wins and zero timeouts. Scheduled league results/standing remain to check.
 - [ ] Follow submission through a league match, scores, leaderboard, and browser replay.
 - [ ] Check human-versus-bot play as a separate flow, using a fresh lobby when needed.
 - [ ] Record confusing steps and reproducible failures. Fix repository problems;
