@@ -1,10 +1,17 @@
-# Generals · Classic 1v1 Softmax Coworld
+# Generals · Softmax Coworld
 
-A bounded **1v1** territory-control game, running this repository's
-regular `GeneralsEnv` rules, with neutral castles to capture, no castle building,
-and no Deathtouch. The authoritative engine is Python/JAX
-on CPU. Players run separately and connect over WebSocket. A lightweight bridge
-lets existing Python, C++, and Rust competition bots keep their stdio protocol.
+One Coworld with three competitive modes: **classic 1v1**, **four-player FFA**,
+and **build-your-own-castles 1v1**. All reuse this repository's `GeneralsEnv`
+engine with fog of war and normal combat. Deathtouch is disabled. The
+authoritative engine is Python/JAX on CPU; separate players connect over
+WebSocket. The lightweight stdio bridge also supports existing competition bots.
+
+Release 0.3.0 adds the `ffa` and `castles` variants, plus paced human versions
+`ffa-human` and `castles-human`. Existing `competition` and `human` IDs retain
+classic 1v1 rules and the 1,200-turn cap. Each mode can have its own Softmax
+league under the same `generals-competition` Coworld. The bundled Builder player
+funds an opening castle before expanding; Expander works in every mode but does
+not build. These are integration baselines, not strong competitive players.
 
 Release 0.2.0 replaces the competition modifiers used by 0.1.0. The registered
 Coworld name (`generals-competition`) and bot variant ID (`competition`) remain
@@ -32,6 +39,9 @@ From the repository root, with Python 3.12:
 ```bash
 pip install -e '.[softmax]'
 python -m integrations.softmax.local --human
+# Other modes (omit --human for bundled bots):
+python -m integrations.softmax.local --variant ffa --human
+python -m integrations.softmax.local --variant castles --human
 ```
 
 Open the printed player link. Select an owned tile, then use arrow keys/WASD or
@@ -49,6 +59,9 @@ otherwise extend your current route. A failure clears the selection only if it
 belongs to the failed route. The general is never selected automatically.
 Mountains and fog obstacles cannot be queued into. A castle
 hidden by a fog obstacle can be entered once revealed.
+In castle-building mode, select an eligible owned plain tile and press B or
+Build; the control shows its current army cost. Builds use the same action
+queue as moves. Failed builds cancel their route; other routes continue.
 The browser passes automatically if you do not act. Queues are local
 to the browser and reset on disconnect or reload. The human
 configuration advances at two turns per second. After the match, use the same
@@ -68,7 +81,9 @@ local port. The local launcher binds only to loopback.
 
 ## Rules and scoring
 
-- Two opposing generals on an independently sampled 18–21 by 18–21 board.
+- Two opposing generals (four in FFA) on an independently sampled 18–21 by
+  18–21 board. The spawn-distance target is 17 steps for 1v1 and 10 for FFA;
+  the map generator uses its connected fallback when a target cannot fit.
 - Fog of war: a player sees its owned tiles and their neighbors. Public army
   and land totals remain visible. Unexplored mountains/castles share one
   structure marker. Enemy generals are hidden until visible.
@@ -78,18 +93,30 @@ local port. The local launcher binds only to loopback.
   defending army to take a cell under normal combat.
 - Generals and owned castles grow each even tick; owned land grows every 50
   ticks. Neutral castles start on the map with 40–50 defenders and can be captured.
-- Castle building is disabled. The server rejects build actions; players can
-  only move or pass. The standard engine controls movement and combat order.
+- Classic 1v1 and FFA disable building and contain neutral castles. The building
+  variant starts without neutral castles and accepts `[2,row,col,0,0]` on your
+  own plain land. The army on that tile pays 35 plus, for each of your generals
+  and castles, `max(0, 14 - 2 * Manhattan distance)`. Building beside your
+  general initially costs 47. Enemy structures never affect the price. Builds
+  resolve before moves and produce ordinary castles; an invalid build is a pass.
+- In FFA, capturing a general eliminates that player, transfers their territory
+  and half their armies to the captor, and turns the captured general into a
+  castle. The last surviving general wins. Eliminated players no longer owe
+  actions; they can remain connected until the final result.
 - General capture always requires beating its defending army, including after
   turn 800. There is no Deathtouch rule.
-- Capture scores **+1** for the winner and **−1** for the loser. Reaching the
-  1,200-turn cap scores **0 / 0**, regardless of army or land advantage.
+- Capture scores **+1** for the winner and **−1** for each other player. Reaching
+  the 1,200-turn cap scores **0 for everyone**, including eliminated players,
+  regardless of army or land advantage. FFA does not award intermediate ranks.
 
 The hosted runtime adds explicit failure rules: bot matches have a 500 ms action
 deadline; human lobbies allow one second for transport, while normally advancing
 at two turns per second. Deadlines start at publication of each observation. A missing action is
 a pass. After 20 consecutive missed turns a player forfeits; if both reach the
-threshold together, both score zero. A valid pass resets the counter. If a
+threshold together, both score zero. In FFA, a timeout forfeit eliminates only
+that player: their tiles become neutral with unchanged armies and their general
+becomes a neutral castle. The surviving players continue. One survivor wins;
+no survivors draw. A valid pass resets the counter. If a
 player never connects before the 180-second start deadline, the episode emits a
 typed player failure instead of competitive scores. Reconnection is allowed
 during play with the original token, but never resets timeout counters.
@@ -157,7 +184,7 @@ From the repository root:
 
 ```bash
 python -m integrations.softmax.tools.manifest --check
-coworld build --project integrations/softmax --version 0.2.5
+coworld build --project integrations/softmax --version 0.3.0
 coworld certify integrations/softmax/dist/coworld_manifest.json
 ```
 

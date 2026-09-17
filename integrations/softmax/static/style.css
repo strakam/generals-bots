@@ -14,6 +14,15 @@ header { display: flex; justify-content: space-between; align-items: center; pad
 .player b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
 .player small { display: block; color: var(--muted); font-family: var(--font-mono); font-size: 11px; margin-top: 4px; }
 .player.blue { border-left-color: var(--blue); background: color-mix(in srgb, var(--blue) 9%, transparent); }
+.player.green { border-left-color: var(--green); background: color-mix(in srgb, var(--green) 9%, transparent); }
+.player.purple { border-left-color: var(--purple); background: color-mix(in srgb, var(--purple) 9%, transparent); }
+.player.eliminated { opacity: .55; }
+.player.eliminated b::after { content: ' · Out'; }
+.matchbar.ffa .clock { grid-column: 2; grid-row: 1 / span 2; }
+.matchbar.ffa .player:nth-of-type(1) { grid-column: 1; grid-row: 1; }
+.matchbar.ffa .player:nth-of-type(3) { grid-column: 3; grid-row: 1; }
+.matchbar.ffa .player:nth-of-type(4) { grid-column: 1; grid-row: 2; }
+.matchbar.ffa .player:nth-of-type(5) { grid-column: 3; grid-row: 2; }
 .dot { display: none; }
 .divider { padding: 0 6px; opacity: .5; }
 .clock { text-align: center; }
@@ -31,6 +40,8 @@ h1 { font-family: var(--font-display); font-size: 22px; font-weight: 600; margin
 [hidden] { display: none !important; }
 button, select { font-family: var(--font-mono); font-size: 11px; background: transparent; color: var(--fg); border: 1px solid var(--fg); padding: 8px 12px; cursor: pointer; }
 button:hover, select:hover, button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+button:disabled { cursor: default; opacity: .45; background: transparent; color: var(--fg); }
+#build-hint { flex-basis: 100%; color: var(--muted); font-size: 11px; }
 kbd { font-size: 10px; margin-left: 6px; opacity: .6; }
 .hint { flex: 1; text-align: right; color: var(--muted); font-size: 11px; }
 #queue-count { color: var(--muted); font-size: 11px; white-space: nowrap; }

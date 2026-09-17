@@ -209,8 +209,10 @@ def test_live_public_routes_do_not_reveal_hidden_state(tmp_path):
                 "turn",
                 "max_turns",
                 "players",
+                "ruleset",
                 "army",
                 "land",
+                "eliminated",
                 "result",
                 "board",
             }

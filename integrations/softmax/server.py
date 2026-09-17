@@ -1,4 +1,4 @@
-"""Authoritative, bounded 1v1 Coworld HTTP/WebSocket server."""
+"""Authoritative, bounded Generals Coworld HTTP/WebSocket server."""
 
 import asyncio
 import hmac
@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .artifacts import read_json, write_json
 from .config import GameConfig
-from .engine import Match, RULESET
+from .engine import Match
 from .protocol import PASS, VERSION, parse_action
 
 STATIC = Path(__file__).parent / "static"
@@ -36,6 +36,7 @@ class Episode:
         self.config, self.match = config, match
         self.artifacts, self.shutdown = artifacts, shutdown
         self.names = [p.name for p in config.players]
+        self.num_players = len(self.names)
         self.phase = "waiting"
         self.players: dict[int, asyncio.Queue] = {}
         self.reserved_slots: set[int] = set()
@@ -43,8 +44,8 @@ class Episode:
         self.joined = asyncio.Event()
         self.actions_ready = asyncio.Event()
         self.pending: dict[int, list[int]] = {}
-        self.timeouts = [0, 0]
-        self.consecutive_timeouts = [0, 0]
+        self.timeouts = [0] * self.num_players
+        self.consecutive_timeouts = [0] * self.num_players
         self.frames = [match.frame()]
         self.turns = []
         self.result = None
@@ -52,7 +53,7 @@ class Episode:
         self.failed = False
 
     def authorize(self, slot: str | None, token: str | None) -> int | None:
-        if slot not in ("0", "1") or token is None:
+        if slot not in tuple(str(s) for s in range(self.num_players)) or token is None:
             return None
         index = int(slot)
         return index if hmac.compare_digest(token.encode(), self.config.tokens[index].encode()) else None
@@ -68,8 +69,10 @@ class Episode:
             "turn": frame["turn"],
             "max_turns": self.config.max_turns,
             "players": self.names,
+            "ruleset": self.config.ruleset,
             "army": frame["army"],
             "land": frame["land"],
+            "eliminated": frame["eliminated"],
             "result": self.result,
             "board": frame if self.phase == "finished" else None,
         }
@@ -85,16 +88,19 @@ class Episode:
             "players": self.names,
             "max_turns": self.config.max_turns,
             "turn_timeout_seconds": self.config.turn_timeout_seconds,
+            "public_scores": {key: self.frames[-1][key] for key in ("army", "land", "eliminated")},
         }
 
     def accept(self, slot, message):
         if self.phase != "playing":
             raise ValueError("game is not accepting actions")
-        action = parse_action(message, self.match.turn, self.match.height, self.match.width)
+        if slot not in self.match.active_slots:
+            raise ValueError("eliminated players cannot act")
+        action = parse_action(message, self.match.turn, self.match.height, self.match.width, self.config.ruleset)
         if slot in self.pending:
             raise ValueError("only the first valid action per turn is accepted")
         self.pending[slot] = action
-        if len(self.pending) == 2:
+        if all(s in self.pending for s in self.match.active_slots):
             self.actions_ready.set()
 
     async def save(self, name, payload):
@@ -127,11 +133,11 @@ class Episode:
     async def play(self):
         try:
             async with asyncio.timeout(self.config.player_connect_timeout_seconds):
-                while len(self.players) < 2:
+                while len(self.players) < self.num_players:
                     self.joined.clear()
                     await self.joined.wait()
         except TimeoutError:
-            missing = next(slot for slot in range(2) if slot not in self.players)
+            missing = next(slot for slot in range(self.num_players) if slot not in self.players)
             await self.save(
                 "failure",
                 {"message": "Player did not connect before the start deadline", "failed_policy_index": missing},
@@ -143,7 +149,8 @@ class Episode:
 
         winner, reason = -1, "turn_limit"
         while self.match.turn < self.config.max_turns:
-            observations = await asyncio.to_thread(lambda: [self.observation(s) for s in range(2)])
+            active = self.match.active_slots
+            observations = await asyncio.to_thread(lambda: [self.observation(s) for s in range(self.num_players)])
             self.pending.clear()
             self.actions_ready.clear()
             self.phase = "playing"
@@ -157,19 +164,23 @@ class Episode:
             except TimeoutError:
                 pass
             self.phase = "resolving"
-            actions = [self.pending.get(slot, PASS.copy()) for slot in range(2)]
-            missing = [slot not in self.pending for slot in range(2)]
-            for slot in range(2):
+            actions = [self.pending.get(slot, PASS.copy()) for slot in range(self.num_players)]
+            missing = [slot in active and slot not in self.pending for slot in range(self.num_players)]
+            for slot in active:
                 self.timeouts[slot] += int(missing[slot])
                 self.consecutive_timeouts[slot] = self.consecutive_timeouts[slot] + 1 if missing[slot] else 0
-            forfeits = [s for s in range(2) if self.consecutive_timeouts[s] >= self.config.max_consecutive_timeouts]
-            self.turns.append(
-                {"turn": self.match.turn, "actions": actions, "timed_out": missing, "applied": not bool(forfeits)}
-            )
+            forfeits = [s for s in active if self.consecutive_timeouts[s] >= self.config.max_consecutive_timeouts]
+            attempt = {"turn": self.match.turn, "actions": actions, "timed_out": missing,
+                       "forfeited": forfeits, "applied": True}
+            self.turns.append(attempt)
             if forfeits:
-                winner = 1 - forfeits[0] if len(forfeits) == 1 else -1
-                reason = "forfeit" if len(forfeits) == 1 else "double_forfeit"
-                break
+                winner = await asyncio.to_thread(self.match.forfeit, forfeits)
+                if len(self.match.active_slots) <= 1:
+                    attempt["applied"] = False
+                    reason = "forfeit" if winner >= 0 else "double_forfeit"
+                    # Forfeits can change ownership without advancing the tick.
+                    self.frames.append(await asyncio.to_thread(self.match.frame))
+                    break
             winner = await asyncio.to_thread(self.match.advance, actions)
             self.frames.append(await asyncio.to_thread(self.match.frame))
             if winner >= 0:
@@ -181,7 +192,7 @@ class Episode:
 
         self.phase = "saving"
         result = {
-            "scores": [0, 0] if winner == -1 else [1 if s == winner else -1 for s in range(2)],
+            "scores": [0] * self.num_players if winner == -1 else [1 if s == winner else -1 for s in range(self.num_players)],
             "winner": winner,
             "reason": reason,
             "turns": self.match.turn,
@@ -192,7 +203,7 @@ class Episode:
         replay = {
             "format": "generals-coworld",
             "version": VERSION,
-            "ruleset": RULESET,
+            "ruleset": self.config.ruleset,
             "seed": self.config.seed,
             "height": self.match.height,
             "width": self.match.width,
@@ -254,7 +265,7 @@ def create_app(config: GameConfig | None = None, artifacts: dict | None = None, 
                 "failure_method": os.environ.get("COGAME_PLAYER_FAILURE_METHOD", "PUT"),
             }
         )
-        match = await asyncio.to_thread(Match, cfg.seed)
+        match = await asyncio.to_thread(Match, cfg.seed, num_players=len(cfg.players), ruleset=cfg.ruleset)
         episode = Episode(cfg, match, destinations, shutdown)
         app.state.episode = episode
         task = asyncio.create_task(episode.run())
@@ -341,7 +352,7 @@ def create_app(config: GameConfig | None = None, artifacts: dict | None = None, 
                 "height": episode.match.height,
                 "width": episode.match.width,
                 "players": episode.names,
-                "ruleset": RULESET,
+                "ruleset": episode.config.ruleset,
             },
         )
         if episode.phase == "playing":

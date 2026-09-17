@@ -15,15 +15,15 @@ def document(filename):
 
 
 def template():
-    scores = {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}}
-    counts = {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "integer", "minimum": 0}}
+    scores = {"type": "array", "minItems": 2, "maxItems": 4, "items": {"type": "number"}}
+    counts = {"type": "array", "minItems": 2, "maxItems": 4, "items": {"type": "integer", "minimum": 0}}
     results = {
         "type": "object",
         "additionalProperties": False,
         "required": ["scores", "winner", "reason", "turns", "army", "land", "timeouts"],
         "properties": {
             "scores": scores,
-            "winner": {"type": "integer", "enum": [-1, 0, 1]},
+            "winner": {"type": "integer", "enum": [-1, 0, 1, 2, 3]},
             "reason": {"type": "string", "enum": ["general_capture", "turn_limit", "forfeit", "double_forfeit"]},
             "turns": {"type": "integer", "minimum": 0, "maximum": 1200},
             "army": counts,
@@ -34,13 +34,13 @@ def template():
     players = [{"name": "Red"}, {"name": "Blue"}]
     return {
         "$schema": "https://raw.githubusercontent.com/Metta-AI/coworld/4c26e51/src/coworld/coworld_manifest_schema.json",
-        "tags": ["strategy", "1v1", "fog-of-war", "territory-control"],
+        "tags": ["strategy", "1v1", "ffa", "fog-of-war", "territory-control"],
         "game": {
             "name": "generals-competition",
             "owner": "Matej Straka",
             "description": (
-                "Capture the enemy general in a seeded 1v1 fog-of-war strategy game. "
-                "Capture neutral castles. Regular combat; no castle building or Deathtouch."
+                "Fog-of-war territory strategy: classic 1v1, four-player free-for-all, "
+                "and build-your-own-castles 1v1. Capture generals to win; no Deathtouch."
             ),
             "runnable": {
                 "type": "game",
@@ -63,7 +63,16 @@ def template():
                 "image": "{{GENERALS_PLAYER_IMAGE}}",
                 "run": ["python", "-m", "integrations.softmax.player"],
                 "source_url": SOURCE,
-            }
+            },
+            {
+                "id": "builder",
+                "name": "Builder",
+                "description": "Funds an opening castle in building mode, then uses the Expander strategy.",
+                "type": "player",
+                "image": "{{GENERALS_PLAYER_IMAGE}}",
+                "run": ["python", "-m", "integrations.softmax.builder_player"],
+                "source_url": SOURCE,
+            },
         ],
         "variants": [
             {
@@ -80,6 +89,34 @@ def template():
                     "players": players, "max_turns": 1200,
                     "tick_interval_seconds": 0.5, "turn_timeout_seconds": 1,
                 },
+            },
+            {
+                "id": "ffa",
+                "name": "Free-for-all (4 players)",
+                "description": "Four independent generals; last survivor wins. Neutral castles, 1200-turn cap.",
+                "game_config": {"players": players + [{"name": "Green"}, {"name": "Purple"}],
+                                "ruleset": "classic", "max_turns": 1200},
+            },
+            {
+                "id": "castles",
+                "name": "Build your own castles (1v1)",
+                "description": "No neutral castles: spend armies to build on owned plain land. No Deathtouch.",
+                "game_config": {"players": players, "ruleset": "build_castles", "max_turns": 1200},
+            },
+            {
+                "id": "ffa-human",
+                "name": "Human play FFA",
+                "description": "Four-player free-for-all paced at two turns per second.",
+                "game_config": {"players": players + [{"name": "Green"}, {"name": "Purple"}],
+                                "ruleset": "classic", "max_turns": 1200,
+                                "tick_interval_seconds": 0.5, "turn_timeout_seconds": 1},
+            },
+            {
+                "id": "castles-human",
+                "name": "Human play castle building",
+                "description": "Build-your-own-castles 1v1 paced at two turns per second.",
+                "game_config": {"players": players, "ruleset": "build_castles", "max_turns": 1200,
+                                "tick_interval_seconds": 0.5, "turn_timeout_seconds": 1},
             },
         ],
         "certification": {

@@ -1,7 +1,9 @@
 # Softmax roadmap
 
-Updated 2026-09-17. Work through one item at a time, starting with the existing
-classic 1v1 experience. The order below is a rough estimate of effort, not a
+Updated 2026-09-17. Matej has now requested FFA and castle-building leagues
+under the existing Coworld, authorizing parallel implementation and deployment.
+See [VARIANTS.md](VARIANTS.md) for the current work and verification record.
+The original ordering below is retained for context. The order below is a rough estimate of effort, not a
 commitment to dates.
 
 ## Context and direction
@@ -114,8 +116,10 @@ rules shown match what the engine executes.
 Done when full FFA matches, rankings, and replays work end to end. This is more
 than increasing a player-count setting in the current 1v1 adapter.
 
-## Next step
+## Current step
 
-The existing league is located. Clarify management access with Richard; the
-PR review can proceed independently. Then tackle one bounded item at a time,
-updating this checklist with evidence and links.
+Implement and verify FFA and castle building, publish them together as v0.3.0,
+and configure separate leagues under the same Coworld. Classic rules and
+entrants remain available. Ownership access is now granted and classic league
+rounds are running, superseding the earlier access-blocked notes above.
+PR #141 remains a separate longer-match change; it is not merged by this work.

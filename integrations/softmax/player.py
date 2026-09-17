@@ -38,6 +38,8 @@ async def play(command: list[str], url: str):
                 elif kind == "observation":
                     if proc is None:
                         raise RuntimeError("observation received before handshake")
+                    if message.get("eliminated"):
+                        continue  # Remain connected for the final result; no further action deadline.
                     # Don't queue stale observations behind a hung subprocess. Failure
                     # ends this player session; the server's timeout rules own scoring.
                     async with asyncio.timeout(message["turn_timeout_seconds"]):
