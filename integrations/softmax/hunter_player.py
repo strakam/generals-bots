@@ -12,7 +12,7 @@ from websockets.asyncio.client import connect
 from generals.agents.hunter_agent import HunterAgent
 from generals.core.observation import Observation
 
-from .protocol import VERSION
+from integrations.softmax.protocol import VERSION
 
 
 def observation_from_message(message):
