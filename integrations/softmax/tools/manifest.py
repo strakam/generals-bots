@@ -121,7 +121,7 @@ def template():
         ],
         "certification": {
             "game_config": {"players": players, "seed": 7, "max_turns": 40, "tick_interval_seconds": 0.05},
-            "players": [{"player_id": "expander"}, {"player_id": "expander"}],
+            "players": [{"player_id": "expander"}, {"player_id": "builder"}],
         },
     }
 
