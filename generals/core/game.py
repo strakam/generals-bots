@@ -372,8 +372,56 @@ def global_update(state: GameState) -> GameState:
     return state._replace(armies=armies)
 
 
+def _official_move_order(state: GameState, actions: jnp.ndarray) -> jnp.ndarray:
+    """generals.io's current move order (``MoveResolver.determineMoveOrder`` in the client bundle,
+    2025): moves are sorted defensive first (destination held by the mover's team), then
+    moves that attack a general last, then LARGER army first, then input order; a move whose
+    source another pending move is entering (a chased piece) waits until that chaser has
+    resolved, unless the two moves are a head-on swap. Passes resolve last. Returns the (N,)
+    order of player indices."""
+    N = actions.shape[0]
+    H, W = state.armies.shape
+    idx = jnp.arange(N)
+    passes = actions[:, 0] != 0
+    si, sj, direction = actions[:, 1], actions[:, 2], actions[:, 3]
+    di = si + DIRECTIONS[direction, 0]
+    dj = sj + DIRECTIONS[direction, 1]
+    csi, csj = jnp.clip(si, 0, H - 1), jnp.clip(sj, 0, W - 1)
+    cdi, cdj = jnp.clip(di, 0, H - 1), jnp.clip(dj, 0, W - 1)
+    dest_owners = state.ownership[:, cdi, cdj]                          # (owner, mover)
+    same_team = state.teams[:, None] == state.teams[None, :]
+    defensive = jnp.any(dest_owners & same_team, axis=0) & ~passes
+    general_attack = state.generals[cdi, cdj] & ~defensive & ~passes
+    army = jnp.where(passes, -1, state.armies[csi, csj])
+    # sort rank: defensive desc, general_attack asc, army desc, index asc; passes last
+    dj_, di_ = defensive[:, None], defensive[None, :]
+    gj_, gi_ = general_attack[:, None], general_attack[None, :]
+    aj_, ai_ = army[:, None], army[None, :]
+    pj_, pi_ = passes[:, None], passes[None, :]
+    by_index = idx[:, None] < idx[None, :]
+    ahead = ((~pj_ & pi_) | ((pj_ == pi_) & ((dj_ & ~di_) | ((dj_ == di_) & ((~gj_ & gi_) | ((gj_ == gi_) &
+             ((aj_ > ai_) | ((aj_ == ai_) & by_index))))))))
+    rank = jnp.sum(ahead, axis=0)                                       # sort position of each player
+    # dependency: j's move enters i's source and is not the head-on partner of i
+    enters = (di[:, None] == si[None, :]) & (dj[:, None] == sj[None, :]) & ~passes[:, None] & ~passes[None, :]
+    head_on = enters & enters.T
+    dep = enters & ~head_on & ~jnp.eye(N, dtype=bool)                    # dep[j, i]: i waits for j
+    order = jnp.zeros((N,), dtype=jnp.int32)
+    queued = jnp.zeros((N,), dtype=bool)
+    for k in range(N):
+        blocked = jnp.any(dep & ~queued[:, None], axis=0)               # some unqueued move enters my source
+        big = N + 1
+        key_free = jnp.where(~queued & ~blocked, rank, big)
+        key_any = jnp.where(~queued, rank, big)
+        pick = jnp.where(jnp.min(key_free) < big, jnp.argmin(key_free), jnp.argmin(key_any))
+        order = order.at[k].set(pick)
+        queued = queued.at[pick].set(True)
+    return order
+
+
 def _determine_move_order(state: GameState, actions: jnp.ndarray,
-                          legacy_move_priority: bool = False) -> jnp.ndarray:
+                          legacy_move_priority: bool = False,
+                          official_move_priority: bool = False) -> jnp.ndarray:
     """Order in which this turn's moves resolve: an (N,) array of player indices.
 
     Priority is chasing > reinforcing > SMALLER army, ties by player index,
@@ -403,6 +451,8 @@ def _determine_move_order(state: GameState, actions: jnp.ndarray,
 
     if legacy_move_priority:
         return jnp.where(state.time % 2 == 0, idx, idx[::-1])
+    if official_move_priority:
+        return _official_move_order(state, actions)
 
     passes = actions[:, 0] != 0
     si, sj, direction = actions[:, 1], actions[:, 2], actions[:, 3]
@@ -540,10 +590,11 @@ def _apply_general_trades(state: GameState, actions: jnp.ndarray) -> tuple[GameS
 
 
 
-@partial(jax.jit, static_argnames=("legacy_move_priority", "general_trade"))
+@partial(jax.jit, static_argnames=("legacy_move_priority", "general_trade", "official_move_priority"))
 def step(state: GameState, actions: jnp.ndarray,
          legacy_move_priority: bool = False,
-         general_trade: bool = False) -> tuple[GameState, GameInfo]:
+         general_trade: bool = False,
+         official_move_priority: bool = False) -> tuple[GameState, GameInfo]:
     """Execute one game step with actions from all players.
 
     Args:
@@ -574,7 +625,7 @@ def step(state: GameState, actions: jnp.ndarray,
         pass_action = jnp.array([1, 0, 0, 0, 0], dtype=actions.dtype)
         actions = jnp.where(consumed[:, None], pass_action[None, :], actions)
 
-    order = _determine_move_order(state, actions, legacy_move_priority)
+    order = _determine_move_order(state, actions, legacy_move_priority, official_move_priority)
     for k in range(N):
         player = order[k]
         state = execute_action(state, player, actions[player])
