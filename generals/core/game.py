@@ -61,6 +61,9 @@ class GameState(NamedTuple):
         winner: Scalar, -1 if game ongoing, otherwise the team id of the
             last team standing (== the player index in 1v1 / free-for-all).
         pool_idx: Scalar, index into the pre-generated state pool for auto-reset.
+        tunnel_limits: Optional (H, W) int32, 0 = no tunnel. A generals.io tunnel
+            tile admits at most this many armies per move (map feature added in
+            2026); None (the default) disables the check at no cost.
     """
 
     armies: jnp.ndarray
@@ -76,6 +79,7 @@ class GameState(NamedTuple):
     time: jnp.ndarray
     winner: jnp.ndarray
     pool_idx: jnp.ndarray
+    tunnel_limits: Any = None      # (H, W) int32, zeros unless the map has generals.io tunnels; None in hand-built states
 
     @property
     def cities(self):
@@ -110,7 +114,8 @@ class GameInfo(NamedTuple):
 DIRECTIONS = jnp.array([[-1, 0], [1, 0], [0, -1], [0, 1]], dtype=jnp.int32)
 
 
-def create_initial_state(grid: jnp.ndarray, teams=None, num_players: int | None = None) -> GameState:
+def create_initial_state(grid: jnp.ndarray, teams=None, num_players: int | None = None,
+                         tunnel_limits: jnp.ndarray | None = None) -> GameState:
     """
     Create initial game state from a numeric grid.
 
@@ -123,6 +128,8 @@ def create_initial_state(grid: jnp.ndarray, teams=None, num_players: int | None 
         teams: Optional (N,) array of team ids, one per player. Defaults to
             free-for-all, teams = arange(N).
         num_players: N when `teams` is not given. Defaults to 2.
+        tunnel_limits: Optional (H, W) per-tile cap on the army entering the
+            tile (0 = none); see GameState.
 
     Returns:
         GameState ready for gameplay. A player whose general is missing from
@@ -167,6 +174,8 @@ def create_initial_state(grid: jnp.ndarray, teams=None, num_players: int | None 
         time=jnp.int32(0),
         winner=jnp.int32(-1),
         pool_idx=jnp.int32(0),
+        tunnel_limits=(jnp.zeros(grid.shape, dtype=jnp.int32) if tunnel_limits is None
+                       else jnp.asarray(tunnel_limits, dtype=jnp.int32)),
     )
 
 
@@ -208,19 +217,25 @@ def execute_action(state: GameState, player_idx: int, action: jnp.ndarray, spoil
             this to judge the other players' moves on the board as the move
             left it, before the spoils confiscated anyone's army.
     """
+    return _execute_action_incoming(state, player_idx, action, spoils)[0]
+
+
+def _execute_action_incoming(state: GameState, player_idx: int, action: jnp.ndarray,
+                             spoils: bool = True) -> tuple[GameState, jnp.ndarray]:
+    """execute_action that also returns the army that entered the destination (0 when nothing moved)."""
     pass_turn, si, sj, direction, split_army = action
 
     return lax.cond(
         pass_turn == 1,
-        lambda s: s,
+        lambda s: (s, jnp.int32(0)),
         lambda s: _execute_move(s, player_idx, si, sj, direction, split_army, spoils),
         state,
     )
 
 
 def _execute_move(state: GameState, player_idx: int, si: int, sj: int, direction: int, split_army: int,
-                  spoils: bool = True) -> GameState:
-    """Execute move logic."""
+                  spoils: bool = True) -> tuple[GameState, jnp.ndarray]:
+    """Execute move logic. Returns the new state and the army that entered the destination."""
     H, W = state.armies.shape
 
     in_bounds = (si >= 0) & (si < H) & (sj >= 0) & (sj < W)
@@ -234,6 +249,10 @@ def _execute_move(state: GameState, player_idx: int, si: int, sj: int, direction
 
     army_to_move = lax.cond(split_army == 1, lambda a: a // 2, lambda a: a - 1, source_army)
     army_to_move = jnp.maximum(0, jnp.minimum(army_to_move, source_army - 1))
+    if state.tunnel_limits is not None:
+        # generals.io tunnel: the army entering the tile is capped at the tile's limit, the rest stays
+        lim = state.tunnel_limits[jnp.clip(di, 0, H - 1), jnp.clip(dj, 0, W - 1)]
+        army_to_move = jnp.where(lim > 0, jnp.minimum(army_to_move, lim), army_to_move)
 
     # An eliminated player owns nothing, so owns_source already fails; the
     # explicit check keeps hand-built states honest too.
@@ -242,8 +261,8 @@ def _execute_move(state: GameState, player_idx: int, si: int, sj: int, direction
 
     return lax.cond(
         valid_move,
-        lambda s: _apply_move(s, player_idx, si, sj, di, dj, army_to_move, spoils),
-        lambda s: s,
+        lambda s: (_apply_move(s, player_idx, si, sj, di, dj, army_to_move, spoils), army_to_move),
+        lambda s: (s, jnp.int32(0)),
         state,
     )
 
@@ -375,7 +394,8 @@ def global_update(state: GameState) -> GameState:
 def _official_move_order(state: GameState, actions: jnp.ndarray) -> jnp.ndarray:
     """generals.io's current move order (``MoveResolver.determineMoveOrder`` in the client bundle,
     2025): moves are sorted defensive first (destination held by the mover's team), then
-    moves that attack a general last, then LARGER army first, then input order; a move whose
+    moves that attack a general last, then LARGER army first, then player order (reversed
+    on odd turns); a move whose
     source another pending move is entering (a chased piece) waits until that chaser has
     resolved, unless the two moves are a head-on swap. Passes resolve last. Returns the (N,)
     order of player indices."""
@@ -398,7 +418,8 @@ def _official_move_order(state: GameState, actions: jnp.ndarray) -> jnp.ndarray:
     gj_, gi_ = general_attack[:, None], general_attack[None, :]
     aj_, ai_ = army[:, None], army[None, :]
     pj_, pi_ = passes[:, None], passes[None, :]
-    by_index = idx[:, None] < idx[None, :]
+    # equal armies: the site takes the moves in player order, reversed on odd turns
+    by_index = jnp.where(state.time % 2 == 0, idx[:, None] < idx[None, :], idx[:, None] > idx[None, :])
     ahead = ((~pj_ & pi_) | ((pj_ == pi_) & ((dj_ & ~di_) | ((dj_ == di_) & ((~gj_ & gi_) | ((gj_ == gi_) &
              ((aj_ > ai_) | ((aj_ == ai_) & by_index))))))))
     rank = jnp.sum(ahead, axis=0)                                       # sort position of each player
@@ -590,6 +611,27 @@ def _apply_general_trades(state: GameState, actions: jnp.ndarray) -> tuple[GameS
 
 
 
+def _refund_tunnel_overflow(state: GameState, actions: jnp.ndarray, order: jnp.ndarray,
+                            incoming: jnp.ndarray) -> GameState:
+    """generals.io ``Map.refundTunnelOverflow``: after all moves of a tick, a tunnel tile holding more
+    than its limit hands the excess back to the movers that entered it this tick, in move order, each
+    refunded at most what it brought in."""
+    H, W = state.armies.shape
+    lim = state.tunnel_limits
+    remaining = jnp.where(lim > 0, jnp.maximum(0, state.armies - lim), 0)
+    armies = state.armies
+    for k in range(order.shape[0]):
+        p = order[k]
+        a = actions[p]
+        si, sj = jnp.clip(a[1], 0, H - 1), jnp.clip(a[2], 0, W - 1)
+        di = jnp.clip(si + DIRECTIONS[a[3], 0], 0, H - 1)
+        dj = jnp.clip(sj + DIRECTIONS[a[3], 1], 0, W - 1)
+        o = jnp.minimum(remaining[di, dj], incoming[p])                     # 0 for passes and dropped moves
+        armies = armies.at[si, sj].add(o).at[di, dj].add(-o)
+        remaining = remaining.at[di, dj].add(-o)
+    return state._replace(armies=armies)
+
+
 @partial(jax.jit, static_argnames=("legacy_move_priority", "general_trade", "official_move_priority"))
 def step(state: GameState, actions: jnp.ndarray,
          legacy_move_priority: bool = False,
@@ -626,9 +668,13 @@ def step(state: GameState, actions: jnp.ndarray,
         actions = jnp.where(consumed[:, None], pass_action[None, :], actions)
 
     order = _determine_move_order(state, actions, legacy_move_priority, official_move_priority)
+    incoming = jnp.zeros((N,), dtype=jnp.int32)
     for k in range(N):
         player = order[k]
-        state = execute_action(state, player, actions[player])
+        state, inc = _execute_action_incoming(state, player, actions[player])
+        incoming = incoming.at[player].set(inc)
+    if state.tunnel_limits is not None:
+        state = _refund_tunnel_overflow(state, actions, order, incoming)
 
     state = lax.cond(done_before, lambda s: s, lambda s: s._replace(time=s.time + 1), state)
 

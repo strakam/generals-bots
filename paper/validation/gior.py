@@ -113,13 +113,22 @@ def deserialize(data: bytes) -> dict:
     r["playerColors"], r["lights"] = nxt_or(None), nxt_or([])
     settings = nxt_or([1, 0.5, 0.5, 0]); r["speed"] = settings[0] if len(settings) > 0 else 1
     r["modifiers"], r["observatories"], r["lookouts"], r["deserts"] = nxt_or([]), nxt_or([]), nxt_or([]), nxt_or([])
+    r["player_transforms"], r["pings"], r["generalTrades"] = nxt_or(None), nxt_or([]), nxt_or([])
+    r["tunnels"], r["tunnelLimits"] = nxt_or([]), nxt_or([])                        # tunnels admit at most `limit` armies per move
+    r["chessClockTimingsByMove"] = nxt_or([])
+    r["strongholds"], r["strongholdStrengths"] = [], []
+    if r["version"] >= 18:
+        _density, _smin, _smax = nxt_or(None), nxt_or(None), nxt_or(None)
+        r["strongholds"], r["strongholdStrengths"] = nxt_or([]), nxt_or([])
     return r
 
 
 def row(path: str) -> dict:
     """The dict ``replay_agreement.prepare`` expects, plus ``afks`` and ``extras`` (non-standard map features)."""
     r = deserialize(open(path, "rb").read())
-    extras = {k: r[k] for k in ("swamps", "deserts", "lights", "observatories", "lookouts", "neutrals", "modifiers") if r.get(k)}
+    extras = {k: r[k] for k in ("swamps", "deserts", "lights", "observatories", "lookouts", "neutrals", "modifiers", "tunnels", "strongholds") if r.get(k)}
     return dict(id=r["id"], version=r["version"], mapWidth=r["mapWidth"], mapHeight=r["mapHeight"], usernames=r["usernames"],
                 cities=r["cities"], cityArmies=r["cityArmies"], generals=r["generals"], mountains=r["mountains"],
-                moves=r["moves"], afks=r["afks"], teams=r["teams"], extras=extras)
+                moves=r["moves"], afks=r["afks"], teams=r["teams"], extras=extras,
+                lookouts=r["lookouts"], observatories=r["observatories"], tunnels=r["tunnels"], tunnelLimits=r["tunnelLimits"],
+                strongholds=r["strongholds"], generalTrades=r["generalTrades"])

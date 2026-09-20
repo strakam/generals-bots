@@ -112,7 +112,7 @@ def prepare(row: dict) -> dict:
 
     Returns a dict with `exclude` (None or a reason string) and, when usable,
     `grid` (PAD x PAD int32), `actions` (T x 2 x 5 int32, T = last turn + 1),
-    `meta` (per-game bookkeeping).
+    `meta` (per-game bookkeeping), `tunnel_limits` (PAD x PAD int32 or None).
     """
     w, h = int(row["mapWidth"]), int(row["mapHeight"])
     usernames = row["usernames"] or []
@@ -133,6 +133,9 @@ def prepare(row: dict) -> dict:
     if any(a <= 2 for a in city_armies):
         # the engine reads grid values > N(=2) as castles; a smaller garrison could not be encoded
         return {"exclude": "city army <= 2 (not encodable)", "meta": meta}
+    for k in ("swamps", "deserts", "strongholds", "neutrals"):
+        if row.get(k) or (row.get("extras") or {}).get(k):
+            return {"exclude": f"map feature not modelled: {k}", "meta": meta}
     special = set(cities) | set(mountains) | set(generals)
     if len(special) != len(cities) + len(mountains) + len(generals):
         return {"exclude": "overlapping city/mountain/general tiles", "meta": meta}
@@ -142,6 +145,16 @@ def prepare(row: dict) -> dict:
     grid = np.full((PAD, PAD), MOUNTAIN, dtype=np.int32)
     board = np.full(h * w, EMPTY, dtype=np.int32)
     board[mountains] = MOUNTAIN
+    # lookouts and observatories (vision towers on recent maps) are obstacles like mountains
+    for k in ("lookouts", "observatories"):
+        for t in (row.get(k) or []):
+            board[int(t)] = MOUNTAIN
+    # tunnels: passable tiles that admit at most `limit` armies per move
+    tunnel_limits = np.zeros((PAD, PAD), dtype=np.int32)
+    tl = np.zeros(h * w, dtype=np.int32)
+    for t, lim in zip(row.get("tunnels") or [], row.get("tunnelLimits") or []):
+        if 0 <= int(t) < h * w and lim: tl[int(t)] = int(lim)
+    tunnel_limits[:h, :w] = tl.reshape(h, w)
     for t, a in zip(cities, city_armies):
         board[t] = int(a)
     board[generals[0]] = 1
@@ -191,7 +204,8 @@ def prepare(row: dict) -> dict:
         recorded_end_turn=int(last[4]), recorded_winner=lp if last_hits_general else -1,
         recorded_end_is_capture=bool(last_hits_general),
     )
-    return {"exclude": None, "grid": grid, "actions": actions, "meta": meta}
+    return {"exclude": None, "grid": grid, "actions": actions, "meta": meta,
+            "tunnel_limits": tunnel_limits if tunnel_limits.any() else None}
 
 
 def interaction_flags(actions: np.ndarray) -> dict[str, np.ndarray]:

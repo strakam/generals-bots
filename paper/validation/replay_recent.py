@@ -7,7 +7,7 @@ site drops such queued moves as well, so a skip is only a divergence if it casca
   capture games   the simulated game ends by a capture by the recorded winner on the recorded turn;
   surrender games the record carries the site's surrender/afk event and no capture; agreement means the
                   simulation has not ended before the recorded end and no move was skipped.
-Usage: python replay_recent.py 'dir/*.gior' [--no-trade] [--legacy]
+Usage: python replay_recent.py 'dir/*.gior' [--no-trade] [--legacy] [--official] [--out f]
 """
 import os
 os.environ.setdefault("JAX_PLATFORMS", "cpu")
@@ -21,26 +21,49 @@ import jax.numpy as jnp  # noqa: E402
 from generals.core import game  # noqa: E402
 
 
+import jax  # noqa: E402
+from functools import partial  # noqa: E402
+
+BUCKET = 512   # actions are padded to a multiple of this many ticks so the scan compiles once per bucket
+
+
+@partial(jax.jit, static_argnames=("trade", "legacy", "official"))
+def simulate(grid, actions, trade, legacy, official, tunnel_limits=None):
+    """Whole game as one lax.scan. Returns per tick: legality of each recorded move at the start of
+    the tick (mover owns the source with >= 2 armies), the winner after the tick, and the general
+    positions at the start of the tick."""
+    s0 = game.create_initial_state(grid, tunnel_limits=tunnel_limits)
+
+    def tick(s, a):
+        si, sj = a[:, 1], a[:, 2]
+        legal = (a[:, 0] != 0) | (s.ownership[jnp.arange(2), si, sj] & (s.armies[si, sj] >= 2))
+        s2, info = game.step(s, a, legacy_move_priority=legacy, general_trade=trade, official_move_priority=official)
+        return s2, (legal, info.winner, s.general_positions)
+
+    _, (legal, winner, gp) = jax.lax.scan(tick, s0, actions)
+    return legal, winner, gp
+
+
 def run(path, trade=True, legacy=False, official=False):
     row = gior.row(path); prep = ra.prepare(row)
     if prep["exclude"]: return dict(id=row["id"], excluded=prep["exclude"])
     grid, actions, meta = prep["grid"], prep["actions"], prep["meta"]; W = row["mapWidth"]
-    s = game.create_initial_state(jnp.asarray(grid)); skipped = []; end = (-1, -1)
-    last = row["moves"][-1]; gp_last = None
-    for t in range(actions.shape[0]):
-        arm, own = np.asarray(s.armies), np.asarray(s.ownership)
-        if t == int(last[4]): gp_last = np.asarray(s.general_positions)     # generals as they stand when the last move resolves
-        for p in (0, 1):
-            a = actions[t, p]
-            if a[0] == 0 and end[0] < 0 and not (own[p, a[1], a[2]] and arm[a[1], a[2]] >= 2): skipped.append((t, p))
-        s, info = game.step(s, jnp.asarray(actions[t]), legacy_move_priority=legacy, general_trade=trade, official_move_priority=official)
-        if end[0] < 0 and int(info.winner) >= 0: end = (t, int(info.winner))
+    T = actions.shape[0]; Tp = -(-T // BUCKET) * BUCKET
+    pad = np.zeros((Tp - T, 2, 5), dtype=actions.dtype); pad[:, :, 0] = 1          # pass actions
+    acts = np.concatenate([actions, pad], axis=0)
+    tl = prep["tunnel_limits"]; tl = None if tl is None else jnp.asarray(tl)
+    legal, winner, gp = simulate(jnp.asarray(grid), jnp.asarray(acts), trade, legacy, official, tl)
+    legal, winner, gp = np.asarray(legal), np.asarray(winner), np.asarray(gp)
+    ends = np.nonzero(winner >= 0)[0]
+    end = (int(ends[0]), int(winner[ends[0]])) if len(ends) else (-1, -1)
+    last = row["moves"][-1]; gp_last = gp[int(last[4])]                             # generals as they stand when the last move resolves
+    horizon = T if end[0] < 0 else min(T, end[0] + 1)                               # skips are counted up to and including the end tick
+    skipped = [(int(t), int(p)) for t, p in zip(*np.nonzero(~legal[:horizon]))]
     # A capture is a last move onto the OTHER player's general as it stands at that tick (after a
-    # general trade the generals have swapped); the mover is the recorded winner.
+    # general trade the generals have swapped); the mover is the recorded winner. A surrender/afk
+    # event after the last move means the game ended by that event, whatever the last move was.
     mover = int(last[0]); opp_gen = int(gp_last[1 - mover][0]) * W + int(gp_last[1 - mover][1])
-    # A surrender/afk event at or after the last move means the game ended by that event, whatever
-    # the last move was (a failed final assault on the general is common before a surrender).
-    ended_by_event = any(a["turn"] >= int(last[4]) for a in row["afks"])
+    ended_by_event = any(a["turn"] > int(last[4]) for a in row["afks"])          # an afk on the capture turn itself is the loser leaving
     capture = int(last[2]) == opp_gen and not ended_by_event; rec_winner = mover if capture else -1
     surrender = not capture
     if surrender: agree = end[0] < 0 and not skipped
