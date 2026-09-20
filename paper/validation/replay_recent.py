@@ -28,11 +28,11 @@ BUCKET = 512   # actions are padded to a multiple of this many ticks so the scan
 
 
 @partial(jax.jit, static_argnames=("trade", "legacy", "official"))
-def simulate(grid, actions, trade, legacy, official, tunnel_limits=None):
+def simulate(grid, actions, trade, legacy, official):
     """Whole game as one lax.scan. Returns per tick: legality of each recorded move at the start of
     the tick (mover owns the source with >= 2 armies), the winner after the tick, and the general
     positions at the start of the tick."""
-    s0 = game.create_initial_state(grid, tunnel_limits=tunnel_limits)
+    s0 = game.create_initial_state(grid)
 
     def tick(s, a):
         si, sj = a[:, 1], a[:, 2]
@@ -51,8 +51,7 @@ def run(path, trade=True, legacy=False, official=False):
     T = actions.shape[0]; Tp = -(-T // BUCKET) * BUCKET
     pad = np.zeros((Tp - T, 2, 5), dtype=actions.dtype); pad[:, :, 0] = 1          # pass actions
     acts = np.concatenate([actions, pad], axis=0)
-    tl = prep["tunnel_limits"]; tl = None if tl is None else jnp.asarray(tl)
-    legal, winner, gp = simulate(jnp.asarray(grid), jnp.asarray(acts), trade, legacy, official, tl)
+    legal, winner, gp = simulate(jnp.asarray(grid), jnp.asarray(acts), trade, legacy, official)
     legal, winner, gp = np.asarray(legal), np.asarray(winner), np.asarray(gp)
     ends = np.nonzero(winner >= 0)[0]
     end = (int(ends[0]), int(winner[ends[0]])) if len(ends) else (-1, -1)
