@@ -176,3 +176,7 @@ competition/agents/*/target/
 # local research artifacts
 figures/
 uv.lock
+
+# kept locally, not published
+competition/
+tests/test_matchup.py
