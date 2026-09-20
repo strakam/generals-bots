@@ -63,12 +63,22 @@ def run(path, trade=True, legacy=False, official=False):
     # general trade the generals have swapped); the mover is the recorded winner. A surrender/afk
     # event after the last move means the game ended by that event, whatever the last move was.
     mover = int(last[0]); opp_gen = int(gp_last[1 - mover][0]) * W + int(gp_last[1 - mover][1])
-    ended_by_event = any(a["turn"] > int(last[4]) for a in row["afks"])          # an afk on the capture turn itself is the loser leaving
-    capture = int(last[2]) == opp_gen and not ended_by_event; rec_winner = mover if capture else -1
-    surrender = not capture
-    if surrender: agree = end[0] < 0 and not skipped
-    else: agree = end == (int(last[4]), rec_winner)
-    return dict(id=row["id"], version=row["version"], n_moves=meta["n_moves"], surrender=surrender, afks=row["afks"], extras=row["extras"],
+    t_last = int(last[4]); hits_general = int(last[2]) == opp_gen
+    afk_after = any(a["turn"] > t_last for a in row["afks"])
+    afk_same = any(a["turn"] == t_last for a in row["afks"])
+    # Three endings can be read off the record: a surrender/afk event after the last move; a last
+    # move onto the opponent's general with no event (a capture); and a last move onto the general
+    # with an afk on that same turn, which the record cannot tell apart (the loser leaves as the
+    # general falls, or resigns as a final assault fails) -- the site's own engine settles those in
+    # board_diff.py.
+    if afk_after or not hits_general:
+        kind, agree = "surrender", end[0] < 0 and not skipped
+    elif afk_same:
+        kind, agree = "capture_or_surrender", (end == (-1, -1) or end == (t_last, mover)) and not skipped
+    else:
+        kind, agree = "capture", end == (t_last, mover)
+    capture = kind == "capture"; rec_winner = mover if capture else -1; surrender = kind == "surrender"
+    return dict(id=row["id"], version=row["version"], n_moves=meta["n_moves"], surrender=surrender, kind=kind, afks=row["afks"], extras=row["extras"],
                 recorded_end=int(last[4]), recorded_winner=rec_winner, sim_end=end[0], sim_winner=end[1],
                 skipped=skipped, agree=bool(agree))
 
@@ -76,10 +86,12 @@ def run(path, trade=True, legacy=False, official=False):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(); ap.add_argument("pattern"); ap.add_argument("--no-trade", action="store_true"); ap.add_argument("--legacy", action="store_true"); ap.add_argument("--official", action="store_true"); ap.add_argument("--out")
     a = ap.parse_args(); res = [run(f, trade=not a.no_trade, legacy=a.legacy, official=a.official) for f in sorted(glob.glob(a.pattern))]
-    ok = [r for r in res if "excluded" not in r]; cap = [r for r in ok if not r["surrender"]]; sur = [r for r in ok if r["surrender"]]
+    ok = [r for r in res if "excluded" not in r]
+    cap = [r for r in ok if r["kind"] == "capture"]; sur = [r for r in ok if r["kind"] == "surrender"]; amb = [r for r in ok if r["kind"] == "capture_or_surrender"]
     print(f"games {len(ok)} (excluded {len(res)-len(ok)}); moves {sum(r['n_moves'] for r in ok)}; skipped moves {sum(len(r['skipped']) for r in ok)}")
     print(f"capture games {len(cap)}: same winner on the same turn {sum(r['agree'] for r in cap)}")
     print(f"surrender games {len(sur)}: no early end and no skipped move {sum(r['agree'] for r in sur)}; sim ended early {sum(1 for r in sur if r['sim_end'] >= 0)}")
+    print(f"last move onto the general with an afk that turn {len(amb)}: no early end, ends (if at all) by that move {sum(r['agree'] for r in amb)}")
     for r in ok:
-        if not r["agree"]: print("  DISAGREE", r["id"], "surrender" if r["surrender"] else "capture", "rec", r["recorded_end"], r["recorded_winner"], "sim", r["sim_end"], r["sim_winner"], "skipped", r["skipped"][:4])
+        if not r["agree"]: print("  DISAGREE", r["id"], r["kind"], "rec", r["recorded_end"], r["recorded_winner"], "sim", r["sim_end"], r["sim_winner"], "skipped", r["skipped"][:4])
     if a.out: json.dump(res, open(a.out, "w"), indent=1)
