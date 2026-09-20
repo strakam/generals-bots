@@ -146,6 +146,10 @@ class GeneralsEnv:
         # of the current chasing > reinforcing > smaller-army rule. Only for
         # reproducing archived generals.io replays; see game._determine_move_order.
         legacy_move_priority: bool = False,
+        # generals.io's general-trade rule: two players capturing each other's
+        # general on the same turn both succeed and swap generals instead of
+        # the first capture settling the turn. See game._execute_general_trade.
+        general_trade: bool = False,
         # Named ruleset preset (e.g. "competition"); overrides the args above.
         mode: str | None = None,
         # Players. num_players=N is an N-way free-for-all; teams=(N,) team ids
@@ -213,6 +217,10 @@ class GeneralsEnv:
             raise ValueError("legacy_move_priority is a plain-ruleset replay aid; "
                              "it cannot be combined with build_castles or deathtouch_turn")
         self.legacy_move_priority = legacy_move_priority
+        if general_trade and deathtouch_turn is not None:
+            raise ValueError("general_trade and deathtouch_turn both decide simultaneous captures; "
+                             "use one or the other")
+        self.general_trade = general_trade
 
         if teams is None:
             num_players = 2 if num_players is None else int(num_players)
@@ -362,7 +370,8 @@ class GeneralsEnv:
         if self.deathtouch_turn is not None:
             new_state, info = _deathtouch.step(state, actions, self.deathtouch_turn)
         else:
-            new_state, info = game_step(state, actions, legacy_move_priority=self.legacy_move_priority)
+            new_state, info = game_step(state, actions, legacy_move_priority=self.legacy_move_priority,
+                                        general_trade=self.general_trade)
 
         # Win/lose reward: +1 to every player on the winning team, -1 to the
         # rest, 0 while the game is on (and on a draw).

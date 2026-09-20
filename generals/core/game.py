@@ -438,9 +438,112 @@ def _determine_move_order(state: GameState, actions: jnp.ndarray,
     return jnp.argmax(rank[None, :] == idx[:, None], axis=1)          # slot k -> player with rank k
 
 
-@partial(jax.jit, static_argnames=("legacy_move_priority",))
+# --------------------------------------------------------------------------- #
+# General trade (generals.io, replay format 16 and later)
+# --------------------------------------------------------------------------- #
+def _move_geometry(state: GameState, player_idx, action):
+    """(valid, di, dj, si, sj, army_to_move, reserve) of one action on `state`,
+    with the validity test of _execute_move. reserve is what stays on the source."""
+    pass_turn, si, sj, direction, split_army = action
+    H, W = state.armies.shape
+    in_bounds = (si >= 0) & (si < H) & (sj >= 0) & (sj < W)
+    di = si + DIRECTIONS[direction, 0]
+    dj = sj + DIRECTIONS[direction, 1]
+    dest_in_bounds = (di >= 0) & (di < H) & (dj >= 0) & (dj < W)
+    csi, csj = jnp.clip(si, 0, H - 1), jnp.clip(sj, 0, W - 1)
+    cdi, cdj = jnp.clip(di, 0, H - 1), jnp.clip(dj, 0, W - 1)
+    owns_source = state.ownership[player_idx, csi, csj]
+    source_army = state.armies[csi, csj]
+    army_to_move = jnp.where(split_army == 1, source_army // 2, source_army - 1)
+    army_to_move = jnp.maximum(0, jnp.minimum(army_to_move, source_army - 1))
+    valid = ((pass_turn == 0) & in_bounds & dest_in_bounds & owns_source & (army_to_move > 0)
+             & state.passable[cdi, cdj] & ~state.eliminated[player_idx])
+    return valid, cdi, cdj, csi, csj, army_to_move, source_army - army_to_move
+
+
+def _general_cell(state: GameState, player_idx):
+    """(row, col) of player_idx's live general (the first cell of the mask they hold)."""
+    mask = state.generals & state.ownership[player_idx]
+    flat = jnp.argmax(mask.reshape(-1))
+    W = state.armies.shape[1]
+    return flat // W, flat % W
+
+
+def _is_general_trade(state: GameState, actions: jnp.ndarray, e, t) -> jnp.ndarray:
+    """True iff, on `state`, player e's move captures t's general AND t's move
+    captures e's general (generals.io's ``getMutualGeneralSwapMoveIndex``).
+    Each attack is judged against the garrison the defender's own move leaves
+    behind when that move departs from the general (``wouldAttackCaptureGeneral``)."""
+    ve, dei, dej, sei, sej, me, re_ = _move_geometry(state, e, actions[e])
+    vt, dti, dtj, sti, stj, mt, rt = _move_geometry(state, t, actions[t])
+    gei, gej = _general_cell(state, e)
+    gti, gtj = _general_cell(state, t)
+    hits = (dei == gti) & (dej == gtj) & (dti == gei) & (dtj == gej)
+    enemies = state.teams[e] != state.teams[t]
+    # garrison of t's general when e's army lands: t's own reserve if t moves off it
+    t_from_general = (sti == gti) & (stj == gtj)
+    e_from_general = (sei == gei) & (sej == gej)
+    garrison_t = jnp.where(t_from_general, rt, state.armies[gti, gtj])
+    garrison_e = jnp.where(e_from_general, re_, state.armies[gei, gej])
+    return ve & vt & hits & enemies & (me > garrison_t) & (mt > garrison_e)
+
+
+def _execute_general_trade(state: GameState, actions: jnp.ndarray, e, t) -> GameState:
+    """generals.io's ``executeMutualGeneralSwap``: both captures happen at once.
+    Each player's attacking army lands on the other's general with its
+    surplus, every other cell of each player passes to the other with its army
+    halved (rounded up), nobody is eliminated, and the two generals change
+    hands: e's general is now where t's was, and vice versa."""
+    _, _, _, sei, sej, me, re_ = _move_geometry(state, e, actions[e])
+    _, _, _, sti, stj, mt, rt = _move_geometry(state, t, actions[t])
+    gei, gej = _general_cell(state, e)
+    gti, gtj = _general_cell(state, t)
+    t_from_general = (sti == gti) & (stj == gtj)
+    e_from_general = (sei == gei) & (sej == gej)
+    garrison_t = jnp.where(t_from_general, rt, state.armies[gti, gtj])
+    garrison_e = jnp.where(e_from_general, re_, state.armies[gei, gej])
+    surplus_e = jnp.maximum(0, me - garrison_t)          # lands on t's general, now e's
+    surplus_t = jnp.maximum(0, mt - garrison_e)          # lands on e's general, now t's
+
+    # armies left on the two sources once the attacking stacks have departed
+    armies = state.armies.at[sei, sej].set(re_)
+    armies = armies.at[sti, stj].set(rt)
+    N = state.ownership.shape[0]
+    players = jnp.arange(N)
+    own_e, own_t = state.ownership[e], state.ownership[t]
+    gen_cells = jnp.zeros_like(own_e).at[gei, gej].set(True).at[gti, gtj].set(True)
+    swap = (own_e | own_t) & ~gen_cells
+    armies = jnp.where(swap, (armies + 1) // 2, armies)          # Math.round(0.5 * army)
+    armies = armies.at[gti, gtj].set(surplus_e).at[gei, gej].set(surplus_t)
+
+    to_t = (own_e & ~gen_cells).at[gei, gej].set(True)    # e's land and e's old general -> t
+    to_e = (own_t & ~gen_cells).at[gti, gtj].set(True)    # t's land and t's old general -> e
+    is_e, is_t = (players == e)[:, None, None], (players == t)[:, None, None]
+    ownership = jnp.where(to_t[None], is_t, jnp.where(to_e[None], is_e, state.ownership))
+
+    gp = state.general_positions
+    gp = gp.at[e].set(jnp.array([gti, gtj], dtype=gp.dtype)).at[t].set(jnp.array([gei, gej], dtype=gp.dtype))
+    return state._replace(armies=armies, ownership=ownership, general_positions=gp)
+
+
+def _apply_general_trades(state: GameState, actions: jnp.ndarray) -> tuple[GameState, jnp.ndarray]:
+    """Resolve every general trade this turn before the ordinary moves.
+    Returns the state and an (N,) mask of the players whose moves were consumed."""
+    N = actions.shape[0]
+    consumed = jnp.zeros((N,), dtype=bool)
+    for e in range(N):
+        for t in range(e + 1, N):
+            trade = _is_general_trade(state, actions, e, t) & ~consumed[e] & ~consumed[t]
+            state = lax.cond(trade, lambda s: _execute_general_trade(s, actions, e, t), lambda s: s, state)
+            consumed = consumed.at[e].set(consumed[e] | trade).at[t].set(consumed[t] | trade)
+    return state, consumed
+
+
+
+@partial(jax.jit, static_argnames=("legacy_move_priority", "general_trade"))
 def step(state: GameState, actions: jnp.ndarray,
-         legacy_move_priority: bool = False) -> tuple[GameState, GameInfo]:
+         legacy_move_priority: bool = False,
+         general_trade: bool = False) -> tuple[GameState, GameInfo]:
     """Execute one game step with actions from all players.
 
     Args:
@@ -450,6 +553,11 @@ def step(state: GameState, actions: jnp.ndarray,
             instead of the current chasing > reinforcing > smaller-army rule
             (see _determine_move_order). Default False; the game is unchanged
             unless it is passed explicitly.
+        general_trade: generals.io's rule (replay format 16, 2025) for two
+            players who capture each other's general on the same turn: both
+            captures happen, nobody is eliminated, and the generals change
+            hands (see _execute_general_trade). Default False, in which case
+            the first capture in move order settles the turn as before.
 
     Moves resolve one after another in _determine_move_order's order, each on
     the board the previous one left — a capture confiscates the captured
@@ -460,6 +568,11 @@ def step(state: GameState, actions: jnp.ndarray,
     if N != state.ownership.shape[0]:
         raise ValueError(f"got actions for {N} players but the state has {state.ownership.shape[0]}")
     done_before = state.winner >= 0
+
+    if general_trade:
+        state, consumed = _apply_general_trades(state, actions)
+        pass_action = jnp.array([1, 0, 0, 0, 0], dtype=actions.dtype)
+        actions = jnp.where(consumed[:, None], pass_action[None, :], actions)
 
     order = _determine_move_order(state, actions, legacy_move_priority)
     for k in range(N):
