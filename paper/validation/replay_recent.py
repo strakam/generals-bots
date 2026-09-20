@@ -16,6 +16,7 @@ import numpy as np  # noqa: E402
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import gior  # noqa: E402
 import replay_agreement as ra  # noqa: E402
+ra.PAD = 32   # recent maps exceed the archive's 23x23 padding
 import jax.numpy as jnp  # noqa: E402
 from generals.core import game  # noqa: E402
 
@@ -37,7 +38,10 @@ def run(path, trade=True, legacy=False):
     # A capture is a last move onto the OTHER player's general as it stands at that tick (after a
     # general trade the generals have swapped); the mover is the recorded winner.
     mover = int(last[0]); opp_gen = int(gp_last[1 - mover][0]) * W + int(gp_last[1 - mover][1])
-    capture = int(last[2]) == opp_gen; rec_winner = mover if capture else -1
+    # A surrender/afk event at or after the last move means the game ended by that event, whatever
+    # the last move was (a failed final assault on the general is common before a surrender).
+    ended_by_event = any(a["turn"] >= int(last[4]) for a in row["afks"])
+    capture = int(last[2]) == opp_gen and not ended_by_event; rec_winner = mover if capture else -1
     surrender = not capture
     if surrender: agree = end[0] < 0 and not skipped
     else: agree = end == (int(last[4]), rec_winner)
