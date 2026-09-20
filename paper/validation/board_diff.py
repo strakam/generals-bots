@@ -18,12 +18,12 @@ from functools import partial  # noqa: E402
 from generals.core import game  # noqa: E402
 
 
-@partial(jax.jit, static_argnames=("trade", "legacy"))
-def boards(grid, actions, trade, legacy):
+@partial(jax.jit, static_argnames=("trade",))
+def boards(grid, actions, trade):
     s0 = game.create_initial_state(grid)
 
     def tick(s, a):
-        s2, _ = game.step(s, a, legacy_move_priority=legacy, general_trade=trade)
+        s2, _ = game.step(s, a, general_trade=trade)
         return s2, (s.ownership, s.armies)
 
     _, (own, arm) = jax.lax.scan(tick, s0, actions)
@@ -40,7 +40,7 @@ def run(path, site_dir):
     T = min(so.shape[0], prep["actions"].shape[0] + 1)
     acts = np.zeros((-(-T // rr.BUCKET) * rr.BUCKET, 2, 5), dtype=np.int32); acts[:, :, 0] = 1
     acts[:prep["actions"].shape[0]] = prep["actions"]
-    own, arm = boards(jnp.asarray(prep["grid"]), jnp.asarray(acts), True, False)
+    own, arm = boards(jnp.asarray(prep["grid"]), jnp.asarray(acts), True)
     own, arm = np.asarray(own)[:T, :, :H, :W].reshape(T, 2, -1), np.asarray(arm)[:T, :H, :W].reshape(T, -1)
     oo = np.where(own[:, 0], 0, np.where(own[:, 1], 1, -1))
     so_ = np.where(so[:T] < 0, -1, so[:T])                                            # site: -1 empty, -2 mountain, -3/-4 fog codes

@@ -372,8 +372,7 @@ def global_update(state: GameState) -> GameState:
     return state._replace(armies=armies)
 
 
-def _determine_move_order(state: GameState, actions: jnp.ndarray,
-                          legacy_move_priority: bool = False) -> jnp.ndarray:
+def _determine_move_order(state: GameState, actions: jnp.ndarray) -> jnp.ndarray:
     """Order in which this turn's moves resolve: an (N,) array of player indices.
 
     This is generals.io's current rule (``MoveResolver.determineMoveOrder`` in
@@ -384,21 +383,10 @@ def _determine_move_order(state: GameState, actions: jnp.ndarray,
     entering (a chased piece) waits until that chaser has resolved, unless the
     two moves are a head-on swap. Passes resolve last. Verified tile for tile
     against the site's own engine on 10,000 ranked replays (paper/validation).
-
-    legacy_move_priority=True selects the rule generals.io used when the public
-    replay archive was recorded (before 2025): priority simply alternates every
-    tick, independent of the moves. Player 0 resolves first on even ticks and
-    last on odd ticks (for N players the index order is reversed on odd
-    ticks). It exists so archived replays recorded under the old rule can be
-    reproduced move-for-move; nothing in the environment turns it on by default.
     """
     N = actions.shape[0]
     H, W = state.armies.shape
     idx = jnp.arange(N)
-
-    if legacy_move_priority:
-        return jnp.where(state.time % 2 == 0, idx, idx[::-1])
-
     passes = actions[:, 0] != 0
     si, sj, direction = actions[:, 1], actions[:, 2], actions[:, 3]
     di = si + DIRECTIONS[direction, 0]
@@ -539,19 +527,14 @@ def _apply_general_trades(state: GameState, actions: jnp.ndarray) -> tuple[GameS
 
 
 
-@partial(jax.jit, static_argnames=("legacy_move_priority", "general_trade"))
+@partial(jax.jit, static_argnames=("general_trade",))
 def step(state: GameState, actions: jnp.ndarray,
-         legacy_move_priority: bool = False,
          general_trade: bool = False) -> tuple[GameState, GameInfo]:
     """Execute one game step with actions from all players.
 
     Args:
         state: Current game state.
         actions: (N, 5) array, one [pass, row, col, direction, split] per player.
-        legacy_move_priority: Resolve moves in the old alternating order
-            instead of the current chasing > reinforcing > smaller-army rule
-            (see _determine_move_order). Default False; the game is unchanged
-            unless it is passed explicitly.
         general_trade: generals.io's rule (replay format 16, 2025) for two
             players who capture each other's general on the same turn: both
             captures happen, nobody is eliminated, and the generals change
@@ -573,7 +556,7 @@ def step(state: GameState, actions: jnp.ndarray,
         pass_action = jnp.array([1, 0, 0, 0, 0], dtype=actions.dtype)
         actions = jnp.where(consumed[:, None], pass_action[None, :], actions)
 
-    order = _determine_move_order(state, actions, legacy_move_priority)
+    order = _determine_move_order(state, actions)
     for k in range(N):
         player = order[k]
         state = execute_action(state, player, actions[player])
