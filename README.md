@@ -19,13 +19,6 @@ A high-performance JAX-based simulator for [generals.io](https://generals.io), d
 * 🚀 **Live deployment** — deploy agents to [generals.io](https://generals.io) servers
 * 🎮 **Built-in GUI** — visualize games and debug agent behavior
 
-> [!Note]
-> This repository is based on the [generals.io](https://generals.io) game.
-> The goal is to provide a fast bot development platform for reinforcement learning research.
-> The simulator follows the current rules of the game: 10,000 ranked games played in 2026 replay
-> through it with a board identical to generals.io's own engine after every turn
-> (see [`paper/validation/`](paper/validation/)).
-
 ## 📦 Installation
 
 ```bash
@@ -33,6 +26,12 @@ git clone https://github.com/strakam/generals-bots
 cd generals-bots
 pip install -e .
 ```
+
+> [!Note]
+> This repository is based on the [generals.io](https://generals.io) game.
+> The goal is to provide a fast bot development platform for reinforcement learning research.
+> The simulator follows the current rules of the game: 10,000 ranked games played in 2026 replay
+> through it with a board identical to generals.io's own engine after every turn.
 
 ## 🌱 Getting Started
 
