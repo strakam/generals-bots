@@ -7,7 +7,7 @@ site drops such queued moves as well, so a skip is only a divergence if it casca
   capture games   the simulated game ends by a capture by the recorded winner on the recorded turn;
   surrender games the record carries the site's surrender/afk event and no capture; agreement means the
                   simulation has not ended before the recorded end and no move was skipped.
-Usage: python replay_recent.py 'dir/*.gior' [--no-trade] [--legacy] [--official] [--out f]
+Usage: python replay_recent.py 'dir/*.gior' [--no-trade] [--legacy] [--out f]
 """
 import os
 os.environ.setdefault("JAX_PLATFORMS", "cpu")
@@ -27,8 +27,8 @@ from functools import partial  # noqa: E402
 BUCKET = 512   # actions are padded to a multiple of this many ticks so the scan compiles once per bucket
 
 
-@partial(jax.jit, static_argnames=("trade", "legacy", "official"))
-def simulate(grid, actions, trade, legacy, official):
+@partial(jax.jit, static_argnames=("trade", "legacy"))
+def simulate(grid, actions, trade, legacy):
     """Whole game as one lax.scan. Returns per tick: legality of each recorded move at the start of
     the tick (mover owns the source with >= 2 armies), the winner after the tick, and the general
     positions at the start of the tick."""
@@ -37,21 +37,21 @@ def simulate(grid, actions, trade, legacy, official):
     def tick(s, a):
         si, sj = a[:, 1], a[:, 2]
         legal = (a[:, 0] != 0) | (s.ownership[jnp.arange(2), si, sj] & (s.armies[si, sj] >= 2))
-        s2, info = game.step(s, a, legacy_move_priority=legacy, general_trade=trade, official_move_priority=official)
+        s2, info = game.step(s, a, legacy_move_priority=legacy, general_trade=trade)
         return s2, (legal, info.winner, s.general_positions)
 
     _, (legal, winner, gp) = jax.lax.scan(tick, s0, actions)
     return legal, winner, gp
 
 
-def run(path, trade=True, legacy=False, official=False):
+def run(path, trade=True, legacy=False):
     row = gior.row(path); prep = ra.prepare(row)
     if prep["exclude"]: return dict(id=row["id"], excluded=prep["exclude"])
     grid, actions, meta = prep["grid"], prep["actions"], prep["meta"]; W = row["mapWidth"]
     T = actions.shape[0]; Tp = -(-T // BUCKET) * BUCKET
     pad = np.zeros((Tp - T, 2, 5), dtype=actions.dtype); pad[:, :, 0] = 1          # pass actions
     acts = np.concatenate([actions, pad], axis=0)
-    legal, winner, gp = simulate(jnp.asarray(grid), jnp.asarray(acts), trade, legacy, official)
+    legal, winner, gp = simulate(jnp.asarray(grid), jnp.asarray(acts), trade, legacy)
     legal, winner, gp = np.asarray(legal), np.asarray(winner), np.asarray(gp)
     ends = np.nonzero(winner >= 0)[0]
     end = (int(ends[0]), int(winner[ends[0]])) if len(ends) else (-1, -1)
@@ -83,8 +83,8 @@ def run(path, trade=True, legacy=False, official=False):
 
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(); ap.add_argument("pattern"); ap.add_argument("--no-trade", action="store_true"); ap.add_argument("--legacy", action="store_true"); ap.add_argument("--official", action="store_true"); ap.add_argument("--out")
-    a = ap.parse_args(); res = [run(f, trade=not a.no_trade, legacy=a.legacy, official=a.official) for f in sorted(glob.glob(a.pattern))]
+    ap = argparse.ArgumentParser(); ap.add_argument("pattern"); ap.add_argument("--no-trade", action="store_true"); ap.add_argument("--legacy", action="store_true"); ap.add_argument("--out")
+    a = ap.parse_args(); res = [run(f, trade=not a.no_trade, legacy=a.legacy) for f in sorted(glob.glob(a.pattern))]
     ok = [r for r in res if "excluded" not in r]
     cap = [r for r in ok if r["kind"] == "capture"]; sur = [r for r in ok if r["kind"] == "surrender"]; amb = [r for r in ok if r["kind"] == "capture_or_surrender"]
     print(f"games {len(ok)} (excluded {len(res)-len(ok)}); moves {sum(r['n_moves'] for r in ok)}; skipped moves {sum(len(r['skipped']) for r in ok)}")

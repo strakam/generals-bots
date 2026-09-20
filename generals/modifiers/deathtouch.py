@@ -4,8 +4,9 @@ enemy general's tile wins instantly — army counts are irrelevant.
 The touch condition deliberately reuses the base engine's own semantics
 instead of inventing new ones:
 
-  - Moves resolve one after the other in game.step's order (chasing >
-    reinforcing > smaller army — see game._determine_move_order). A "touch" is
+  - Moves resolve one after the other in game.step's order (generals.io's:
+    defensive first, attacks on a general last, larger army first, a chased
+    piece after its chaser — see game._determine_move_order). A "touch" is
     a move that is VALID at its own slot in that order (same validity test as
     game._execute_move) and whose destination is the opponent's general tile.
   - That gives the defense its teeth: a counter-move from a THIRD tile onto
@@ -13,11 +14,10 @@ instead of inventing new ones:
     source outright and the touch never executes (its source is no longer the
     attacker's). Leave the source with 2+ army — at least one unit still
     moves — and the touch executes anyway: attacker wins.
-  - The general launching its OWN army at the attacker's source is no
-    defense: that head-on is a mutual chase, so the tie falls to the smaller
-    army — and either the attacker moves first and touches, or the general's
-    counter moves first but is too small to strip the source. Only an exactly
-    equal army (seat-order tie) can survive that way.
+  - The general launching its OWN army at the attacker's source resolves
+    BEFORE the touch (a touch is an attack on a general, which the order puts
+    last): if the counter-launch strips the source the touch never executes,
+    otherwise at least one unit still moves and the attacker wins.
   - Both players touching on the same turn is a DRAW: reported like a
     truncation draw (info.is_done with winner -1).
   - A normal general capture at/after the threshold is itself a touch, so the

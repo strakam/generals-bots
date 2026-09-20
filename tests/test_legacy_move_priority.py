@@ -46,8 +46,8 @@ def test_default_is_unchanged():
         s_explicit, info_explicit = game.step(s, a, legacy_move_priority=False)
         for x, y in zip(s_default, s_explicit):
             assert np.array_equal(np.asarray(x), np.asarray(y))
-        # smaller army first, so the 40 resolves last and holds the cell on every tick
-        assert bool(s_default.ownership[1, 2, 2]) and int(s_default.armies[2, 2]) == 35
+        # larger army first on every tick: P1's 39 clears the garrison to 19, P0's 24 takes it with 5
+        assert bool(s_default.ownership[0, 2, 2]) and int(s_default.armies[2, 2]) == 5
 
 
 def test_legacy_alternates_by_tick():

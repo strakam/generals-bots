@@ -201,12 +201,12 @@ def test_first_capture_in_a_turn_stands():
     happens. (Under the competition ruleset the deathtouch modifier turns this
     into a draw — see tests/test_mutual_capture.py.)"""
     s = board({0: (0, 0), 1: (0, 5)}, size=6)
-    s = give(s, 0, (0, 4), 40)   # strikes P1's general
-    s = give(s, 1, (1, 0), 30)   # strikes P0's general; smaller army -> resolves first
+    s = give(s, 0, (0, 4), 40)   # strikes P1's general; larger army -> resolves first
+    s = give(s, 1, (1, 0), 30)   # strikes P0's general
     ns, info = game.step(s, jnp.stack([move(0, 4, RIGHT), move(1, 0, UP)]))
-    assert int(info.winner) == 1 and bool(info.is_done)
-    assert ns.eliminated.tolist() == [True, False]
-    assert bool(ns.generals[0, 5])                       # P1's general was never taken
+    assert int(info.winner) == 0 and bool(info.is_done)
+    assert ns.eliminated.tolist() == [False, True]
+    assert bool(ns.generals[0, 0])                       # P0's general was never taken
 
 
 # ------------------------------------------------------------- team victory

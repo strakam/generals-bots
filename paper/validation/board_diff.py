@@ -4,7 +4,7 @@
 The site's boards come from running the client bundle's Game/Map/MoveResolver under Node
 (scratch tool run_many.js): one JSON per game with owners[t] and armies[t] for t = 0..turns,
 where entry t is the board after the moves recorded with turn t-1, i.e. our state at the start
-of tick t. Usage: python board_diff.py <siteboards dir> 'gior/*.gior' [--no-official] [--out f]
+of tick t. Usage: python board_diff.py <siteboards dir> 'gior/*.gior' [--out f]
 """
 import os
 os.environ.setdefault("JAX_PLATFORMS", "cpu")
@@ -18,19 +18,19 @@ from functools import partial  # noqa: E402
 from generals.core import game  # noqa: E402
 
 
-@partial(jax.jit, static_argnames=("trade", "legacy", "official"))
-def boards(grid, actions, trade, legacy, official):
+@partial(jax.jit, static_argnames=("trade", "legacy"))
+def boards(grid, actions, trade, legacy):
     s0 = game.create_initial_state(grid)
 
     def tick(s, a):
-        s2, _ = game.step(s, a, legacy_move_priority=legacy, general_trade=trade, official_move_priority=official)
+        s2, _ = game.step(s, a, legacy_move_priority=legacy, general_trade=trade)
         return s2, (s.ownership, s.armies)
 
     _, (own, arm) = jax.lax.scan(tick, s0, actions)
     return own, arm
 
 
-def run(path, site_dir, official=True):
+def run(path, site_dir):
     row = gior.row(path); prep = rr.ra.prepare(row)
     if prep["exclude"]: return dict(id=row["id"], excluded=prep["exclude"])
     sp = os.path.join(site_dir, row["id"] + ".json")
@@ -40,7 +40,7 @@ def run(path, site_dir, official=True):
     T = min(so.shape[0], prep["actions"].shape[0] + 1)
     acts = np.zeros((-(-T // rr.BUCKET) * rr.BUCKET, 2, 5), dtype=np.int32); acts[:, :, 0] = 1
     acts[:prep["actions"].shape[0]] = prep["actions"]
-    own, arm = boards(jnp.asarray(prep["grid"]), jnp.asarray(acts), True, False, official)
+    own, arm = boards(jnp.asarray(prep["grid"]), jnp.asarray(acts), True, False)
     own, arm = np.asarray(own)[:T, :, :H, :W].reshape(T, 2, -1), np.asarray(arm)[:T, :H, :W].reshape(T, -1)
     oo = np.where(own[:, 0], 0, np.where(own[:, 1], 1, -1))
     so_ = np.where(so[:T] < 0, -1, so[:T])                                            # site: -1 empty, -2 mountain, -3/-4 fog codes
@@ -58,8 +58,8 @@ def run(path, site_dir, official=True):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(); ap.add_argument("site_dir"); ap.add_argument("pattern")
-    ap.add_argument("--no-official", action="store_true"); ap.add_argument("--out")
-    a = ap.parse_args(); res = [run(f, a.site_dir, official=not a.no_official) for f in sorted(glob.glob(a.pattern))]
+    ap.add_argument("--out")
+    a = ap.parse_args(); res = [run(f, a.site_dir) for f in sorted(glob.glob(a.pattern))]
     ok = [r for r in res if "excluded" not in r]
     ident = [r for r in ok if r["mismatch_ticks"] == 0]
     print(f"games {len(ok)} (excluded {len(res)-len(ok)}); ticks {sum(r['turns'] for r in ok)}; identical boards at every in-game tick: {len(ident)}; terminal board differs (post-capture increment): {sum(r['terminal_mismatch'] for r in ok)}")
