@@ -50,7 +50,8 @@ DEATHTOUCH_TURN = 800  # default threshold; GeneralsEnv passes its own
 def _executes_onto_general(state: game.GameState, player_idx, action) -> jnp.ndarray:
     """True iff this action, applied to THIS state, is a valid move whose
     destination is the opponent's general tile. Mirrors game._execute_move's
-    validity test exactly — if that changes, change this."""
+    validity test, except that a 1-army source (valid there since 2026, it
+    moves nothing) is not a touch — if that test changes, change this."""
     pass_turn, si, sj, direction, split_army = action
     H, W = state.armies.shape
 
