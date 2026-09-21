@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <title>Generals · Classic 1v1</title>
+  <title>Generals</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" data-local="board.css">
   <link rel="stylesheet" data-local="style.css">
 </head>
 <body>
   <main>
-    <header><a class="brand" href="https://generals.bot" target="_blank" rel="noreferrer">GENERALS<span>CLASSIC 1v1</span></a><span id="mode" class="badge">CONNECTING</span></header>
+    <header><a class="brand" href="https://generals.bot" target="_blank" rel="noreferrer">GENERALS<span id="variant-title">CLASSIC 1v1</span></a><span id="mode" class="badge">CONNECTING</span></header>
     <section class="matchbar">
       <div class="player red"><span class="dot"></span><div><b id="name0">Player 1</b><small><span id="army0">—</span> army <span class="divider">/</span> <span id="land0">—</span> land</small></div></div>
       <div class="clock"><b id="turn">0</b><small id="turn-label">TURN</small></div>
@@ -29,6 +29,7 @@
       <button id="undo">Undo last <kbd>E</kbd></button>
       <button id="clear">Clear queue <kbd>Q</kbd></button>
       <span id="queue-count">0 queued</span>
+      <span id="build-hint" hidden></span>
       <span class="hint">Select your tile · Arrow keys or WASD to queue moves</span>
     </section>
     <section id="replay-controls" class="controls" hidden>

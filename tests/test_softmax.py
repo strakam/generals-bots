@@ -104,7 +104,11 @@ def test_random_seed_is_default():
 
 def test_competition_turn_cap_is_supported():
     assert config(max_turns=2000).max_turns == 2000
-    assert Match(7).env.truncation == 2000
+    match = Match(7)
+    assert match.env.truncation == 2000
+    match.state = match.state._replace(time=jnp.int32(1200))
+    match.advance([PASS, PASS])
+    assert match.turn == 1201
 
 
 def test_classic_rules_have_neutral_castles_and_reject_builds():
@@ -214,8 +218,10 @@ def test_live_public_routes_do_not_reveal_hidden_state(tmp_path):
                 "turn",
                 "max_turns",
                 "players",
+                "ruleset",
                 "army",
                 "land",
+                "eliminated",
                 "result",
                 "board",
             }

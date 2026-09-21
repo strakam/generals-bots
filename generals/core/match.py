@@ -39,11 +39,12 @@ def make_board(env, seed):
         # it back to the exact rectangle.
         min_generals_distance=env.min_generals_distance,
         castle_val_range=env.castle_val_range,
+        num_players=env.num_players,
     )[:h, :w]
     if env.build_castles:
         # nothing neutral to capture — every castle in the game gets built
-        grid = _bc.strip_neutral_castles(grid)
-    return create_initial_state(grid.astype(jnp.int32))
+        grid = _bc.strip_neutral_castles(grid, num_players=env.num_players)
+    return create_initial_state(grid.astype(jnp.int32), teams=env.teams)
 
 
 def make_transition(env):

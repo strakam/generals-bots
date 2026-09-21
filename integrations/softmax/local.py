@@ -20,6 +20,7 @@ def main():
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--port", type=int, default=8080)
     parser.add_argument("--max-turns", type=int, default=1200)
+    parser.add_argument("--variant", choices=("competition", "ffa", "castles"), default="competition")
     parser.add_argument("--human", action="store_true", help="control slot 0 in the browser")
     parser.add_argument("--keep-open", action="store_true", help="keep the server open for replay inspection")
     parser.add_argument("--output", type=Path, default=ROOT / "integrations/softmax/local-output")
@@ -29,13 +30,17 @@ def main():
     # Each run gets its own directory so old success artifacts cannot mask failure.
     run_dir = output / f"episode-{time.time_ns()}"
     run_dir.mkdir(mode=0o700)
-    tokens = [secrets.token_urlsafe(24) for _ in range(2)]
+    count = 4 if args.variant == "ffa" else 2
+    tokens = [secrets.token_urlsafe(24) for _ in range(count)]
+    names = ["Red", "Blue", "Green", "Purple"][:count]
     config = {
         "tokens": tokens,
-        "players": [{"name": "You" if args.human else "Expander Red"}, {"name": "Expander Blue"}],
+        "players": [{"name": "You" if args.human and slot == 0 else name} for slot, name in enumerate(names)],
+        "ruleset": "build_castles" if args.variant == "castles" else "classic",
         "seed": args.seed,
         "max_turns": args.max_turns,
         "tick_interval_seconds": 0.5 if args.human else 0.0,
+        "turn_timeout_seconds": 1 if args.human else 0.5,
     }
     config_file = run_dir / "config.json"
     config_file.write_text(json.dumps(config))
@@ -68,15 +73,15 @@ def main():
                 time.sleep(0.1)
             else:
                 raise RuntimeError("game server did not become ready within 60 seconds")
-        for slot in range(2):
+        for slot in range(count):
             query = urlencode({"slot": slot, "token": tokens[slot]})
             if slot == 0 and args.human:
                 print(f"Play: {base}/client/player?{query}", flush=True)
             else:
                 player_env = {**os.environ, "COWORLD_PLAYER_WS_URL": f"ws://127.0.0.1:{args.port}/player?{query}"}
-                processes.append(
-                    subprocess.Popen([sys.executable, "-m", "integrations.softmax.player"], env=player_env, cwd=ROOT)
-                )
+                module = "builder_player" if args.variant == "castles" else "player"
+                processes.append(subprocess.Popen(
+                    [sys.executable, "-m", f"integrations.softmax.{module}"], env=player_env, cwd=ROOT))
         print(f"Watch: {base}/client/global", flush=True)
         print(f"Artifacts: {run_dir}", flush=True)
         deadline = time.monotonic() + 900

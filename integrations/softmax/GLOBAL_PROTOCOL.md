@@ -6,8 +6,8 @@ be safe for either competing player to read**. Incoming messages never mutate
 the game. WebSocket ping receives a matching pong.
 
 Updates contain `type: "global"`, `protocol_version: 1`, `phase`, `turn`,
-`max_turns`, two `players` display names, two-element `army` and `land` totals,
-`result`, and `board`. During the match, `board` and `result` are null. Phases
+`max_turns`, two or four `players` display names, per-slot `army`, `land`, and `eliminated` arrays,
+`ruleset`, `result`, and `board`. During the match, `board` and `result` are null. Phases
 are `waiting`, `playing`, `resolving`, `saving`, `finished`, and `failed`;
 brief transitional phases need not each be delivered to a slow viewer.
 
@@ -17,16 +17,17 @@ replay viewing uses the static bundle, independent of the game container.
 
 The replay is JSON:
 
-- `format: "generals-coworld"`, `version: 1`, `ruleset: "classic"`.
+- `format: "generals-coworld"`, `version: 1`, `ruleset: "classic"` or `"build_castles"`.
   Archived release 0.1.0 replays use `ruleset: "competition"` instead.
-- Actual `seed`, `height`, `width`, and two display names in `players`.
+- Actual `seed`, `height`, `width`, and two or four display names in `players`.
 - `frames`: initial frame, then one frame after every applied turn. Each has
-  `turn`, `type_grid`, `owner_grid`, `army_grid`, `army`, and `land`.
-- Replay owners are **absolute**: 0 neutral, 1 slot 0, 2 slot 1. Replay types
+  `turn`, `type_grid`, `owner_grid`, `army_grid`, `army`, `land`, and `eliminated`.
+- Replay owners are **absolute**: 0 neutral, otherwise slot + 1. Replay types
   use the same integer codes as player observations but contain no fog.
-- `turns`: each attempted turn's `turn`, two `actions`, two Boolean `timed_out`
-  flags, and `applied`. The final attempt that causes a forfeit is not applied
-  to the engine; this is explicitly marked `applied: false`.
+- `turns`: each attempted turn's `turn`, `actions` and Boolean `timed_out` arrays (one entry per slot), `forfeited` (the eliminated slot indices for this attempt), and `applied`.
+  Apply forfeits before moves when resimulating. A terminal forfeit stops before
+  the move/growth tick (`applied: false`); a final frame records its elimination
+  state at the same tick. Nonterminal FFA forfeits allow the other moves to run.
 - `result`: the same final scoring object sent to players.
 
 There are no tokens or presigned upload URLs in replays. Board frames allow

@@ -19,6 +19,8 @@
           if (t.mountain) cls += ' mountain has-mountain';
           else if (t.owner === 0) cls += ' blue';
           else if (t.owner === 1) cls += ' red';
+          else if (t.owner === 2) cls += ' green';
+          else if (t.owner === 3) cls += ' purple';
           else if (t.castle && t.owner === -1) cls += ' neutral-castle';
           else cls += ' neutral';
           if (t.general) cls += ' has-general';
@@ -93,7 +95,7 @@
         tiles = frame.type_grid.flatMap((row, r) => row.map((kind, c) => ({
           // Coworld uses 1=red and 2=blue; the competition renderer uses 0=blue and 1=red.
           owner: kind === 0 || kind === 5 ? -2 : frame.owner_grid[r][c] === 0 ? -1 :
-            frame.owner_grid[r][c] === 1 ? 1 : 0,
+            frame.owner_grid[r][c] === 1 ? 1 : frame.owner_grid[r][c] === 2 ? 0 : frame.owner_grid[r][c]-1,
           count: frame.army_grid[r][c], mountain: kind === 2 || kind === 5,
           general: kind === 4, castle: kind === 3,
         })));
