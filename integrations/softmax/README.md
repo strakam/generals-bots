@@ -8,7 +8,8 @@ WebSocket. The lightweight stdio bridge also supports existing competition bots.
 
 Release 0.3.0 adds the `ffa` and `castles` variants, plus paced human versions
 `ffa-human` and `castles-human`. Existing `competition` and `human` IDs retain
-classic 1v1 rules and the 1,200-turn cap. Each mode can have its own Softmax
+classic 1v1 rules. The competition cap is 2,000 turns; the human cap remains
+1,200. Each mode can have its own Softmax
 league under the same `generals-competition` Coworld. The bundled Builder player
 funds an opening castle before expanding; Expander works in every mode but does
 not build. These are integration baselines, not strong competitive players.
@@ -31,6 +32,8 @@ remains 500 ms; slow connections can extend a turn. Status text stays steady
 while idle instead of alternating messages each tick.
 Release 0.2.5 tracks separately selected army routes: a failed route is removed
 while other queued routes continue in order.
+Release 0.3.1 raises the competition turn cap to 2,000. Human, FFA, and
+castle-building variants remain at 1,200 turns.
 
 ## Play locally
 
@@ -74,7 +77,7 @@ python -m integrations.softmax.local --seed 7 --keep-open
 ```
 
 `--max-turns 40` makes a short smoke test; the competition variant always uses
-1,200. Each local run writes into its own ignored `local-output/episode-*`
+2,000. Each local run writes into its own ignored `local-output/episode-*`
 directory. `config.json` contains local player tokens; do not publish it. The
 shareable outputs are `results.json` and `replay.json`. `--port` selects another
 local port. The local launcher binds only to loopback.
@@ -106,7 +109,7 @@ local port. The local launcher binds only to loopback.
 - General capture always requires beating its defending army, including after
   turn 800. There is no Deathtouch rule.
 - Capture scores **+1** for the winner and **−1** for each other player. Reaching
-  the 1,200-turn cap scores **0 for everyone**, including eliminated players,
+  the configured turn cap scores **0 for everyone**, including eliminated players,
   regardless of army or land advantage. FFA does not award intermediate ranks.
 
 The hosted runtime adds explicit failure rules: bot matches have a 500 ms action
@@ -184,7 +187,7 @@ From the repository root:
 
 ```bash
 python -m integrations.softmax.tools.manifest --check
-coworld build --project integrations/softmax --version 0.3.0
+coworld build --project integrations/softmax --version 0.3.1
 coworld certify integrations/softmax/dist/coworld_manifest.json
 ```
 

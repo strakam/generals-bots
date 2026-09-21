@@ -58,7 +58,7 @@ class Match:
         # generator chooses distant reachable sites and safely falls back when
         # terrain prevents satisfying every pair's target separation.
         self.env = GeneralsEnv(
-            min_grid_size=18, max_grid_size=21, pad_to=21, truncation=1200,
+            min_grid_size=18, max_grid_size=21, pad_to=21, truncation=2000,
             mountain_density_range=(0.24, 0.26), min_generals_distance=17 if num_players == 2 else 10,
             num_players=num_players, build_castles=ruleset == "build_castles", deathtouch_turn=None,
         )

@@ -25,7 +25,7 @@ def template():
             "scores": scores,
             "winner": {"type": "integer", "enum": [-1, 0, 1, 2, 3]},
             "reason": {"type": "string", "enum": ["general_capture", "turn_limit", "forfeit", "double_forfeit"]},
-            "turns": {"type": "integer", "minimum": 0, "maximum": 1200},
+            "turns": {"type": "integer", "minimum": 0, "maximum": 2000},
             "army": counts,
             "land": counts,
             "timeouts": counts,
@@ -78,8 +78,8 @@ def template():
             {
                 "id": "competition",
                 "name": "Classic 1v1",
-                "description": "Regular capture-only rules, 1200-turn cap, fresh private seed; fast bot play.",
-                "game_config": {"players": players, "max_turns": 1200},
+                "description": "Regular capture-only rules, 2000-turn cap, fresh private seed; fast bot play.",
+                "game_config": {"players": players, "max_turns": 2000},
             },
             {
                 "id": "human",
