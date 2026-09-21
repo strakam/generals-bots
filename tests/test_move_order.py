@@ -1,6 +1,7 @@
-"""Move order is generals.io's: defensive moves first, attacks on a general
-last, then the LARGER army first, equal armies in player order (reversed on odd
-turns), and a chased piece waits for its chaser. The engine replicates the
+"""Move order is generals.io's: defensive moves first, moves onto a general
+tile last (within each class, a friendly merge onto a general included), then
+the LARGER army first, equal armies in player order (reversed on odd turns),
+and a chased piece waits for its chaser. The engine replicates the
 website game rather than a rule of its own; the consequences on a contested
 cell and for the deathtouch modifier are pinned here.
 """
@@ -84,3 +85,24 @@ def test_deathtouch_chase_from_a_third_tile_still_defends():
     s2, info = dt.step(s, jnp.stack([a0, a1]), COMPETITION_DEATHTOUCH_TURN)
     assert not bool(info.is_done), "the chase must strip the touch at its source"
     assert bool(s2.ownership[0, 0, 1]), "the chaser captures the attacker's source"
+
+
+def test_a_merge_onto_a_teammates_general_sorts_last_among_defensive_moves():
+    """generals.io's isGeneralAttack flags every move whose destination is a
+    general tile, defensive ones included. Head-on swap between teammates in
+    2v2: P0 splits 10 from his general onto P1's tile, P1 moves 30 from that
+    tile onto the general. Both moves are defensive; P1's is onto a general,
+    so P0's resolves first despite the smaller army, and P1's then finds its
+    source gone (larger-army-first would give (0,0)=20, (0,1)=20)."""
+    grid = jnp.zeros((6, 6), dtype=jnp.int32).at[0, 0].set(1).at[0, 5].set(2).at[5, 0].set(3).at[5, 5].set(4)
+    s = game.create_initial_state(grid, teams=jnp.array([0, 0, 1, 1], dtype=jnp.int32))
+    s = s._replace(armies=s.armies.at[0, 0].set(10))
+    s = give(s, 1, (0, 1), 30)
+    a0 = jnp.array([0, 0, 0, RIGHT, 1], dtype=jnp.int32)   # P0 general -> (0,1), split: 5 move
+    a1 = jnp.array([0, 0, 1, LEFT, 0], dtype=jnp.int32)    # P1 (0,1) -> P0's general
+    p = jnp.array([1, 0, 0, 0, 0], dtype=jnp.int32)
+    order = game._determine_move_order(s, jnp.stack([a0, a1, p, p]))
+    assert order.tolist()[:2] == [0, 1]
+    s2, _ = game.step(s, jnp.stack([a0, a1, p, p]))
+    assert int(s2.armies[0, 0]) == 5 and bool(s2.ownership[0, 0, 0])
+    assert int(s2.armies[0, 1]) == 35 and bool(s2.ownership[0, 0, 1])

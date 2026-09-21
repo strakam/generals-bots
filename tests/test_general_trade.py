@@ -142,3 +142,56 @@ def test_default_step_unchanged_on_random_play():
         s2, _ = game.step(s, a, general_trade=False)
         assert np.array_equal(np.asarray(s1.armies), np.asarray(s2.armies))
         s = s1
+
+
+def test_trade_resolves_at_the_position_of_its_earlier_move():
+    """Three players: P0 and P2 trade generals while P1 attacks a tile of P0's
+    the same turn. Both trade moves are attacks on a general and sort after
+    P1's, so the site (Game.update: getMutualGeneralSwapMoveIndex when the walk
+    reaches the earlier of the two) has P1 land on the tile before the trade
+    halves it: 11 vs 9 -> P1 keeps 2. A trade resolved before all moves would
+    let P1 hit 5 (=round(9/2)) and keep 6 (FFA replay T7_-uGycu, turn 307)."""
+    grid = jnp.zeros((8, 8), dtype=jnp.int32).at[0, 0].set(1).at[7, 7].set(2).at[0, 7].set(3)
+    s = game.create_initial_state(grid, teams=jnp.arange(3, dtype=jnp.int32))._replace(time=jnp.int32(10))
+    s = s._replace(armies=s.armies.at[0, 0].set(5).at[0, 7].set(7))
+    s = give(s, 0, (0, 6), 40)          # P0 hits P2's general (0,7)
+    s = give(s, 2, (1, 0), 30)          # P2 hits P0's general (0,0)
+    s = give(s, 0, (4, 4), 9)           # P0's land, attacked by P1
+    s = give(s, 1, (4, 5), 12)
+    a0 = jnp.array([0, 0, 6, RIGHT, 0], dtype=jnp.int32)
+    a1 = jnp.array([0, 4, 5, LEFT, 0], dtype=jnp.int32)
+    a2 = jnp.array([0, 1, 0, UP, 0], dtype=jnp.int32)
+    order = game._determine_move_order(s, jnp.stack([a0, a1, a2]))
+    assert int(order[0]) == 1
+    ns, info = game.step(s, jnp.stack([a0, a1, a2]), general_trade=True)
+    assert int(info.winner) == -1 and not bool(ns.eliminated.any())
+    assert owner(ns, (4, 4)) == 1 and int(ns.armies[4, 4]) == 11 - 9
+    # the trade itself is as in 1v1
+    assert owner(ns, (0, 7)) == 0 and int(ns.armies[0, 7]) == 39 - 7
+    assert owner(ns, (0, 0)) == 2 and int(ns.armies[0, 0]) == 29 - 5
+    assert ns.general_positions.tolist() == [[0, 7], [7, 7], [0, 0]]
+    assert owner(ns, (0, 6)) == 2 and owner(ns, (1, 0)) == 0
+    # P1 keeps nothing of the trade: only P0's remaining land swapped
+    assert owner(ns, (4, 5)) == 1 and int(ns.armies[4, 5]) == 1
+
+
+def test_trade_is_judged_on_the_board_when_its_earlier_move_is_reached():
+    """The trade is judged on the board as it stands when the walk reaches the
+    earlier of its two moves, not on the pre-tick board: P1's plain attack
+    resolves first and shrinks P0's attacking stack below what a capture
+    needs, so there is no trade; P0's weakened attack fails and P2's capture
+    of P0 stands."""
+    grid = jnp.zeros((8, 8), dtype=jnp.int32).at[0, 0].set(1).at[7, 7].set(2).at[0, 7].set(3)
+    s = game.create_initial_state(grid, teams=jnp.arange(3, dtype=jnp.int32))._replace(time=jnp.int32(10))
+    s = s._replace(armies=s.armies.at[0, 0].set(5).at[0, 7].set(7))
+    s = give(s, 0, (0, 6), 40)          # P0 hits P2's general
+    s = give(s, 2, (1, 0), 30)          # P2 hits P0's general
+    s = give(s, 1, (1, 6), 38)          # P1 hits P0's stack first (larger army, not a general attack): 37 vs 40 -> 3 left
+    a0 = jnp.array([0, 0, 6, RIGHT, 0], dtype=jnp.int32)
+    a1 = jnp.array([0, 1, 6, UP, 0], dtype=jnp.int32)
+    a2 = jnp.array([0, 1, 0, UP, 0], dtype=jnp.int32)
+    ns, info = game.step(s, jnp.stack([a0, a1, a2]), general_trade=True)
+    assert int(ns.armies[0, 7]) == 7 - 2 and owner(ns, (0, 7)) == 2      # P0's 2 of the 3 left could not capture
+    assert int(ns.armies[0, 6]) == 1 and owner(ns, (0, 6)) == 2          # ...and the source went to P2 with the spoils
+    assert ns.eliminated.tolist() == [True, False, False]
+    assert owner(ns, (0, 0)) == 2 and int(info.winner) == -1
