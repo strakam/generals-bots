@@ -180,3 +180,4 @@ uv.lock
 # kept locally, not published
 competition/
 tests/test_matchup.py
+paper/validation/replays/
