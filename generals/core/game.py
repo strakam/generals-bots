@@ -180,27 +180,16 @@ def create_initial_state(grid: jnp.ndarray, teams=None, num_players: int | None 
 
 @jax.jit
 def get_visibility(ownership: jnp.ndarray) -> jnp.ndarray:
-    """Compute visibility mask (3x3 around owned cells)."""
-    H, W = ownership.shape
-    ownership_float = ownership.astype(jnp.float32)
-    padded = jnp.pad(ownership_float, 1, mode="constant", constant_values=0)
+    """Compute visibility mask (3x3 around owned cells).
 
-    stacked = jnp.stack(
-        [
-            padded[0:H, 0:W],
-            padded[0:H, 1 : W + 1],
-            padded[0:H, 2 : W + 2],
-            padded[1 : H + 1, 0:W],
-            padded[1 : H + 1, 1 : W + 1],
-            padded[1 : H + 1, 2 : W + 2],
-            padded[2 : H + 2, 0:W],
-            padded[2 : H + 2, 1 : W + 1],
-            padded[2 : H + 2, 2 : W + 2],
-        ],
-        axis=0,
-    )
-
-    return jnp.max(stacked, axis=0) > 0
+    Boolean dilation by one cell in each direction, done separably (columns,
+    then rows). Works on any leading batch shape: (..., H, W) -> (..., H, W).
+    """
+    own = ownership.astype(bool)
+    zc = jnp.zeros_like(own[..., :1])
+    rows = own | jnp.concatenate([own[..., 1:], zc], axis=-1) | jnp.concatenate([zc, own[..., :-1]], axis=-1)
+    zr = jnp.zeros_like(rows[..., :1, :])
+    return rows | jnp.concatenate([rows[..., 1:, :], zr], axis=-2) | jnp.concatenate([zr, rows[..., :-1, :]], axis=-2)
 
 
 @partial(jax.jit, static_argnames=("spoils",))
@@ -699,27 +688,71 @@ def _observe(state: GameState, player_idx, fog: bool) -> Observation:
         visible = jnp.ones_like(own_cells)
     invisible = ~visible
 
-    info = get_info(state)
+    land = jnp.sum(state.ownership, axis=(1, 2))
+    army = jnp.sum(state.armies[None] * state.ownership, axis=(1, 2))
     structures = state.mountains | state.castles
 
+    # The team's own and allied cells lie inside its visible area, so they need no masking.
     return Observation(
         armies=state.armies * visible,
-        generals=state.generals * visible,
-        castles=state.castles * visible,
-        mountains=state.mountains * visible,
-        neutral_cells=state.ownership_neutral * visible,
-        owned_cells=own_cells * visible,
-        opponent_cells=enemy_cells * visible,
+        generals=state.generals & visible,
+        castles=state.castles & visible,
+        mountains=state.mountains & visible,
+        neutral_cells=state.ownership_neutral & visible,
+        owned_cells=own_cells,
+        opponent_cells=enemy_cells & visible,
         fog_cells=invisible & ~structures,
         structures_in_fog=invisible & structures,
-        owned_land_count=info.land[player_idx],
-        owned_army_count=info.army[player_idx],
-        opponent_land_count=jnp.sum(jnp.where(same_team, 0, info.land)),
-        opponent_army_count=jnp.sum(jnp.where(same_team, 0, info.army)),
+        owned_land_count=land[player_idx],
+        owned_army_count=army[player_idx],
+        opponent_land_count=jnp.sum(jnp.where(same_team, 0, land)),
+        opponent_army_count=jnp.sum(jnp.where(same_team, 0, army)),
         timestep=state.time,
-        allied_cells=allied_cells * visible,
-        allied_land_count=jnp.sum(jnp.where(teammate, info.land, 0)),
-        allied_army_count=jnp.sum(jnp.where(teammate, info.army, 0)),
+        allied_cells=allied_cells,
+        allied_land_count=jnp.sum(jnp.where(teammate, land, 0)),
+        allied_army_count=jnp.sum(jnp.where(teammate, army, 0)),
+    )
+
+
+def _observe_all(state: GameState, fog: bool) -> Observation:
+    """Observations of all N players at once, stacked on a leading axis.
+
+    Field for field identical to stacking _observe(state, i, fog) over i, and
+    faster because the team masks, the visibility and the totals are computed
+    for all players in one pass.
+    """
+    N = state.ownership.shape[0]
+    players = jnp.arange(N)
+    same_team = state.teams[:, None] == state.teams[None, :]           # (viewer, player)
+    teammate = same_team & (players[:, None] != players[None, :])
+    own = state.ownership                                               # (N, H, W)
+    team = jnp.any(own[None] & same_team[:, :, None, None], axis=1)
+    enemy = jnp.any(own[None] & ~same_team[:, :, None, None], axis=1)
+    visible = get_visibility(team) if fog else jnp.ones_like(own)
+    invisible = ~visible
+
+    land = jnp.sum(own, axis=(1, 2))
+    army = jnp.sum(state.armies[None] * own, axis=(1, 2))
+    structures = (state.mountains | state.castles)[None]
+
+    return Observation(
+        armies=state.armies[None] * visible,
+        generals=state.generals[None] & visible,
+        castles=state.castles[None] & visible,
+        mountains=state.mountains[None] & visible,
+        neutral_cells=state.ownership_neutral[None] & visible,
+        owned_cells=own,
+        opponent_cells=enemy & visible,
+        fog_cells=invisible & ~structures,
+        structures_in_fog=invisible & structures,
+        owned_land_count=land,
+        owned_army_count=army,
+        opponent_land_count=jnp.sum(jnp.where(same_team, 0, land[None]), axis=1),
+        opponent_army_count=jnp.sum(jnp.where(same_team, 0, army[None]), axis=1),
+        timestep=jnp.broadcast_to(state.time, (N,)),
+        allied_cells=team & ~own,
+        allied_land_count=jnp.sum(jnp.where(teammate, land[None], 0), axis=1),
+        allied_army_count=jnp.sum(jnp.where(teammate, army[None], 0), axis=1),
     )
 
 
@@ -743,6 +776,19 @@ def get_full_observation(state: GameState, player_idx: int) -> Observation:
     true game state.
     """
     return _observe(state, player_idx, fog=False)
+
+
+@jax.jit
+def get_observations(state: GameState) -> Observation:
+    """Observations of every player with fog of war, stacked on a leading
+    player axis: the same as stacking get_observation(state, i) over i."""
+    return _observe_all(state, fog=True)
+
+
+@jax.jit
+def get_full_observations(state: GameState) -> Observation:
+    """get_full_observation for every player, stacked on a leading player axis."""
+    return _observe_all(state, fog=False)
 
 
 @jax.jit

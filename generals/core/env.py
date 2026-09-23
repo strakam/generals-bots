@@ -388,9 +388,8 @@ class GeneralsEnv:
         )
 
         # Get observations (perfect-info skips fog-of-war masking), one per player
-        get_obs = game.get_full_observation if self.perfect_info else game.get_observation
-        per_player = [get_obs(final_state, i) for i in range(self.num_players)]
-        observation = jax.tree.map(lambda *xs: jnp.stack(xs, axis=0), *per_player)
+        get_obs = game.get_full_observations if self.perfect_info else game.get_observations
+        observation = get_obs(final_state)
 
         timestep = TimeStep(
             observation=observation,
