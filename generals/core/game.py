@@ -182,14 +182,14 @@ def create_initial_state(grid: jnp.ndarray, teams=None, num_players: int | None 
 def get_visibility(ownership: jnp.ndarray) -> jnp.ndarray:
     """Compute visibility mask (3x3 around owned cells).
 
-    Boolean dilation by one cell in each direction, done separably (columns,
-    then rows). Works on any leading batch shape: (..., H, W) -> (..., H, W).
+    Boolean dilation by one cell in each direction: pad once, then OR the
+    three shifted windows along columns and along rows. Works on any leading
+    batch shape: (..., H, W) -> (..., H, W).
     """
-    own = ownership.astype(bool)
-    zc = jnp.zeros_like(own[..., :1])
-    rows = own | jnp.concatenate([own[..., 1:], zc], axis=-1) | jnp.concatenate([zc, own[..., :-1]], axis=-1)
-    zr = jnp.zeros_like(rows[..., :1, :])
-    return rows | jnp.concatenate([rows[..., 1:, :], zr], axis=-2) | jnp.concatenate([zr, rows[..., :-1, :]], axis=-2)
+    H, W = ownership.shape[-2:]
+    padded = jnp.pad(ownership.astype(bool), [(0, 0)] * (ownership.ndim - 2) + [(1, 1), (1, 1)])
+    rows = padded[..., :, 0:W] | padded[..., :, 1:W + 1] | padded[..., :, 2:W + 2]
+    return rows[..., 0:H, :] | rows[..., 1:H + 1, :] | rows[..., 2:H + 2, :]
 
 
 @partial(jax.jit, static_argnames=("spoils",))
@@ -301,7 +301,12 @@ def _apply_move(state: GameState, player_idx: int, si: int, sj: int, di: int, dj
         castles=castles,
     )
     if spoils:
-        state = _eliminate_if(state, captured_idx, player_idx, captured)
+        state = lax.cond(
+            captured,
+            lambda s: eliminate_player(s, captured_idx, player_idx),
+            lambda s: s,
+            state,
+        )
     return state
 
 
@@ -315,15 +320,9 @@ def eliminate_player(state: GameState, captured_idx, capturer_idx) -> GameState:
     set to that team. Idempotent, so it is safe to apply to an already
     eliminated player.
     """
-    return _eliminate_if(state, captured_idx, capturer_idx, True)
-
-
-def _eliminate_if(state: GameState, captured_idx, capturer_idx, captured) -> GameState:
-    """eliminate_player when `captured`, else the state unchanged (masked
-    updates, so no whole-state select is needed under vmap)."""
     N = state.ownership.shape[0]
     players = jnp.arange(N)
-    cells = state.ownership[captured_idx] & captured                 # (H, W)
+    cells = state.ownership[captured_idx]                            # (H, W)
     capturer = players == capturer_idx                               # (N,)
 
     armies = jnp.where(cells, (state.armies + 1) // 2, state.armies)
@@ -331,10 +330,10 @@ def _eliminate_if(state: GameState, captured_idx, capturer_idx, captured) -> Gam
     castles = state.castles | (state.generals & cells)
     generals = state.generals & ~cells
 
-    eliminated = state.eliminated | ((players == captured_idx) & captured)
+    eliminated = state.eliminated | (players == captured_idx)
     capturer_team = state.teams[capturer_idx]
     last_team_standing = jnp.all(eliminated | (state.teams == capturer_team))
-    winner = jnp.where(captured & (state.winner < 0) & last_team_standing, capturer_team, state.winner)
+    winner = jnp.where((state.winner < 0) & last_team_standing, capturer_team, state.winner)
 
     return state._replace(
         armies=armies,
