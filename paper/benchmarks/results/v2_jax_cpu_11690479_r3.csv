@@ -1,0 +1,18 @@
+# host=a05 device=cpu:cpu cores=128 jax=0.11.1 python=3.12.13 grid=24 tag=v2-amd-excl-r3 players=2 teams=ffa
+sim,device,envs,variant,frames_per_s
+jax,cpu,1,step_only,10643
+jax,cpu,1,env_step,8097
+jax,cpu,16,step_only,116154
+jax,cpu,16,env_step,47959
+jax,cpu,64,step_only,269984
+jax,cpu,64,env_step,73602
+jax,cpu,256,step_only,351347
+jax,cpu,256,env_step,155322
+jax,cpu,1024,step_only,490799
+jax,cpu,1024,env_step,383592
+jax,cpu,4096,step_only,639876
+jax,cpu,4096,env_step,454735
+jax,cpu,16384,step_only,1148261
+jax,cpu,16384,env_step,548032
+jax,cpu,65536,step_only,1169510
+jax,cpu,65536,env_step,690816

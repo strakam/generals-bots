@@ -39,10 +39,12 @@ if __name__ == "__main__":
     ap.add_argument("--numpy-tag", required=True); ap.add_argument("--jaxcpu-tag", required=True); ap.add_argument("--gpu-tag", required=True)
     ap.add_argument("--out", default="sim_throughput.pdf"); ap.add_argument("--tex", default=None)
     ap.add_argument("--cpu-label", default="CPU (64 threads)"); ap.add_argument("--gpu-label", default="one H200 GPU")
+    ap.add_argument("--numpy-max-procs", type=int, default=None,
+                    help="drop NumPy points above this process count (oversubscribed beyond the allocated threads)")
     a = ap.parse_args()
     rows = load(glob.glob("results/*.csv"))
     S = {
-        "NumPy, " + a.cpu_label: series(rows, a.numpy_tag, "numpy", "cpu"),
+        "NumPy, " + a.cpu_label: [(e, f) for e, f in series(rows, a.numpy_tag, "numpy", "cpu") if a.numpy_max_procs is None or e <= a.numpy_max_procs],
         "JAX, " + a.cpu_label: series(rows, a.jaxcpu_tag, "jax", "cpu"),
         "JAX, " + a.gpu_label: series(rows, a.gpu_tag, "jax", "gpu"),
     }

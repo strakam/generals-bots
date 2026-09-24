@@ -1,9 +1,9 @@
-\begin{tabular}{lrrrrrrrrrr}
+\begin{tabular}{lrrrrrrrrrrr}
 \toprule
-Parallel environments & $1$ & $16$ & $32$ & $64$ & $128$ & $256$ & $1{,}024$ & $4{,}096$ & $16{,}384$ & $65{,}536$ \\
+Parallel environments & $1$ & $16$ & $32$ & $64$ & $256$ & $1{,}024$ & $4{,}096$ & $16{,}384$ & $65{,}536$ & $131{,}072$ & $262{,}144$ \\
 \midrule
-NumPy, CPU node (64 threads) & 1.1k & 6.1k & 8.0k & 8.7k & 8.0k & 11k & -- & -- & -- & -- \\
-JAX, same CPU node (64 threads) & 9.6k & 65k & -- & 92k & -- & 183k & 364k & 476k & 497k & 734k \\
-JAX, one H200 GPU & 21k & 183k & -- & 875k & -- & 2.8M & 10.3M & 20.5M & 35.6M & 45.0M \\
+NumPy, CPU (64 threads) & 1.1k & 5.8k & 7.7k & 8.8k & -- & -- & -- & -- & -- & -- & -- \\
+JAX, CPU (64 threads) & 8.5k & 48k & -- & 84k & 155k & 411k & 474k & 548k & 684k & -- & -- \\
+JAX, one H200 GPU & 16k & 198k & -- & 757k & 2.5M & 8.8M & 17.9M & 31.4M & 38.1M & 40.8M & 42.8M \\
 \bottomrule
 \end{tabular}
