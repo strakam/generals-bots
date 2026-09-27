@@ -41,6 +41,8 @@ with ties broken by player order reversed on odd turns.
 Release 0.3.2 raises the FFA and castle-building bot variants to 2,000 turns,
 matching classic. Human variants stay at 1,200 so a paced game fits Softmax's
 20-minute hosted episode limit.
+Release 0.3.3 changes documentation only: per-mode turn caps, the move order
+and one league per bot mode.
 
 ## Play locally
 
