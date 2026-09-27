@@ -14,7 +14,13 @@ classic 1v1: ownership is (2, H, W), actions are (2, 5), winner is 0 or 1.
 Key functions:
     - create_initial_state: Create a new game from a grid (and optional teams)
     - step: Execute one game step with actions from all players
+    - surrender / neutralize: generals.io's server-side events (a player
+      leaves; their land is handed on), applied to the state between steps
     - get_observation: Get a player's view with (team-shared) fog of war
+
+The rules are generals.io's (2026), verified tile for tile against the
+site's own engine on ranked 1v1, free-for-all and 2v2 replays
+(paper/validation).
 """
 from functools import partial
 from typing import Tuple, NamedTuple, Protocol, Any
@@ -55,8 +61,10 @@ class GameState(NamedTuple):
         general_positions: (N, 2) array of [row, col] where each general started.
         teams: (N,) int32 array, teams[i] is the team id of player i. Every
             team id is a player index in the default free-for-all.
-        eliminated: (N,) bool array, True once player i's general has been
-            captured (their territory is gone and their actions are ignored).
+        eliminated: (N,) bool array, True once player i is out of the game:
+            their general was captured (their territory is gone) or they
+            surrendered (see surrender: the territory stays). Their actions
+            are ignored either way.
         time: Scalar, current game timestep.
         winner: Scalar, -1 if game ongoing, otherwise the team id of the
             last team standing (== the player index in 1v1 / free-for-all).
@@ -172,27 +180,16 @@ def create_initial_state(grid: jnp.ndarray, teams=None, num_players: int | None 
 
 @jax.jit
 def get_visibility(ownership: jnp.ndarray) -> jnp.ndarray:
-    """Compute visibility mask (3x3 around owned cells)."""
-    H, W = ownership.shape
-    ownership_float = ownership.astype(jnp.float32)
-    padded = jnp.pad(ownership_float, 1, mode="constant", constant_values=0)
+    """Compute visibility mask (3x3 around owned cells).
 
-    stacked = jnp.stack(
-        [
-            padded[0:H, 0:W],
-            padded[0:H, 1 : W + 1],
-            padded[0:H, 2 : W + 2],
-            padded[1 : H + 1, 0:W],
-            padded[1 : H + 1, 1 : W + 1],
-            padded[1 : H + 1, 2 : W + 2],
-            padded[2 : H + 2, 0:W],
-            padded[2 : H + 2, 1 : W + 1],
-            padded[2 : H + 2, 2 : W + 2],
-        ],
-        axis=0,
-    )
-
-    return jnp.max(stacked, axis=0) > 0
+    Boolean dilation by one cell in each direction: pad once, then OR the
+    three shifted windows along columns and along rows. Works on any leading
+    batch shape: (..., H, W) -> (..., H, W).
+    """
+    H, W = ownership.shape[-2:]
+    padded = jnp.pad(ownership.astype(bool), [(0, 0)] * (ownership.ndim - 2) + [(1, 1), (1, 1)])
+    rows = padded[..., :, 0:W] | padded[..., :, 1:W + 1] | padded[..., :, 2:W + 2]
+    return rows[..., 0:H, :] | rows[..., 1:H + 1, :] | rows[..., 2:H + 2, :]
 
 
 @partial(jax.jit, static_argnames=("spoils",))
@@ -209,18 +206,14 @@ def execute_action(state: GameState, player_idx: int, action: jnp.ndarray, spoil
             left it, before the spoils confiscated anyone's army.
     """
     pass_turn, si, sj, direction, split_army = action
-
-    return lax.cond(
-        pass_turn == 1,
-        lambda s: s,
-        lambda s: _execute_move(s, player_idx, si, sj, direction, split_army, spoils),
-        state,
-    )
+    return _execute_move(state, player_idx, si, sj, direction, split_army, spoils, act=pass_turn != 1)
 
 
 def _execute_move(state: GameState, player_idx: int, si: int, sj: int, direction: int, split_army: int,
-                  spoils: bool = True) -> GameState:
-    """Execute move logic."""
+                  spoils: bool = True, act=True) -> GameState:
+    """Execute move logic. A move that is not valid (or act=False, a pass)
+    leaves the state unchanged: every update below is masked by its validity,
+    which under vmap is much cheaper than selecting between whole states."""
     H, W = state.armies.shape
 
     in_bounds = (si >= 0) & (si < H) & (sj >= 0) & (sj < W)
@@ -228,39 +221,49 @@ def _execute_move(state: GameState, player_idx: int, si: int, sj: int, direction
     di = si + DIRECTIONS[direction, 0]
     dj = sj + DIRECTIONS[direction, 1]
     dest_in_bounds = (di >= 0) & (di < H) & (dj >= 0) & (dj < W)
+    # Out-of-bounds moves are invalid; clipped indices keep every read and
+    # (identity) write inside the board.
+    si, sj = jnp.clip(si, 0, H - 1), jnp.clip(sj, 0, W - 1)
+    di, dj = jnp.clip(di, 0, H - 1), jnp.clip(dj, 0, W - 1)
 
     owns_source = state.ownership[player_idx, si, sj]
     source_army = state.armies[si, sj]
 
-    army_to_move = lax.cond(split_army == 1, lambda a: a // 2, lambda a: a - 1, source_army)
+    army_to_move = jnp.where(split_army == 1, source_army // 2, source_army - 1)
     army_to_move = jnp.maximum(0, jnp.minimum(army_to_move, source_army - 1))
 
-    # An eliminated player owns nothing, so owns_source already fails; the
-    # explicit check keeps hand-built states honest too.
-    valid_move = (in_bounds & dest_in_bounds & owns_source & (army_to_move > 0)
+    # generals.io's checkAttackValid: a source with 1 army may still move onto
+    # a TEAMMATE's tile ("1 !== armyAt(t) || teams[e] === teams[tileAt(n)] &&
+    # tileAt(n) !== e"). No army moves; _apply_move hands the tile over when it
+    # is a teammate's (not their general) and changes nothing otherwise, so
+    # the destination need not be inspected here.
+    can_move = (army_to_move > 0) | (source_army == 1)
+
+    # A surrendered player still owns land but may not move it; for a
+    # captured player owns_source already fails.
+    valid_move = (act & in_bounds & dest_in_bounds & owns_source & can_move
                   & state.passable[di, dj] & ~state.eliminated[player_idx])
 
-    return lax.cond(
-        valid_move,
-        lambda s: _apply_move(s, player_idx, si, sj, di, dj, army_to_move, spoils),
-        lambda s: s,
-        state,
-    )
+    return _apply_move(state, player_idx, si, sj, di, dj, army_to_move, spoils, valid=valid_move)
 
 
 def _apply_move(state: GameState, player_idx: int, si: int, sj: int, di: int, dj: int, army_to_move: int,
-                spoils: bool = True) -> GameState:
-    """Apply a validated move.
+                spoils: bool = True, valid=True) -> GameState:
+    """Apply a validated move (generals.io's Map.attack).
 
     Three outcomes, decided by who holds the destination:
       - Friendly (the mover or a teammate): armies pool on the destination and
-        it becomes the mover's cell.
+        it becomes the mover's cell — except a teammate's general, which keeps
+        its owner ("a !== s && generals[a] !== t && setTile(t, s)").
       - Enemy or neutral: an attack; the larger force keeps the difference and
         a won attack flips the cell to the mover.
       - Enemy general: a won attack is a capture. The tile keeps the attacker's
         surplus and turns into a castle; then (spoils) eliminate_player hands
         the rest of the captured player's territory to the mover with every
         army halved, rounded up.
+    A 1-army source moves nothing (army_to_move == 0): a teammate's ordinary
+    tile changes hands and every other destination is left exactly as it was.
+    With valid=False nothing changes (every update is masked).
     """
     armies = state.armies
     ownership = state.ownership
@@ -272,18 +275,20 @@ def _apply_move(state: GameState, player_idx: int, si: int, sj: int, di: int, dj
     target_owners = ownership[:, di, dj]                             # (N,)
     same_team = state.teams == state.teams[player_idx]               # (N,)
     friendly = jnp.any(target_owners & same_team)
+    ally_general = friendly & ~target_owners[player_idx] & state.generals[di, dj]
     target_army = armies[di, dj]
 
     attacker_wins = army_to_move > target_army
-    takes_cell = friendly | attacker_wins
+    takes_cell = valid & jnp.where(friendly, ~ally_general, attacker_wins)
     dest_army = jnp.where(friendly, target_army + army_to_move, jnp.abs(target_army - army_to_move))
+    dest_army = jnp.where(valid, dest_army, target_army)
 
-    armies = armies.at[di, dj].set(dest_army).at[si, sj].add(-army_to_move)
+    armies = armies.at[di, dj].set(dest_army).at[si, sj].add(jnp.where(valid, -army_to_move, 0))
     ownership = ownership.at[:, di, dj].set(jnp.where(takes_cell, mover, target_owners))
     ownership_neutral = ownership_neutral.at[di, dj].set(ownership_neutral[di, dj] & ~takes_cell)
 
     # A general tile is always owned, so a won attack on one is a capture.
-    captured = attacker_wins & ~friendly & state.generals[di, dj] & jnp.any(target_owners)
+    captured = valid & attacker_wins & ~friendly & state.generals[di, dj] & jnp.any(target_owners)
     captured_idx = jnp.argmax(target_owners)
     generals = state.generals.at[di, dj].set(state.generals[di, dj] & ~captured)
     castles = state.castles.at[di, dj].set(state.castles[di, dj] | captured)
@@ -341,139 +346,288 @@ def eliminate_player(state: GameState, captured_idx, capturer_idx) -> GameState:
 
 
 @jax.jit
-def global_update(state: GameState) -> GameState:
-    """Perform army increments (every 2 turns for structures, every 50 for all)."""
+def surrender(state: GameState, player_idx) -> GameState:
+    """generals.io's ``killPlayer`` (a player surrenders or is kicked for
+    inactivity; the first AFK event of a replay): the player is dead, so
+    their moves are rejected from now on, but every tile stays theirs and
+    keeps receiving income, and their general can still be captured (the
+    capturer then takes the land, halved, as usual). The game ends when one
+    team is left alive: the next step sets the winner, completing that tick
+    like the tick of a final capture (moves run, time advances, no income).
+    Idempotent. Pure; apply it to the state before the tick's step.
+    """
+    N = state.ownership.shape[0]
+    return state._replace(eliminated=state.eliminated | (jnp.arange(N) == player_idx))
+
+
+@jax.jit
+def neutralize(state: GameState, player_idx) -> GameState:
+    """generals.io's ``tryNeutralizePlayer`` (the second AFK event of a
+    replay, 50 turns after the kill, or 1 turn after it in team games for a
+    player with few tiles): if the player's general tile is still theirs,
+    every tile they hold passes to their first living teammate
+    (``getNextLivingTeammateIndex``) or, without one, becomes neutral, armies
+    unchanged (``replaceAll(p, q)``), and the general becomes a castle. If
+    the general has fallen already, nothing happens. Pure; apply it to the
+    state before the tick's step.
+    """
+    N = state.ownership.shape[0]
+    players = jnp.arange(N)
+    gi, gj = state.general_positions[player_idx]
+    still_mine = state.ownership[player_idx, gi, gj] & state.generals[gi, gj]
+    cells = state.ownership[player_idx] & still_mine
+    mates = (state.teams == state.teams[player_idx]) & ~state.eliminated & (players != player_idx)
+    has_mate = jnp.any(mates)
+    heir = (players == jnp.argmax(mates)) & has_mate                   # (N,) one-hot, or nobody
+    return state._replace(
+        ownership=jnp.where(cells[None], heir[:, None, None], state.ownership),
+        ownership_neutral=state.ownership_neutral | (cells & ~has_mate),
+        castles=state.castles | (state.generals & cells),
+        generals=state.generals & ~cells,
+    )
+
+
+@jax.jit
+def global_update(state: GameState, active=True) -> GameState:
+    """Perform army increments (every 2 turns for structures, every 50 for all).
+    With active=False nothing is paid."""
     time = state.time
     armies = state.armies
     owned = jnp.any(state.ownership, axis=0).astype(jnp.int32)
 
-    increment_all = time % 50 == 0
-    armies = lax.cond(
-        increment_all,
-        lambda a: a + owned,
-        lambda a: a,
-        armies,
-    )
+    increment_all = active & (time % 50 == 0)
+    armies = armies + jnp.where(increment_all, owned, 0)
 
     # Generals/castles grow every 2 ticks, on EVEN ticks. generals.io has a spawn
     # frame + a first frame before production starts, so the first increment lands
     # on tick 2, not tick 1. Matching this phase is required to replay real games
     # move-for-move (verified: 0 illegal moves across scraped generals.io replays;
     # the odd-tick phase desynced the general's army by one tick and lost games early).
-    increment_structures = (time % 2 == 0)
+    increment_structures = active & (time % 2 == 0)
     structure_mask = (state.generals | state.castles).astype(jnp.int32)
-    armies = lax.cond(
-        increment_structures,
-        lambda a: a + structure_mask * owned,
-        lambda a: a,
-        armies,
-    )
+    armies = armies + jnp.where(increment_structures, structure_mask * owned, 0)
 
     return state._replace(armies=armies)
 
 
-def _determine_move_order(state: GameState, actions: jnp.ndarray,
-                          legacy_move_priority: bool = False) -> jnp.ndarray:
+def _determine_move_order(state: GameState, actions: jnp.ndarray) -> jnp.ndarray:
     """Order in which this turn's moves resolve: an (N,) array of player indices.
 
-    Priority is chasing > reinforcing > SMALLER army, ties by player index,
-    passes last. Chasing: the move lands on the source of another player's
-    move. Reinforcing: the move lands on a cell the mover's team holds.
-    Smaller army first: on a contested cell the bigger force resolves last and
-    ends up holding it (larger-first let the smaller force snipe a neutral
-    castle the bigger one had just paid for), and a deathtouch head-on clash
-    goes to the attacker, keeping the endgame a forced finish.
-
-    For two players this is exactly the old first-mover rule; it is computed
-    with pairwise comparisons rather than a sort, so it costs a few (N, N)
-    boolean ops.
-
-    legacy_move_priority=True selects the rule generals.io used when the public
-    replay archive was recorded and this engine used before April 2025
-    (generals-bots commit e5676c3 introduced the rule above):
-    priority simply alternates every tick, independent of the moves. Player 0
-    resolves first on even ticks and last on odd ticks (for N players the
-    index order is reversed on odd ticks). It exists so archived replays
-    recorded under the old rule can be reproduced move-for-move; nothing in
-    the environment turns it on by default.
+    This is generals.io's current rule (``MoveResolver.determineMoveOrder`` in
+    the client, 2025), so that the engine replicates the website game: moves
+    are sorted defensive first (destination held by the mover's team), then
+    moves onto a general tile last (any general, a friendly merge included),
+    then LARGER army first, then player order (reversed on odd turns); a move
+    whose source another pending move is entering (a chased piece) waits until
+    that chaser has resolved, unless the two moves are a head-on swap. Passes
+    resolve last. Verified tile for tile against the site's own engine on
+    10,000 ranked 1v1, 1,000 FFA and 1,000 2v2 replays (paper/validation).
     """
     N = actions.shape[0]
     H, W = state.armies.shape
     idx = jnp.arange(N)
-
-    if legacy_move_priority:
-        return jnp.where(state.time % 2 == 0, idx, idx[::-1])
-
     passes = actions[:, 0] != 0
     si, sj, direction = actions[:, 1], actions[:, 2], actions[:, 3]
     di = si + DIRECTIONS[direction, 0]
     dj = sj + DIRECTIONS[direction, 1]
+    csi, csj = jnp.clip(si, 0, H - 1), jnp.clip(sj, 0, W - 1)
+    cdi, cdj = jnp.clip(di, 0, H - 1), jnp.clip(dj, 0, W - 1)
+    dest_owners = state.ownership[:, cdi, cdj]                          # (owner, mover)
+    same_team = state.teams[:, None] == state.teams[None, :]
+    defensive = jnp.any(dest_owners & same_team, axis=0) & ~passes
+    # isGeneralAttack: the destination is a general tile, a friendly merge onto one included
+    general_attack = state.generals[cdi, cdj] & ~passes
+    army = jnp.where(passes, -1, state.armies[csi, csj])
+    # sort rank: defensive desc, general_attack asc, army desc, index asc; passes last
+    dj_, di_ = defensive[:, None], defensive[None, :]
+    gj_, gi_ = general_attack[:, None], general_attack[None, :]
+    aj_, ai_ = army[:, None], army[None, :]
+    pj_, pi_ = passes[:, None], passes[None, :]
+    # equal armies: the site takes the moves in player order, reversed on odd turns
+    by_index = jnp.where(state.time % 2 == 0, idx[:, None] < idx[None, :], idx[:, None] > idx[None, :])
+    ahead = ((~pj_ & pi_) | ((pj_ == pi_) & ((dj_ & ~di_) | ((dj_ == di_) & ((~gj_ & gi_) | ((gj_ == gi_) &
+             ((aj_ > ai_) | ((aj_ == ai_) & by_index))))))))
+    rank = jnp.sum(ahead, axis=0)                                       # sort position of each player
+    # dependency: j's move enters i's source and is not the head-on partner of i
+    enters = (di[:, None] == si[None, :]) & (dj[:, None] == sj[None, :]) & ~passes[:, None] & ~passes[None, :]
+    head_on = enters & enters.T
+    dep = enters & ~head_on & ~jnp.eye(N, dtype=bool)                    # dep[j, i]: i waits for j
+    order = jnp.zeros((N,), dtype=jnp.int32)
+    queued = jnp.zeros((N,), dtype=bool)
+    for k in range(N):
+        blocked = jnp.any(dep & ~queued[:, None], axis=0)               # some unqueued move enters my source
+        big = N + 1
+        key_free = jnp.where(~queued & ~blocked, rank, big)
+        key_any = jnp.where(~queued, rank, big)
+        pick = jnp.where(jnp.min(key_free) < big, jnp.argmin(key_free), jnp.argmin(key_any))
+        order = order.at[k].set(pick)
+        queued = queued.at[pick].set(True)
+    return order
 
-    # chasing[i]: i's destination is the source of some other player's move
-    onto_source = (di[:, None] == si[None, :]) & (dj[:, None] == sj[None, :])
-    chasing = jnp.any(onto_source & ~passes[None, :] & ~jnp.eye(N, dtype=bool), axis=1)
 
-    # reinforcing[i]: i's destination is held by i's team. Out-of-bounds
-    # destinations are clipped; such a move is invalid and never executes, so
-    # its slot in the order is irrelevant.
-    ci, cj = jnp.clip(di, 0, H - 1), jnp.clip(dj, 0, W - 1)
-    dest_owners = state.ownership[:, ci, cj]                          # (owner, mover)
-    same_team = state.teams[:, None] == state.teams[None, :]          # (owner, mover)
-    reinforcing = jnp.any(dest_owners & same_team, axis=0)
-
-    army = state.armies[jnp.clip(si, 0, H - 1), jnp.clip(sj, 0, W - 1)]
-
-    c = chasing & ~passes
-    r = reinforcing & ~passes
-    a = jnp.where(passes, jnp.iinfo(jnp.int32).max, army)
-
-    # ahead[j, i]: j resolves before i (lexicographic: c desc, r desc, a asc, index asc)
-    cj_, ci_ = c[:, None], c[None, :]
-    rj_, ri_ = r[:, None], r[None, :]
-    aj_, ai_ = a[:, None], a[None, :]
-    by_index = idx[:, None] < idx[None, :]
-    ahead = (cj_ & ~ci_) | ((cj_ == ci_) & ((rj_ & ~ri_) | ((rj_ == ri_) & ((aj_ < ai_) | ((aj_ == ai_) & by_index)))))
-
-    rank = jnp.sum(ahead, axis=0)                                     # players ahead of each i
-    return jnp.argmax(rank[None, :] == idx[:, None], axis=1)          # slot k -> player with rank k
+# --------------------------------------------------------------------------- #
+# General trade (generals.io, replay format 16 and later)
+# --------------------------------------------------------------------------- #
+def _move_geometry(state: GameState, player_idx, action):
+    """(valid, di, dj, si, sj, army_to_move, reserve) of one action on `state`,
+    with the validity test of _execute_move. reserve is what stays on the source."""
+    pass_turn, si, sj, direction, split_army = action
+    H, W = state.armies.shape
+    in_bounds = (si >= 0) & (si < H) & (sj >= 0) & (sj < W)
+    di = si + DIRECTIONS[direction, 0]
+    dj = sj + DIRECTIONS[direction, 1]
+    dest_in_bounds = (di >= 0) & (di < H) & (dj >= 0) & (dj < W)
+    csi, csj = jnp.clip(si, 0, H - 1), jnp.clip(sj, 0, W - 1)
+    cdi, cdj = jnp.clip(di, 0, H - 1), jnp.clip(dj, 0, W - 1)
+    owns_source = state.ownership[player_idx, csi, csj]
+    source_army = state.armies[csi, csj]
+    army_to_move = jnp.where(split_army == 1, source_army // 2, source_army - 1)
+    army_to_move = jnp.maximum(0, jnp.minimum(army_to_move, source_army - 1))
+    can_move = (army_to_move > 0) | (source_army == 1)
+    valid = ((pass_turn == 0) & in_bounds & dest_in_bounds & owns_source & can_move
+             & state.passable[cdi, cdj] & ~state.eliminated[player_idx])
+    return valid, cdi, cdj, csi, csj, army_to_move, source_army - army_to_move
 
 
-@partial(jax.jit, static_argnames=("legacy_move_priority",))
+def _general_cell(state: GameState, player_idx):
+    """(row, col) of player_idx's live general (the first cell of the mask they hold)."""
+    mask = state.generals & state.ownership[player_idx]
+    flat = jnp.argmax(mask.reshape(-1))
+    W = state.armies.shape[1]
+    return flat // W, flat % W
+
+
+def _is_general_trade(state: GameState, actions: jnp.ndarray, e, t) -> jnp.ndarray:
+    """True iff, on `state`, player e's move captures t's general AND t's move
+    captures e's general (generals.io's ``getMutualGeneralSwapMoveIndex``).
+    Each attack is judged against the garrison the defender's own move leaves
+    behind when that move departs from the general (``wouldAttackCaptureGeneral``)."""
+    ve, dei, dej, sei, sej, me, re_ = _move_geometry(state, e, actions[e])
+    vt, dti, dtj, sti, stj, mt, rt = _move_geometry(state, t, actions[t])
+    gei, gej = _general_cell(state, e)
+    gti, gtj = _general_cell(state, t)
+    hits = (dei == gti) & (dej == gtj) & (dti == gei) & (dtj == gej)
+    enemies = state.teams[e] != state.teams[t]
+    # garrison of t's general when e's army lands: t's own reserve if t moves off it
+    t_from_general = (sti == gti) & (stj == gtj)
+    e_from_general = (sei == gei) & (sej == gej)
+    garrison_t = jnp.where(t_from_general, rt, state.armies[gti, gtj])
+    garrison_e = jnp.where(e_from_general, re_, state.armies[gei, gej])
+    return ve & vt & hits & enemies & (me > garrison_t) & (mt > garrison_e)
+
+
+def _execute_general_trade(state: GameState, actions: jnp.ndarray, e, t) -> GameState:
+    """generals.io's ``executeMutualGeneralSwap``: both captures happen at once.
+    Each player's attacking army lands on the other's general with its
+    surplus, every other cell of each player passes to the other with its army
+    halved (rounded up), nobody is eliminated, and the two generals change
+    hands: e's general is now where t's was, and vice versa."""
+    _, _, _, sei, sej, me, re_ = _move_geometry(state, e, actions[e])
+    _, _, _, sti, stj, mt, rt = _move_geometry(state, t, actions[t])
+    gei, gej = _general_cell(state, e)
+    gti, gtj = _general_cell(state, t)
+    t_from_general = (sti == gti) & (stj == gtj)
+    e_from_general = (sei == gei) & (sej == gej)
+    garrison_t = jnp.where(t_from_general, rt, state.armies[gti, gtj])
+    garrison_e = jnp.where(e_from_general, re_, state.armies[gei, gej])
+    surplus_e = jnp.maximum(0, me - garrison_t)          # lands on t's general, now e's
+    surplus_t = jnp.maximum(0, mt - garrison_e)          # lands on e's general, now t's
+
+    # armies left on the two sources once the attacking stacks have departed
+    armies = state.armies.at[sei, sej].set(re_)
+    armies = armies.at[sti, stj].set(rt)
+    N = state.ownership.shape[0]
+    players = jnp.arange(N)
+    own_e, own_t = state.ownership[e], state.ownership[t]
+    gen_cells = jnp.zeros_like(own_e).at[gei, gej].set(True).at[gti, gtj].set(True)
+    swap = (own_e | own_t) & ~gen_cells
+    armies = jnp.where(swap, (armies + 1) // 2, armies)          # Math.round(0.5 * army)
+    armies = armies.at[gti, gtj].set(surplus_e).at[gei, gej].set(surplus_t)
+
+    to_t = (own_e & ~gen_cells).at[gei, gej].set(True)    # e's land and e's old general -> t
+    to_e = (own_t & ~gen_cells).at[gti, gtj].set(True)    # t's land and t's old general -> e
+    is_e, is_t = (players == e)[:, None, None], (players == t)[:, None, None]
+    ownership = jnp.where(to_t[None], is_t, jnp.where(to_e[None], is_e, state.ownership))
+
+    gp = state.general_positions
+    gp = gp.at[e].set(jnp.array([gti, gtj], dtype=gp.dtype)).at[t].set(jnp.array([gei, gej], dtype=gp.dtype))
+    return state._replace(armies=armies, ownership=ownership, general_positions=gp)
+
+
+def _moves_with_general_trades(state: GameState, actions: jnp.ndarray, order: jnp.ndarray) -> GameState:
+    """Execute the turn's moves in `order`, resolving general trades where
+    generals.io's ``Game.update`` does: when the walk reaches a move, it looks
+    for a LATER move of the target player onto the mover's general such that
+    both attacks capture on the board as it stands (``getMutualGeneralSwapMoveIndex``);
+    if there is one the trade executes at this position and the later move is
+    marked used. Everything else in the turn runs on the board the trade left
+    (a third player's move between the two positions included).
+    """
+    N = actions.shape[0]
+    consumed = jnp.zeros((N,), dtype=bool)
+    for k in range(N):
+        player = order[k]
+        for m in range(k + 1, N):
+            other = order[m]
+            trade = _is_general_trade(state, actions, player, other) & ~consumed[player] & ~consumed[other]
+            state = lax.cond(trade, lambda s: _execute_general_trade(s, actions, player, other), lambda s: s, state)
+            consumed = consumed.at[player].set(consumed[player] | trade).at[other].set(consumed[other] | trade)
+        state = lax.cond(consumed[player], lambda s: s, lambda s: execute_action(s, player, actions[player]), state)
+    return state
+
+
+def _last_team_standing(state: GameState) -> jnp.ndarray:
+    """generals.io's ``isOver``: the team id of the only team with a living
+    player, or -1 while two teams are alive (or nobody is)."""
+    alive = ~state.eliminated
+    team = state.teams[jnp.argmax(alive)]
+    over = jnp.any(alive) & jnp.all(~alive | (state.teams == team))
+    return jnp.where(over, team, jnp.int32(-1))
+
+
+@partial(jax.jit, static_argnames=("general_trade",))
 def step(state: GameState, actions: jnp.ndarray,
-         legacy_move_priority: bool = False) -> tuple[GameState, GameInfo]:
+         general_trade: bool = False) -> tuple[GameState, GameInfo]:
     """Execute one game step with actions from all players.
 
     Args:
         state: Current game state.
         actions: (N, 5) array, one [pass, row, col, direction, split] per player.
-        legacy_move_priority: Resolve moves in the old alternating order
-            instead of the current chasing > reinforcing > smaller-army rule
-            (see _determine_move_order). Default False; the game is unchanged
-            unless it is passed explicitly.
+        general_trade: generals.io's rule (replay format 16, 2025) for two
+            players who capture each other's general on the same turn: both
+            captures happen, nobody is eliminated, and the generals change
+            hands (see _execute_general_trade). Default False, in which case
+            the first capture in move order settles the turn as before.
 
     Moves resolve one after another in _determine_move_order's order, each on
     the board the previous one left — a capture confiscates the captured
     player's territory immediately, so their later move (and every move after
     the game is decided) finds no army to command.
+
+    The tick that decides the game (by capture or, via surrender, by the last
+    opposing player leaving) completes: its moves run and time advances, but
+    the income is not paid. Later ticks leave time alone.
     """
     N = actions.shape[0]
     if N != state.ownership.shape[0]:
         raise ValueError(f"got actions for {N} players but the state has {state.ownership.shape[0]}")
     done_before = state.winner >= 0
 
-    order = _determine_move_order(state, actions, legacy_move_priority)
-    for k in range(N):
-        player = order[k]
-        state = execute_action(state, player, actions[player])
+    order = _determine_move_order(state, actions)
+    if general_trade:
+        state = _moves_with_general_trades(state, actions, order)
+    else:
+        for k in range(N):
+            player = order[k]
+            state = execute_action(state, player, actions[player])
 
-    state = lax.cond(done_before, lambda s: s, lambda s: s._replace(time=s.time + 1), state)
+    state = state._replace(time=jnp.where(done_before, state.time, state.time + 1))
 
-    state = lax.cond(
-        state.winner >= 0,
-        lambda s: s,
-        lambda s: global_update(s),
-        state,
-    )
+    # A surrender may have left one team standing (generals.io's isOver runs
+    # in killPlayer): the tick completes like the tick of a final capture.
+    state = state._replace(winner=jnp.where(state.winner >= 0, state.winner, _last_team_standing(state)))
+
+    state = global_update(state, active=state.winner < 0)
 
     return state, get_info(state)
 
@@ -517,27 +671,71 @@ def _observe(state: GameState, player_idx, fog: bool) -> Observation:
         visible = jnp.ones_like(own_cells)
     invisible = ~visible
 
-    info = get_info(state)
+    land = jnp.sum(state.ownership, axis=(1, 2))
+    army = jnp.sum(state.armies[None] * state.ownership, axis=(1, 2))
     structures = state.mountains | state.castles
 
+    # The team's own and allied cells lie inside its visible area, so they need no masking.
     return Observation(
         armies=state.armies * visible,
-        generals=state.generals * visible,
-        castles=state.castles * visible,
-        mountains=state.mountains * visible,
-        neutral_cells=state.ownership_neutral * visible,
-        owned_cells=own_cells * visible,
-        opponent_cells=enemy_cells * visible,
+        generals=state.generals & visible,
+        castles=state.castles & visible,
+        mountains=state.mountains & visible,
+        neutral_cells=state.ownership_neutral & visible,
+        owned_cells=own_cells,
+        opponent_cells=enemy_cells & visible,
         fog_cells=invisible & ~structures,
         structures_in_fog=invisible & structures,
-        owned_land_count=info.land[player_idx],
-        owned_army_count=info.army[player_idx],
-        opponent_land_count=jnp.sum(jnp.where(same_team, 0, info.land)),
-        opponent_army_count=jnp.sum(jnp.where(same_team, 0, info.army)),
+        owned_land_count=land[player_idx],
+        owned_army_count=army[player_idx],
+        opponent_land_count=jnp.sum(jnp.where(same_team, 0, land)),
+        opponent_army_count=jnp.sum(jnp.where(same_team, 0, army)),
         timestep=state.time,
-        allied_cells=allied_cells * visible,
-        allied_land_count=jnp.sum(jnp.where(teammate, info.land, 0)),
-        allied_army_count=jnp.sum(jnp.where(teammate, info.army, 0)),
+        allied_cells=allied_cells,
+        allied_land_count=jnp.sum(jnp.where(teammate, land, 0)),
+        allied_army_count=jnp.sum(jnp.where(teammate, army, 0)),
+    )
+
+
+def _observe_all(state: GameState, fog: bool) -> Observation:
+    """Observations of all N players at once, stacked on a leading axis.
+
+    Field for field identical to stacking _observe(state, i, fog) over i, and
+    faster because the team masks, the visibility and the totals are computed
+    for all players in one pass.
+    """
+    N = state.ownership.shape[0]
+    players = jnp.arange(N)
+    same_team = state.teams[:, None] == state.teams[None, :]           # (viewer, player)
+    teammate = same_team & (players[:, None] != players[None, :])
+    own = state.ownership                                               # (N, H, W)
+    team = jnp.any(own[None] & same_team[:, :, None, None], axis=1)
+    enemy = jnp.any(own[None] & ~same_team[:, :, None, None], axis=1)
+    visible = get_visibility(team) if fog else jnp.ones_like(own)
+    invisible = ~visible
+
+    land = jnp.sum(own, axis=(1, 2))
+    army = jnp.sum(state.armies[None] * own, axis=(1, 2))
+    structures = (state.mountains | state.castles)[None]
+
+    return Observation(
+        armies=state.armies[None] * visible,
+        generals=state.generals[None] & visible,
+        castles=state.castles[None] & visible,
+        mountains=state.mountains[None] & visible,
+        neutral_cells=state.ownership_neutral[None] & visible,
+        owned_cells=own,
+        opponent_cells=enemy & visible,
+        fog_cells=invisible & ~structures,
+        structures_in_fog=invisible & structures,
+        owned_land_count=land,
+        owned_army_count=army,
+        opponent_land_count=jnp.sum(jnp.where(same_team, 0, land[None]), axis=1),
+        opponent_army_count=jnp.sum(jnp.where(same_team, 0, army[None]), axis=1),
+        timestep=jnp.broadcast_to(state.time, (N,)),
+        allied_cells=team & ~own,
+        allied_land_count=jnp.sum(jnp.where(teammate, land[None], 0), axis=1),
+        allied_army_count=jnp.sum(jnp.where(teammate, army[None], 0), axis=1),
     )
 
 
@@ -561,6 +759,19 @@ def get_full_observation(state: GameState, player_idx: int) -> Observation:
     true game state.
     """
     return _observe(state, player_idx, fog=False)
+
+
+@jax.jit
+def get_observations(state: GameState) -> Observation:
+    """Observations of every player with fog of war, stacked on a leading
+    player axis: the same as stacking get_observation(state, i) over i."""
+    return _observe_all(state, fog=True)
+
+
+@jax.jit
+def get_full_observations(state: GameState) -> Observation:
+    """get_full_observation for every player, stacked on a leading player axis."""
+    return _observe_all(state, fog=False)
 
 
 @jax.jit

@@ -11,6 +11,11 @@ Scripts, job files, and raw results behind the throughput figure and table in th
   environments" is the same axis for both simulators.
 * **env_step**: `GeneralsEnv.step` = game step + auto-reset from the state pool +
   fog-of-war observations for every player. This is the number reported in the paper.
+  The benchmark loop keeps every step's observations in its `lax.scan` carry and returns a
+  checksum of them, so XLA cannot drop their computation, and the game states are carried
+  across timed calls (the games keep running, as in the NumPy benchmark). An earlier version
+  of the loop returned only the reward sum; XLA then removed the observations and the loop
+  timed the game transition alone.
 * **step_only**: the raw game step without observations (reported in the supplement).
 * Actions are uniform random samples (random cell, direction, split; 10% pass) for both
   simulators, so the work per frame is the same. Compile time is excluded.
@@ -27,37 +32,39 @@ Scripts, job files, and raw results behind the throughput figure and table in th
 
 Frames per second, env_step:
 
-| Parallel envs | 1 | 16 | 64 | 256 | 1,024 | 4,096 | 16,384 | 65,536 |
-|---|---|---|---|---|---|---|---|---|
-| NumPy, CPU node | 1.1k | 6.1k | 8.7k | 10.6k | | | | |
-| JAX, same CPU node | 9.6k | 65k | 92k | 183k | 364k | 476k | 497k | 734k |
-| JAX, one H200 | 21k | 183k | 875k | 2.8M | 10.3M | 20.5M | 35.6M | 45.0M |
+| Parallel envs | 1 | 16 | 32 | 64 | 256 | 1,024 | 4,096 | 16,384 | 65,536 | 131,072 | 262,144 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| NumPy, CPU node | 1.1k | 5.8k | 7.7k | 8.8k | | | | | | | |
+| JAX, same CPU node | 8.5k | 48k | | 84k | 155k | 411k | 474k | 548k | 684k | | |
+| JAX, one H200 | 16k | 198k | | 757k | 2.5M | 8.8M | 17.9M | 31.4M | 38.1M | 40.8M | 42.8M |
 
-Four-player modes on one H200 (env_step, 65,536 envs): 2v2 19.4M, free-for-all 19.4M
-(about 43% of the 1v1 figure of 44.9M measured in the same job).
+The NumPy simulator runs one process per allocated thread (64). Oversubscribing it gave no
+reliable gain: with 256 processes the three repetitions ranged from 5.7k to 10.4k.
+Four-player modes on one H200 (env_step, 65,536 envs, same job as the 1v1 sweep): 2v2 18.6M,
+free-for-all 18.6M (1v1 38.1M). 524,288 envs exceed the GPU memory.
 
 ## Reproduce
 
 ```bash
 # JAX simulator (CPU or GPU is picked by JAX; JAX_PLATFORMS=cpu forces CPU)
 python paper/benchmarks/bench_jax.py --seconds 15 --envs 1 16 64 256 1024 4096 16384 65536 --tag mytag
-python paper/benchmarks/bench_jax.py --teams 0,0,1,1 --envs 1024 65536 --tag 2v2      # 2v2
-python paper/benchmarks/bench_jax.py --players 4  --envs 1024 65536 --tag ffa4         # free-for-all
+python paper/benchmarks/bench_jax.py --teams 0,0,1,1 --envs 65536 --tag 2v2      # 2v2
+python paper/benchmarks/bench_jax.py --players 4  --envs 65536 --tag ffa4         # free-for-all
 
 # NumPy simulator: install generals-bots at commit b1636da in a separate venv, then
 python paper/benchmarks/bench_numpy.py --seconds 15 --procs 1 16 32 64 128 256 --tag mytag
 
 # SLURM job files used on the RCI cluster (paths relative to paper/benchmarks/)
 sbatch paper/benchmarks/slurm/cpu_wholenode.slurm   # NumPy + JAX-CPU, 3 repetitions
-sbatch paper/benchmarks/slurm/gpu_sweep.slurm       # JAX on one H200
-sbatch paper/benchmarks/slurm/gpu_modes.slurm       # 1v1 / 2v2 / FFA on one H200
+sbatch paper/benchmarks/slurm/gpu_sweep.slurm       # JAX on one H200: 1v1 sweep, 2v2, FFA
 
 # Tables and figure from the CSVs
 python paper/benchmarks/make_tables.py paper/benchmarks/results/*.csv
-python paper/benchmarks/plot_throughput.py --numpy-tag amd-excl-r1,amd-excl-r2,amd-excl-r3 \
-    --jaxcpu-tag amd-excl-r1,amd-excl-r2,amd-excl-r3 --gpu-tag h200-merged --out sim_throughput.pdf
+python paper/benchmarks/plot_throughput.py --numpy-tag v2-amd-excl-r1,v2-amd-excl-r2,v2-amd-excl-r3 \
+    --jaxcpu-tag v2-amd-excl-r1,v2-amd-excl-r2,v2-amd-excl-r3 --gpu-tag v3-h200 --numpy-max-procs 64 \
+    --out sim_throughput.pdf
 ```
 
-`results/` holds the CSVs used in the paper; `results/other-runs/` holds earlier runs on
-shared nodes and pre-release code (run-to-run variation on shared CPU nodes was 10-80%,
+`results/` holds the CSVs used in the paper; `results/other-runs/` holds earlier runs (the old
+benchmark loop, shared nodes, and pre-release code) (run-to-run variation on shared CPU nodes was 10-80%,
 which is why the paper uses whole-node medians).

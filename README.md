@@ -19,36 +19,6 @@ A high-performance JAX-based simulator for [generals.io](https://generals.io), d
 * 🚀 **Live deployment** — deploy agents to [generals.io](https://generals.io) servers
 * 🎮 **Built-in GUI** — visualize games and debug agent behavior
 
-> [!Note]
-> This repository is based on the [generals.io](https://generals.io) game.
-> The goal is to provide a fast bot development platform for reinforcement learning research.
-
-## 🏆 Competition
-
-This engine powers the [Generals Competition](https://generals.bot). One preset
-pins the entire competition ruleset:
-
-```python
-env = GeneralsEnv(mode="competition")
-```
-
-Rectangular 18–21 maps, **no neutral castles — you build them** (action
-`[2, row, col, 0, 0]`), **Deathtouch** from turn 800 (a move that executes onto
-the enemy general's tile wins instantly), a 1200-turn cap, and **fog of war**
-(like the original generals.io — each bot sees only the cells next to tiles it
-owns). The stdio wire protocol and reference bots in Python/C++/Rust live in
-[`competition/`](competition/) — play a local match with:
-
-```bash
-python competition/matchup.py --mode competition
-```
-
-The competition sandbox's exact Python library versions are pinned in
-[`competition/requirements.txt`](competition/requirements.txt) — install them
-to make your local environment match the one your submitted bot runs in
-([full environment docs](https://generals.bot/docs#environment)).
-
-
 ## 📦 Installation
 
 ```bash
@@ -56,6 +26,12 @@ git clone https://github.com/strakam/generals-bots
 cd generals-bots
 pip install -e .
 ```
+
+> [!Note]
+> This repository is based on the [generals.io](https://generals.io) game.
+> The goal is to provide a fast bot development platform for reinforcement learning research.
+> The simulator follows the current rules of the game: 10,000 ranked games played in 2026 replay
+> through it with a board identical to generals.io's own engine after every turn.
 
 ## 🌱 Getting Started
 

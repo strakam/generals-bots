@@ -9,6 +9,10 @@ Variants (all include auto-reset from the state pool):
   env_valid : env.step + the repo's random-VALID-action sampler (mask + argwhere)
               -- optional, dominated by the sampler, off by default
 Compile time is excluded (one warm-up call per configuration).
+The observations of every step are written into the loop carry and a checksum of
+them is returned, so the compiler cannot drop the fog-of-war computation; the game
+states are carried across timed calls, so the games keep running (as in the NumPy
+benchmark) instead of restarting at turn 0 on every call.
 Prints one CSV line per (envs, variant).
 """
 import argparse, functools, os, platform, socket, sys, time
@@ -50,15 +54,21 @@ def make(n, grid, pool_size, players=2, teams=None):
         c, r = jax.lax.scan(body, carry, None, length=steps)
         return c, r.sum()
 
+    obs0 = jax.tree.map(lambda a: jnp.zeros(a.shape, a.dtype), jax.eval_shape(
+        lambda s, a: vstep(s, a, pool)[0].observation, states, uniform_actions(jrandom.PRNGKey(0), n, grid, grid, P)))
+
+    def checksum(obs):
+        return sum(jnp.sum(x.astype(jnp.int32)) for x in jax.tree.leaves(obs))
+
     @functools.partial(jax.jit, static_argnums=1)
     def run_env_step(carry, steps):
         def body(c, _):
-            s, key = c
+            s, key, _obs = c
             key, k = jrandom.split(key)
             ts, s = vstep(s, uniform_actions(k, n, grid, grid, P), pool)
-            return (s, key), ts.reward.sum()
+            return (s, key, ts.observation), ts.reward.sum()
         c, r = jax.lax.scan(body, carry, None, length=steps)
-        return c, r.sum()
+        return c, r.sum() + checksum(c[2])
 
     @functools.partial(jax.jit, static_argnums=1)
     def run_env_valid(carry, steps):
@@ -72,14 +82,14 @@ def make(n, grid, pool_size, players=2, teams=None):
         c, r = jax.lax.scan(body, carry, None, length=steps)
         return c, r.sum()
 
-    return states, run_step_only, run_env_step, run_env_valid
+    return states, obs0, run_step_only, run_env_step, run_env_valid
 
 
 def timeit(fn, arg, steps, n, target_s):
-    out = fn(arg, steps); jax.block_until_ready(out)      # warm-up / compile
+    arg, r = fn(arg, steps); jax.block_until_ready(r)     # warm-up / compile
     frames, t0 = 0, time.perf_counter()
     while time.perf_counter() - t0 < target_s:
-        out = fn(arg, steps); jax.block_until_ready(out); frames += n * steps
+        arg, r = fn(arg, steps); jax.block_until_ready(r); frames += n * steps
     return frames / (time.perf_counter() - t0)
 
 
@@ -103,11 +113,11 @@ if __name__ == "__main__":
     print("sim,device,envs,variant,frames_per_s", flush=True)
     for n in args.envs:
         steps = max(10, min(200, 40000 // n))
-        states, f_step, f_env, f_valid = make(n, args.grid, pool_size=max(2 * n, 64), players=players, teams=teams)
+        states, obs0, f_step, f_env, f_valid = make(n, args.grid, pool_size=max(2 * n, 64), players=players, teams=teams)
         key = jrandom.PRNGKey(1)
         r1 = timeit(f_step, (states, key), steps, n, args.seconds)
         print(f"jax,{dev.platform},{n},step_only,{r1:.0f}", flush=True)
-        r2 = timeit(f_env, (states, key), steps, n, args.seconds)
+        r2 = timeit(f_env, (states, key, obs0), steps, n, args.seconds)
         print(f"jax,{dev.platform},{n},env_step,{r2:.0f}", flush=True)
         if args.valid:
             acts0 = uniform_actions(key, n, args.grid, args.grid, players)

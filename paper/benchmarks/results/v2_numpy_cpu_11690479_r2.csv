@@ -1,0 +1,8 @@
+# host=a05 cores_available=64 python=3.12.13 grid=24 tag=v2-amd-excl-r2
+sim,device,envs,variant,frames_per_s
+numpy,cpu,1,env_step,1099
+numpy,cpu,16,env_step,5910
+numpy,cpu,32,env_step,7822
+numpy,cpu,64,env_step,8608
+numpy,cpu,128,env_step,9126
+numpy,cpu,256,env_step,7589
