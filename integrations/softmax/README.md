@@ -33,7 +33,10 @@ while idle instead of alternating messages each tick.
 Release 0.2.5 tracks separately selected army routes: a failed route is removed
 while other queued routes continue in order.
 Release 0.3.1 raises the competition turn cap to 2,000. Human, FFA, and
-castle-building variants remain at 1,200 turns.
+castle-building variants remain at 1,200 turns. All modes also move to the
+engine's replay-verified generals.io move order: defensive moves first, moves
+onto a general last, then larger armies first (previously smaller first),
+with ties broken by player order reversed on odd turns.
 
 ## Play locally
 
