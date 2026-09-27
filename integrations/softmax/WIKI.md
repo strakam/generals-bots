@@ -13,6 +13,10 @@ language that speaks the player protocol.
 - A move sends all but one army from its source, or half rounded down. Your
   armies combine on friendly land. Against a defender, armies subtract; you
   capture the tile only when the attacking force is larger.
+- Moves resolve one at a time, each on the board the previous one left, in
+  generals.io's order: moves onto your own land first, moves onto a general
+  last, then larger armies before smaller ones; equal armies go in seat order,
+  reversed on odd turns.
 - Generals and owned castles gain one army every two turns. Every owned tile
   also gains one army every 50 turns. Neutral castles start with 40–50 defenders.
 - You see your own tiles and their eight surrounding neighbors. Army counts
@@ -22,8 +26,9 @@ language that speaks the player protocol.
 - Capturing a general eliminates its owner. Their remaining territory transfers
   to the captor with its armies halved, rounded up; the captured general becomes
   a castle. The last surviving player wins.
-- The winner scores **+1** and every other player **−1**. At the **1,200-turn
-  limit**, everyone scores **0**, including eliminated players in FFA.
+- The winner scores **+1** and every other player **−1**. At the turn limit,
+  **2,000 turns** in every bot mode, everyone scores **0**, including eliminated
+  players in FFA.
 
 ## Modes
 
@@ -39,8 +44,10 @@ every castle you own, and distance is Manhattan distance. A tile adjacent to
 your general initially costs **47**. Builds resolve before moves; a built castle
 then grows normally.
 
-The paced human-play variants are `human`, `ffa-human`, and `castles-human`.
-These modes belong to one Coworld; a league selects which variant it runs.
+Each mode runs as its own league: **Classic 1v1**, **FFA 1v1v1v1** and
+**Build 1v1**. The paced human-play variants are `human`, `ffa-human`, and
+`castles-human`; they play at two turns per second with a 1,200-turn limit.
+All modes belong to one Coworld; a league selects which variant it runs.
 
 ## Observation space
 

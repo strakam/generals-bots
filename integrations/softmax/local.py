@@ -19,7 +19,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--port", type=int, default=8080)
-    parser.add_argument("--max-turns", type=int, default=1200)
+    parser.add_argument("--max-turns", type=int, help="default: 2000, or 1200 with --human, as hosted")
     parser.add_argument("--variant", choices=("competition", "ffa", "castles"), default="competition")
     parser.add_argument("--human", action="store_true", help="control slot 0 in the browser")
     parser.add_argument("--keep-open", action="store_true", help="keep the server open for replay inspection")
@@ -38,7 +38,7 @@ def main():
         "players": [{"name": "You" if args.human and slot == 0 else name} for slot, name in enumerate(names)],
         "ruleset": "build_castles" if args.variant == "castles" else "classic",
         "seed": args.seed,
-        "max_turns": args.max_turns,
+        "max_turns": args.max_turns or (1200 if args.human else 2000),
         "tick_interval_seconds": 0.5 if args.human else 0.0,
         "turn_timeout_seconds": 1 if args.human else 0.5,
     }

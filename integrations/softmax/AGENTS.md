@@ -2,7 +2,7 @@
 
 This directory contains the game adapter and a participant example. Read
 `README.md` for the game contract, `ROADMAP.md` for the agreed scope,
-`VARIANTS.md` for v0.3.0 deployment and the league-creation permission blocker, and
+`VARIANTS.md` for the modes, their leagues and release records, and
 `HUNTER.md` before working on the Hunter participant. Keep work on the `softmax`
 branch. Do not open or navigate the user's browser unless requested; use an
 isolated headless browser for checks.

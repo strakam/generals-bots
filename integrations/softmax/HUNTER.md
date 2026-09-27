@@ -2,9 +2,12 @@
 
 Objective: verify the existing Hunter's complete Softmax submission experience.
 This is a first-entry integration check, not an ongoing strategy optimization
-project. The runtime is `platform-hosted`; the game is Coworld
-`cow_adee8c4a-e0ed-43b0-b45c-fe6073ef4987` (v0.2.5). Game rules and protocol are
-documented in [README.md](README.md) and [PLAYER_PROTOCOL.md](PLAYER_PROTOCOL.md).
+project. The runtime is `platform-hosted`; Hunter was submitted against Coworld
+`cow_adee8c4a-e0ed-43b0-b45c-fe6073ef4987` (v0.2.5). Its player container is
+unchanged, while the league now runs the current canonical game (v0.3.2 as of
+September 27: 2,000-turn games and generals.io move order; see VARIANTS.md).
+Game rules and protocol are documented in [README.md](README.md) and
+[PLAYER_PROTOCOL.md](PLAYER_PROTOCOL.md).
 
 Submitted on 2026-09-17 as `strakam-generals-hunter:v1` under Matej Straka's
 default player. Softmax reported the submission as `placed`, with membership
@@ -63,7 +66,8 @@ coworld upload-policy generals-coworld-hunter:local --name strakam-generals-hunt
 ```
 
 The target league is
-[Generals Competition](https://softmax.com/observatory/v2?detail=league:league_8c189954-be68-479c-a092-eeb79c436d12).
+[Classic 1v1](https://softmax.com/observatory/v2?detail=league:league_8c189954-be68-479c-a092-eeb79c436d12)
+(named Generals Competition when Hunter entered).
 After checking the uploaded policy in hosted matches, submit that explicit version:
 
 ```sh

@@ -9,8 +9,9 @@ WebSocket. The lightweight stdio bridge also supports existing competition bots.
 Release 0.3.0 adds the `ffa` and `castles` variants, plus paced human versions
 `ffa-human` and `castles-human`. Existing `competition` and `human` IDs retain
 classic 1v1 rules. The bot variants (`competition`, `ffa`, `castles`) cap at
-2,000 turns; the paced human variants remain at 1,200. Each mode can have its own Softmax
-league under the same `generals-competition` Coworld. The bundled Builder player
+2,000 turns; the paced human variants remain at 1,200. Each bot mode runs as its
+own Softmax league under the same `generals-competition` Coworld: Classic 1v1,
+FFA 1v1v1v1 and Build 1v1. The bundled Builder player
 funds an opening castle before expanding; Expander works in every mode but does
 not build. These are integration baselines, not strong competitive players.
 
@@ -82,8 +83,8 @@ For two bundled bots playing as fast as they can:
 python -m integrations.softmax.local --seed 7 --keep-open
 ```
 
-`--max-turns 40` makes a short smoke test; the competition variant always uses
-2,000. Each local run writes into its own ignored `local-output/episode-*`
+`--max-turns 40` makes a short smoke test. Without it, local games use the hosted
+caps: 2,000 turns for bots and 1,200 with `--human`. Each local run writes into its own ignored `local-output/episode-*`
 directory. `config.json` contains local player tokens; do not publish it. The
 shareable outputs are `results.json` and `replay.json`. `--port` selects another
 local port. The local launcher binds only to loopback.
@@ -100,6 +101,11 @@ local port. The local launcher binds only to loopback.
   one orthogonally adjacent cell. Mountains cannot be entered. Friendly armies
   combine; attacking armies subtract from defenders. You must exceed the
   defending army to take a cell under normal combat.
+- Moves resolve one at a time, each on the board the previous one left, in
+  generals.io's order: moves onto your own land first, moves onto a general
+  last, then larger armies before smaller ones; equal armies go in player order,
+  reversed on odd turns. A move whose source another move is entering waits
+  for that move, unless the two armies swap head-on.
 - Generals and owned castles grow each even tick; owned land grows every 50
   ticks. Neutral castles start on the map with 40–50 defenders and can be captured.
 - Classic 1v1 and FFA disable building and contain neutral castles. The building
@@ -115,7 +121,7 @@ local port. The local launcher binds only to loopback.
 - General capture always requires beating its defending army, including after
   turn 800. There is no Deathtouch rule.
 - Capture scores **+1** for the winner and **−1** for each other player. Reaching
-  the configured turn cap scores **0 for everyone**, including eliminated players,
+  the turn cap (2,000 in bot variants, 1,200 in human variants) scores **0 for everyone**, including eliminated players,
   regardless of army or land advantage. FFA does not award intermediate ranks.
 
 The hosted runtime adds explicit failure rules: bot matches have a 500 ms action
@@ -193,7 +199,7 @@ From the repository root:
 
 ```bash
 python -m integrations.softmax.tools.manifest --check
-coworld build --project integrations/softmax --version 0.3.1
+coworld build --project integrations/softmax --version <next version>
 coworld certify integrations/softmax/dist/coworld_manifest.json
 ```
 
