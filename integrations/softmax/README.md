@@ -8,8 +8,8 @@ WebSocket. The lightweight stdio bridge also supports existing competition bots.
 
 Release 0.3.0 adds the `ffa` and `castles` variants, plus paced human versions
 `ffa-human` and `castles-human`. Existing `competition` and `human` IDs retain
-classic 1v1 rules. The competition cap is 2,000 turns; the human cap remains
-1,200. Each mode can have its own Softmax
+classic 1v1 rules. The bot variants (`competition`, `ffa`, `castles`) cap at
+2,000 turns; the paced human variants remain at 1,200. Each mode can have its own Softmax
 league under the same `generals-competition` Coworld. The bundled Builder player
 funds an opening castle before expanding; Expander works in every mode but does
 not build. These are integration baselines, not strong competitive players.
@@ -37,6 +37,9 @@ castle-building variants remain at 1,200 turns. All modes also move to the
 engine's replay-verified generals.io move order: defensive moves first, moves
 onto a general last, then larger armies first (previously smaller first),
 with ties broken by player order reversed on odd turns.
+Release 0.3.2 raises the FFA and castle-building bot variants to 2,000 turns,
+matching classic. Human variants stay at 1,200 so a paced game fits Softmax's
+20-minute hosted episode limit.
 
 ## Play locally
 

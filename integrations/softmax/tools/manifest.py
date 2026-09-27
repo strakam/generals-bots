@@ -93,15 +93,15 @@ def template():
             {
                 "id": "ffa",
                 "name": "Free-for-all (4 players)",
-                "description": "Four independent generals; last survivor wins. Neutral castles, 1200-turn cap.",
+                "description": "Four independent generals; last survivor wins. Neutral castles, 2000-turn cap.",
                 "game_config": {"players": players + [{"name": "Green"}, {"name": "Purple"}],
-                                "ruleset": "classic", "max_turns": 1200},
+                                "ruleset": "classic", "max_turns": 2000},
             },
             {
                 "id": "castles",
                 "name": "Build your own castles (1v1)",
-                "description": "No neutral castles: spend armies to build on owned plain land. No Deathtouch.",
-                "game_config": {"players": players, "ruleset": "build_castles", "max_turns": 1200},
+                "description": "No neutral castles: spend armies to build on owned plain land. No Deathtouch. 2000-turn cap.",
+                "game_config": {"players": players, "ruleset": "build_castles", "max_turns": 2000},
             },
             {
                 "id": "ffa-human",
