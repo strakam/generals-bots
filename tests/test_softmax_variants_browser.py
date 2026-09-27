@@ -211,3 +211,21 @@ def test_ffa_replay_player_colors_and_elimination(viewer):
         expect(page.locator("#board > .tile").nth(i)).to_have_class(re.compile(rf"\b{color}\b"))
     expect(page.locator("#play-controls")).to_be_hidden()
     expect(page.locator("#build")).to_have_count(0)
+
+
+def test_competition_replay_accepts_2000_turns(viewer):
+    page, base, bundle = viewer
+    frame = {
+        "turn": 0, "army": [1, 1], "land": [1, 1], "eliminated": [False, False],
+        "type_grid": [[4, 4]], "owner_grid": [[1, 2]], "army_grid": [[1, 1]],
+    }
+    data = {
+        "format": "generals-coworld", "version": 1, "ruleset": "classic",
+        "height": 1, "width": 2, "players": ["Red", "Blue"],
+        "frames": [{**frame, "turn": turn} for turn in range(2001)],
+        "result": {"winner": -1, "reason": "turn_limit"},
+    }
+    (bundle / "competition-2000.json").write_text(json.dumps(data))
+    page.goto(f"{base}/#replay=competition-2000.json")
+    expect(page.locator("#mode")).to_have_text("REPLAY")
+    expect(page.locator("#seek")).to_have_attribute("max", "2000")

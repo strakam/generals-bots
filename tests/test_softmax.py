@@ -85,7 +85,7 @@ def test_action_turn_is_exact(turn):
     "fields",
     [
         {"tokens": ["same", "same"]},
-        {"max_turns": 1201},
+        {"max_turns": 2001},
         {"seed": -1},
         {"perfect_info": True},
         {"seed": True},
@@ -100,6 +100,15 @@ def test_config_cannot_change_rules_or_overrun_hosted_deadline(fields):
 
 def test_random_seed_is_default():
     assert GameConfig(tokens=["a", "b"], players=[{"name": "A"}, {"name": "B"}]).seed is None
+
+
+def test_competition_turn_cap_is_supported():
+    assert config(max_turns=2000).max_turns == 2000
+    match = Match(7)
+    assert match.env.truncation == 2000
+    match.state = match.state._replace(time=jnp.int32(1200))
+    match.advance([PASS, PASS])
+    assert match.turn == 1201
 
 
 def test_classic_rules_have_neutral_castles_and_reject_builds():

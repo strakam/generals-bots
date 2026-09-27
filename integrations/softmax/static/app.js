@@ -225,7 +225,7 @@
     if (compressed) bytes = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
     const data = JSON.parse(new TextDecoder().decode(bytes));
     if (load !== replayLoad) return;
-    if (data.format !== 'generals-coworld' || data.version !== 1 || !Array.isArray(data.frames) || !data.frames.length || data.frames.length > 1201 ||
+    if (data.format !== 'generals-coworld' || data.version !== 1 || !Array.isArray(data.frames) || !data.frames.length || data.frames.length > 2001 ||
         !Number.isInteger(data.height) || !Number.isInteger(data.width) || data.height < 1 || data.height > 21 || data.width < 1 || data.width > 21 ||
         !Array.isArray(data.players) || ![2,4].includes(data.players.length) || !data.result) throw new Error('Unsupported or incomplete Generals replay.');
     for (const frame of data.frames) for (const key of ['type_grid','owner_grid','army_grid']) {

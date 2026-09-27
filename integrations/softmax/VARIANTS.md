@@ -3,7 +3,7 @@
 The September 17 request prioritizes Richard's proposed FFA and castle-building
 leagues under the existing Generals Coworld. Work stays on `softmax`.
 
-## Modes in release 0.3.0
+## Modes in release 0.3.1
 
 | Variant | Seats | Rules |
 | --- | --- | --- |
@@ -12,8 +12,8 @@ leagues under the existing Generals Coworld. Work stays on `softmax`.
 | `castles` | 2 | Build castles on owned plain land; no starting neutral castles |
 | `human`, `ffa-human`, `castles-human` | 2, 4, 2 | Corresponding rules, 500 ms minimum tick and 1 s deadline |
 
-All modes retain a 1,200-turn cap and disable Deathtouch. Richard's separate
-PR #141 for 2,000-turn classic competition games is not included in this release.
+The `competition` mode has a 2,000-turn cap. All other modes retain a
+1,200-turn cap. Every mode disables Deathtouch.
 FFA uses +1 for the winner, -1 for every other player, and all zeros at the turn
 cap; it does not yet award intermediate finishing ranks. See README and the
 player protocol for capture, timeout, building-cost, and fog rules.
