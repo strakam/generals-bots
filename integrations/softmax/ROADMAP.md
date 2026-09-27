@@ -1,7 +1,7 @@
 # Softmax roadmap
 
 Updated 2026-09-27. Classic 1v1, FFA 1v1v1v1 and Build 1v1 each run as a
-Softmax league on Coworld v0.3.2, with 2,000-turn bot games and the engine's
+Softmax league on Coworld v0.3.3, with 2,000-turn bot games and the engine's
 replay-verified generals.io rules. See [VARIANTS.md](VARIANTS.md) for the
 leagues, per-mode caps and release records.
 The original ordering below is retained for context. The order below is a rough estimate of effort, not a
@@ -129,7 +129,7 @@ than increasing a player-count setting in the current 1v1 adapter.
 
 ## Current step
 
-All three modes run as leagues on v0.3.2 with 2,000-turn bot games; PR #141 is
+All three modes run as leagues on v0.3.3 with 2,000-turn bot games; PR #141 is
 merged. Remaining: follow a submission through scheduled league rounds and the
 leaderboard (section 3), human-versus-bot play through the hosted lobby,
 presentation and the public entry point (section 4), and the intermittent

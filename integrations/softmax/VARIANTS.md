@@ -3,7 +3,7 @@
 One `generals-competition` Coworld carries every mode; each bot mode runs as its
 own Softmax league. Work stays on `softmax`.
 
-## Modes in release 0.3.2
+## Modes (since release 0.3.2)
 
 | Variant | Seats | Rules | Turn cap |
 | --- | --- | --- | --- |
@@ -64,12 +64,20 @@ Codex proposed shielding that cleanup on PR #141; the fix is not merged.
 Ignored deployment logs, manifests, replay artifacts and exact API responses are
 kept in `local-output/release-<version>/`.
 
+### 0.3.3 — September 27, 2026
+
+- Documentation only: the embedded README states per-mode turn caps, the
+  generals.io move order and the three leagues. Release source `f65fb55`.
+- Coworld `cow_8f61ead9-f3c6-4be0-95ed-7ad0de6c961e`, canonical; all three leagues
+  moved to it. Local and hosted certification passed. The live wiki was updated
+  from `WIKI.md` the same day.
+
 ### 0.3.2 — September 27, 2026
 
 - FFA and castle-building bot variants raised to 2,000 turns; human variants
   stay at 1,200. Release source `04e76ba` on `softmax`.
-- Coworld `cow_08589716-ac45-4575-b3de-7e4cab635fc8`, canonical; all three leagues
-  moved to it. Hosted certification passed ten checks and five smoke episodes.
+- Coworld `cow_08589716-ac45-4575-b3de-7e4cab635fc8`; all three leagues moved
+  to it. Hosted certification passed ten checks and five smoke episodes.
 - Full 2,000-turn FFA and castles games passed locally, in container
   certification and hosted (69 s and 49 s), all with zero timeouts:
   [FFA](https://softmax.com/generals-competition?e=78143037-11fc-4c4c-b6ca-2c62dbd90712),

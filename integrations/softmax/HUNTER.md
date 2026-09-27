@@ -4,7 +4,7 @@ Objective: verify the existing Hunter's complete Softmax submission experience.
 This is a first-entry integration check, not an ongoing strategy optimization
 project. The runtime is `platform-hosted`; Hunter was submitted against Coworld
 `cow_adee8c4a-e0ed-43b0-b45c-fe6073ef4987` (v0.2.5). Its player container is
-unchanged, while the league now runs the current canonical game (v0.3.2 as of
+unchanged, while the league now runs the current canonical game (v0.3.3 as of
 September 27: 2,000-turn games and generals.io move order; see VARIANTS.md).
 Game rules and protocol are documented in [README.md](README.md) and
 [PLAYER_PROTOCOL.md](PLAYER_PROTOCOL.md).
